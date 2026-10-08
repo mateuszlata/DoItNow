@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => ({
     include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
     // Testy integracyjne łączą się z lokalnym Supabase z .env (npx supabase start).
     env: loadEnv(mode, process.cwd(), ""),
+    globalSetup: ["tests/integration/global-setup.ts"],
     testTimeout: 20_000,
   },
 }));

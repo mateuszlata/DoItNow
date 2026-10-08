@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
-import { listUpcomingEvents } from "@/lib/services/events";
+import { EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN, listUpcomingEvents } from "@/lib/services/events";
 import { SPORTS, sportLabel } from "@/lib/sports";
 import { formatEventDate } from "@/lib/time";
 import type { EventListItem } from "@/types";
@@ -11,19 +11,35 @@ const { user } = Astro.locals;
 const sport = Astro.url.searchParams.get("sport") ?? "";
 const day = Astro.url.searchParams.get("day") ?? "";
 const created = Astro.url.searchParams.has("created");
+// „Pokaż więcej” zwiększa liczbę widocznych ogłoszeń, zachowując filtry.
+const requestedShow = Number.parseInt(Astro.url.searchParams.get("show") ?? "", 10);
+const show = Number.isFinite(requestedShow)
+  ? Math.min(Math.max(requestedShow, EVENTS_PAGE_SIZE), MAX_EVENTS_SHOWN)
+  : EVENTS_PAGE_SIZE;
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 let events: EventListItem[] = [];
+let hasMore = false;
 let loadError = false;
 if (supabase) {
   try {
-    events = await listUpcomingEvents(supabase, { sport, day }, { authenticated: Boolean(user) });
+    ({ events, hasMore } = await listUpcomingEvents(
+      supabase,
+      { sport, day },
+      { authenticated: Boolean(user), limit: show },
+    ));
   } catch (error) {
     // eslint-disable-next-line no-console -- server log for failed list queries
     console.error(error);
     loadError = true;
   }
 }
+
+const moreParams = new URLSearchParams();
+if (sport) moreParams.set("sport", sport);
+if (day) moreParams.set("day", day);
+moreParams.set("show", String(Math.min(show + EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN)));
+const moreHref = `/events?${moreParams.toString()}`;
 
 const inputClass =
   "w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-purple-400 focus:outline-none";
@@ -128,6 +144,18 @@ const inputClass =
           </li>
         ))}
       </ul>
+
+      {hasMore && show < MAX_EVENTS_SHOWN && (
+        <div class="mt-4 text-center">
+          <a
+            href={moreHref}
+            data-testid="show-more"
+            class="inline-block rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm text-white transition-colors hover:bg-white/20"
+          >
+            Pokaż więcej
+          </a>
+        </div>
+      )}
     </div>
   </div>
 </Layout>

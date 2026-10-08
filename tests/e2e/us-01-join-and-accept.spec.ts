@@ -2,9 +2,16 @@
 // When użytkownik zgłasza chęć udziału, a organizator akceptuje zgłoszenie,
 // Then oboje widzą go na liście uczestników, a liczba wolnych miejsc spada o 1.
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { LOCAL_SUPABASE_URL, deleteUsersByEmailPrefix, getLocalServiceRoleKey } from "../support/local-supabase";
 
 const runId = Date.now().toString(36);
 const password = "E2eTest-2026!";
+const emailPrefix = `e2e-${runId}-`;
+
+// Konta z tego przebiegu (i ich ogłoszenia) usuwamy z lokalnej bazy po teście.
+test.afterAll(async () => {
+  await deleteUsersByEmailPrefix(process.env.SUPABASE_URL ?? LOCAL_SUPABASE_URL, getLocalServiceRoleKey(), emailPrefix);
+});
 
 // Formularze logowania i rejestracji to wyspy Reacta: wpisanie danych przed hydratacją
 // zostałoby wyczyszczone, więc czekamy, aż Astro zdejmie atrybut `ssr` z wyspy.
@@ -14,7 +21,7 @@ async function waitForHydration(page: Page): Promise<void> {
 
 async function signUpAndSignIn(browser: Browser, nick: string): Promise<Page> {
   const page = await browser.newPage();
-  const email = `e2e-${runId}-${nick.toLowerCase()}@example.com`;
+  const email = `${emailPrefix}${nick.toLowerCase()}@example.com`;
 
   await page.goto("/auth/signup");
   await waitForHydration(page);

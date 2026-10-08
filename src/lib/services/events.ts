@@ -170,6 +170,10 @@ export async function cancelEvent(
   return response.error ? { ok: false, code: response.error.message } : { ok: true };
 }
 
+/** Liczba ogłoszeń na liście; „Pokaż więcej” zwiększa ją o tyle samo. */
+export const EVENTS_PAGE_SIZE = 20;
+export const MAX_EVENTS_SHOWN = 500;
+
 export interface EventFilters {
   sport?: string;
   day?: string;
@@ -178,13 +182,15 @@ export interface EventFilters {
 /**
  * Nadchodzące, aktywne ogłoszenia od najbliższego (FR-005).
  * Goście dostają ograniczony widok bez dokładnego miejsca, opisu i autora (FR-001).
+ * Zwraca najwyżej `limit` ogłoszeń i informację, czy są kolejne.
  */
 export async function listUpcomingEvents(
   supabase: SupabaseClient,
   filters: EventFilters,
-  options: { authenticated: boolean; now?: Date },
-): Promise<EventListItem[]> {
+  options: { authenticated: boolean; now?: Date; limit?: number },
+): Promise<{ events: EventListItem[]; hasMore: boolean }> {
   const now = options.now ?? new Date();
+  const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   const columns = options.authenticated
     ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count"
     : "id, sport, area, starts_at, spots, accepted_count";
@@ -193,7 +199,12 @@ export async function listUpcomingEvents(
     ? supabase.from("events").select(columns).eq("status", "active")
     : supabase.from("events_public").select(columns);
 
-  query = query.gt("starts_at", now.toISOString()).order("starts_at", { ascending: true }).limit(100);
+  // Jeden element ponad limit mówi, czy pokazać „Pokaż więcej”; id ustala kolejność przy tym samym terminie.
+  query = query
+    .gt("starts_at", now.toISOString())
+    .order("starts_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(limit + 1);
 
   if (filters.sport && (SPORT_IDS as readonly string[]).includes(filters.sport)) {
     query = query.eq("sport", filters.sport);
@@ -209,7 +220,8 @@ export async function listUpcomingEvents(
   if (error) {
     throw new Error(`Nie udało się pobrać ogłoszeń: ${error.message}`);
   }
-  return data as unknown as EventListItem[];
+  const rows = data as unknown as EventListItem[];
+  return { events: rows.slice(0, limit), hasMore: rows.length > limit };
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

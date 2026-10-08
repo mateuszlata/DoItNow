@@ -2,10 +2,10 @@
 // zgłoszenie oczekuje -> zaakceptowane | odrzucone, akceptacja tylko przy wolnym miejscu,
 // rezygnacja zaakceptowanego najpóźniej 12 h przed wydarzeniem.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEvent } from "@/lib/services/events";
 import { decideParticipation, requestToJoin, withdrawParticipation } from "@/lib/services/participations";
-import { HOUR, acceptedCount, anonClient, insertEvent, newUser } from "./helpers";
+import { HOUR, cleanupTestUsers, acceptedCount, anonClient, insertEvent, newUser } from "./helpers";
 
 let organizer: { client: SupabaseClient; id: string };
 let alice: { client: SupabaseClient; id: string };
@@ -16,6 +16,8 @@ beforeAll(async () => {
   alice = await newUser("Alicja IT");
   bob = await newUser("Bartek IT");
 });
+
+afterAll(cleanupTestUsers);
 
 describe("zgłoszenia (FR-007)", () => {
   it("creates an event through the app service and lets another user request to join", async () => {

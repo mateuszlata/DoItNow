@@ -1,10 +1,10 @@
 // FR-004 sprawdzane na lokalnym Supabase: edycja najpóźniej 12 h przed wydarzeniem,
 // limit nie mniejszy niż liczba zaakceptowanych, odwołanie w dowolnej chwili przed startem.
-import { beforeAll, describe, expect, it } from "vitest";
-import { cancelEvent, updateEvent, type EventFormValues } from "@/lib/services/events";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { cancelEvent, listUpcomingEvents, updateEvent, type EventFormValues } from "@/lib/services/events";
 import { decideParticipation, requestToJoin } from "@/lib/services/participations";
-import { toLocalDateTime } from "@/lib/time";
-import { HOUR, anonClient, insertEvent, newUser, type TestUser } from "./helpers";
+import { localDateTimeToDate, toLocalDateTime } from "@/lib/time";
+import { HOUR, cleanupTestUsers, anonClient, insertEvent, newUser, type TestUser } from "./helpers";
 
 let organizer: TestUser;
 let alice: TestUser;
@@ -15,6 +15,8 @@ beforeAll(async () => {
   alice = await newUser("Alicja FR4");
   bob = await newUser("Bartek FR4");
 });
+
+afterAll(cleanupTestUsers);
 
 function editForm(overrides: Partial<EventFormValues> = {}): EventFormValues {
   return {
@@ -120,5 +122,44 @@ describe("odwołanie ogłoszenia (FR-004)", () => {
     await cancelEvent(organizer.client, eventId);
     const result = await updateEvent(organizer.client, eventId, editForm());
     expect(result).toEqual({ ok: false, errors: { form: "Odwołanego ogłoszenia nie można edytować." } });
+  });
+});
+
+describe("lista nadchodzących ogłoszeń (FR-005)", () => {
+  // Unikalny dzień w przyszłości, żeby filtr widział tylko ogłoszenia z tego testu.
+  const day = `2031-${String(1 + Math.floor(Math.random() * 12)).padStart(2, "0")}-${String(1 + Math.floor(Math.random() * 28)).padStart(2, "0")}`;
+  const at = (hour: string) => localDateTimeToDate(`${day}T${hour}`) ?? new Date(NaN);
+
+  it("shows at most the page size and says whether there are more, nearest first", async () => {
+    const ids = [
+      await insertEvent(organizer, at("12:00"), 2, "badminton"),
+      await insertEvent(organizer, at("10:00"), 2, "badminton"),
+      await insertEvent(organizer, at("11:00"), 2, "badminton"),
+    ];
+
+    const firstPage = await listUpcomingEvents(
+      organizer.client,
+      { sport: "badminton", day },
+      { authenticated: true, limit: 2 },
+    );
+    expect(firstPage.hasMore).toBe(true);
+    expect(firstPage.events.map((e) => e.id)).toEqual([ids[1], ids[2]]);
+
+    const all = await listUpcomingEvents(
+      organizer.client,
+      { sport: "badminton", day },
+      { authenticated: true, limit: 3 },
+    );
+    expect(all.hasMore).toBe(false);
+    expect(all.events.map((e) => e.id)).toEqual([ids[1], ids[2], ids[0]]);
+
+    // Gość dostaje te same ogłoszenia w ograniczonym widoku, bez dokładnego miejsca.
+    const guest = await listUpcomingEvents(
+      anonClient(),
+      { sport: "badminton", day },
+      { authenticated: false, limit: 2 },
+    );
+    expect(guest.hasMore).toBe(true);
+    expect(guest.events.every((e) => !("place" in e))).toBe(true);
   });
 });
