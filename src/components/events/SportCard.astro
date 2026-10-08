@@ -1,5 +1,6 @@
 ---
-// Karta ogłoszenia z grafiką sportu: duże emoji w tle i kolorowy pasek po lewej.
+// Karta ogłoszenia: kafelek z ikoną sportu w prawym górnym rogu, kolor sportu w zmiennej `--sport`
+// (motyw a barwi nim całą kartę, pozostałe tylko kafelek).
 import { sportVisual } from "@/lib/sports";
 
 interface Props {
@@ -9,25 +10,22 @@ interface Props {
 }
 
 const { sport, dimmed = false } = Astro.props;
-const { emoji, accent } = sportVisual(sport);
+const { emoji, color } = sportVisual(sport);
 ---
 
 <li
-  class:list={[
-    "relative overflow-hidden rounded-xl border border-l-4 border-slate-200 bg-white shadow-sm p-4 text-slate-900 backdrop-blur-xl",
-    accent,
-    dimmed && "opacity-60",
-  ]}
+  class:list={["bg-card-sport relative rounded-3xl border border-line p-5 text-ink", dimmed && "opacity-60"]}
+  style={`--sport: ${color}`}
   data-sport={sport}
 >
   <span
     aria-hidden="true"
-    class="pointer-events-none absolute -right-3 -bottom-6 text-8xl opacity-15 select-none"
+    class="bg-sport-tile absolute top-4 right-4 flex size-11 items-center justify-center rounded-2xl text-2xl select-none"
     data-testid="sport-emoji"
   >
     {emoji}
   </span>
-  <div class="relative">
+  <div class="pr-14">
     <slot />
   </div>
 </li>

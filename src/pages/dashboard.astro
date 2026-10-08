@@ -7,23 +7,23 @@ const { user } = Astro.locals;
 
 <Layout title="Twoje konto · Ktoś/Coś">
   <div class="bg-app flex min-h-screen items-center justify-center p-4">
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-900 backdrop-blur-xl">
+    <div class="rounded-3xl border border-line bg-card shadow-card p-8 text-center text-ink backdrop-blur-xl">
       <h1 class="mb-4 text-brand-gradient text-3xl font-bold">Twoje konto</h1>
-      <p class="text-slate-700">
-        Zalogowano jako <span class="font-semibold text-slate-900">{user?.email}</span>
+      <p class="text-ink-2">
+        Zalogowano jako <span class="font-semibold text-ink">{user?.email}</span>
       </p>
       <p class="mt-4 flex justify-center gap-4 text-sm">
-        <a href="/my" class="text-orange-600 hover:underline">
+        <a href="/my" class="text-link hover:underline">
           Moje spotkania
         </a>
-        <a href="/events" class="text-orange-600 hover:underline">
+        <a href="/events" class="text-link hover:underline">
           Ogłoszenia
         </a>
       </p>
       <form method="POST" action="/api/auth/signout" class="mt-6">
         <button
           type="submit"
-          class="rounded-lg border border-slate-300 bg-white shadow-sm px-4 py-2 text-sm transition-colors hover:bg-slate-100"
+          class="rounded-full border border-line-strong bg-card shadow-card px-4 py-2 text-sm transition-colors hover:bg-card-2"
         >
           Wyloguj
         </button>

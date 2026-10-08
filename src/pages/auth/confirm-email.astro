@@ -20,11 +20,11 @@ const content = isAutoConfirmed
 
 <Layout title={content.heading}>
   <div class="bg-app flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-900 backdrop-blur-xl">
+    <div class="w-full max-w-sm rounded-3xl border border-line bg-card shadow-card p-8 text-center text-ink backdrop-blur-xl">
       <div class="mb-4 text-5xl">{content.emoji}</div>
       <h1 class="mb-3 text-brand-gradient text-2xl font-bold">{content.heading}</h1>
-      <p class="mb-6 text-slate-700">{content.description}</p>
-      <a href="/auth/signin" class="text-sm text-orange-600 hover:underline">
+      <p class="mb-6 text-ink-2">{content.description}</p>
+      <a href="/auth/signin" class="text-sm text-link hover:underline">
         {content.linkText}
       </a>
     </div>

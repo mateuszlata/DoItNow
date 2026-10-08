@@ -15,30 +15,28 @@ const { values, errors, submitLabel } = Astro.props;
 
 const minStartsAt = nowLocalDateTime();
 const inputClass =
-  "mt-1 w-full rounded-lg border bg-white shadow-sm px-3 py-2 text-slate-900 placeholder-slate-400 focus:ring-2 focus:outline-none";
+  "mt-1 w-full rounded-lg border bg-card px-3 py-2 text-ink placeholder-ink-3 focus:ring-2 focus:outline-none";
 const borderClass = (name: keyof FieldErrors) =>
-  errors[name] ? "border-red-300 focus:ring-red-400" : "border-slate-300 focus:ring-orange-400";
+  errors[name] ? "border-bad-line focus:ring-red-400" : "border-line-strong focus:ring-brand";
 ---
 
-{errors.form && <p class="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{errors.form}</p>}
+{errors.form && <p class="mb-4 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{errors.form}</p>}
 
 <form method="POST" class="grid gap-4" novalidate>
-  <label class="text-sm text-slate-700">
+  <label class="text-sm text-ink-2">
     Sport
     <select name="sport" required class:list={[inputClass, borderClass("sport")]}>
-      <option value="" class="text-black">
-        Wybierz…
-      </option>
+      <option value="">Wybierz…</option>
       {SPORTS.map((s) => (
-        <option value={s.id} selected={s.id === values.sport} class="text-black">
+        <option value={s.id} selected={s.id === values.sport}>
           {s.label}
         </option>
       ))}
     </select>
-    {errors.sport && <span class="mt-1 block text-xs text-red-600">{errors.sport}</span>}
+    {errors.sport && <span class="mt-1 block text-xs text-bad">{errors.sport}</span>}
   </label>
 
-  <label class="text-sm text-slate-700">
+  <label class="text-sm text-ink-2">
     Data i godzina
     <input
       type="datetime-local"
@@ -48,10 +46,10 @@ const borderClass = (name: keyof FieldErrors) =>
       value={values.startsAt}
       class:list={[inputClass, borderClass("startsAt")]}
     />
-    {errors.startsAt && <span class="mt-1 block text-xs text-red-600">{errors.startsAt}</span>}
+    {errors.startsAt && <span class="mt-1 block text-xs text-bad">{errors.startsAt}</span>}
   </label>
 
-  <label class="text-sm text-slate-700">
+  <label class="text-sm text-ink-2">
     Okolica / dzielnica
     <input
       type="text"
@@ -62,11 +60,11 @@ const borderClass = (name: keyof FieldErrors) =>
       value={values.area}
       class:list={[inputClass, borderClass("area")]}
     />
-    <span class="mt-1 block text-xs text-slate-500">Widoczna dla wszystkich, także niezalogowanych.</span>
-    {errors.area && <span class="mt-1 block text-xs text-red-600">{errors.area}</span>}
+    <span class="mt-1 block text-xs text-ink-3">Widoczna dla wszystkich, także niezalogowanych.</span>
+    {errors.area && <span class="mt-1 block text-xs text-bad">{errors.area}</span>}
   </label>
 
-  <label class="text-sm text-slate-700">
+  <label class="text-sm text-ink-2">
     Dokładne miejsce
     <input
       type="text"
@@ -77,11 +75,11 @@ const borderClass = (name: keyof FieldErrors) =>
       value={values.place}
       class:list={[inputClass, borderClass("place")]}
     />
-    <span class="mt-1 block text-xs text-slate-500">Widoczne tylko dla zalogowanych.</span>
-    {errors.place && <span class="mt-1 block text-xs text-red-600">{errors.place}</span>}
+    <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
+    {errors.place && <span class="mt-1 block text-xs text-bad">{errors.place}</span>}
   </label>
 
-  <label class="text-sm text-slate-700">
+  <label class="text-sm text-ink-2">
     Ile osób łącznie w składzie?
     <input
       type="number"
@@ -93,39 +91,39 @@ const borderClass = (name: keyof FieldErrors) =>
       value={values.total}
       class:list={[inputClass, borderClass("total")]}
     />
-    {errors.total && <span class="mt-1 block text-xs text-red-600">{errors.total}</span>}
+    {errors.total && <span class="mt-1 block text-xs text-bad">{errors.total}</span>}
   </label>
 
-  <label class="flex items-start gap-2 text-sm text-slate-700">
+  <label class="flex items-start gap-2 text-sm text-ink-2">
     <input
       type="checkbox"
       name="organizerPlays"
       checked={values.organizerPlays === "on"}
-      class="mt-0.5 size-4 accent-orange-600"
+      class="mt-0.5 size-4 accent-brand"
     />
     <span>
       Biorę udział w spotkaniu
-      <span class="block text-xs text-slate-500">Zajmujesz jedno miejsce w składzie.</span>
+      <span class="block text-xs text-ink-3">Zajmujesz jedno miejsce w składzie.</span>
     </span>
   </label>
 
-  <label class="flex items-start gap-2 text-sm text-slate-700">
+  <label class="flex items-start gap-2 text-sm text-ink-2">
     <input
       type="checkbox"
       name="requiresApproval"
       checked={values.requiresApproval === "on"}
-      class="mt-0.5 size-4 accent-orange-600"
+      class="mt-0.5 size-4 accent-brand"
     />
     <span>
       Wymagaj mojej akceptacji
-      <span class="block text-xs text-slate-500">
+      <span class="block text-xs text-ink-3">
         Bez zaznaczenia każdy zalogowany dołącza od razu; niechcianą osobę możesz usunąć.
       </span>
     </span>
   </label>
 
   <div class="grid grid-cols-2 gap-3">
-    <label class="text-sm text-slate-700">
+    <label class="text-sm text-ink-2">
       Minimum osób (opcjonalnie)
       <input
         type="number"
@@ -136,10 +134,10 @@ const borderClass = (name: keyof FieldErrors) =>
         value={values.minPeople}
         class:list={[inputClass, borderClass("minPeople")]}
       />
-      <span class="mt-1 block text-xs text-slate-500">Ilu osób potrzeba, żeby zagrać.</span>
-      {errors.minPeople && <span class="mt-1 block text-xs text-red-600">{errors.minPeople}</span>}
+      <span class="mt-1 block text-xs text-ink-3">Ilu osób potrzeba, żeby zagrać.</span>
+      {errors.minPeople && <span class="mt-1 block text-xs text-bad">{errors.minPeople}</span>}
     </label>
-    <label class="text-sm text-slate-700">
+    <label class="text-sm text-ink-2">
       Miejsca rezerwowe
       <input
         type="number"
@@ -150,21 +148,21 @@ const borderClass = (name: keyof FieldErrors) =>
         value={values.reserveSpots}
         class:list={[inputClass, borderClass("reserveSpots")]}
       />
-      <span class="mt-1 block text-xs text-slate-500">Wskakują, gdy ktoś zrezygnuje.</span>
-      {errors.reserveSpots && <span class="mt-1 block text-xs text-red-600">{errors.reserveSpots}</span>}
+      <span class="mt-1 block text-xs text-ink-3">Wskakują, gdy ktoś zrezygnuje.</span>
+      {errors.reserveSpots && <span class="mt-1 block text-xs text-bad">{errors.reserveSpots}</span>}
     </label>
   </div>
 
-  <div class="text-sm text-slate-700">
+  <div class="text-sm text-ink-2">
     Miejsce na mapie (opcjonalnie)
     <div class="mt-1">
       <MapPicker initialLat={values.lat} initialLng={values.lng} client:visible />
     </div>
-    <span class="mt-1 block text-xs text-slate-500">Widoczne tylko dla zalogowanych.</span>
-    {errors.lat && <span class="mt-1 block text-xs text-red-600">{errors.lat}</span>}
+    <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
+    {errors.lat && <span class="mt-1 block text-xs text-bad">{errors.lat}</span>}
   </div>
 
-  <label class="text-sm text-slate-700">
+  <label class="text-sm text-ink-2">
     Opis (opcjonalnie)
     <textarea
       name="description"
@@ -173,12 +171,12 @@ const borderClass = (name: keyof FieldErrors) =>
       placeholder="Poziom gry, co zabrać, jak się rozpoznać…"
       class:list={[inputClass, borderClass("description")]}
     >{values.description}</textarea>
-    {errors.description && <span class="mt-1 block text-xs text-red-600">{errors.description}</span>}
+    {errors.description && <span class="mt-1 block text-xs text-bad">{errors.description}</span>}
   </label>
 
   <button
     type="submit"
-    class="rounded-lg bg-orange-600 px-4 py-2 font-medium text-white transition-colors hover:bg-orange-700"
+    class="rounded-full bg-brand px-4 py-2 font-medium text-on-brand transition-colors hover:bg-brand-hover"
   >
     {submitLabel}
   </button>

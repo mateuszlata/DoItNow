@@ -32,7 +32,7 @@ if (Astro.request.method === "POST" && user) {
   <div class="bg-app min-h-screen p-4">
     <div class="mx-auto max-w-xl">
       <Topbar />
-      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 text-slate-900 backdrop-blur-xl">
+      <div class="rounded-3xl border border-line bg-card shadow-card p-6 text-ink backdrop-blur-xl">
         <h1 class="mb-4 text-2xl font-bold">Dodaj ogłoszenie</h1>
         <EventForm values={values} errors={errors} submitLabel="Opublikuj ogłoszenie" />
       </div>

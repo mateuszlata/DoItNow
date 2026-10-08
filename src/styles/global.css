@@ -111,17 +111,182 @@
 }
 
 @theme {
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Jasne tło z delikatnymi plamami kolorów logo (pomarańcz, zieleń, niebieski). */
+/*
+ * Motywy do testów (przełącznik w pasku, cookie `theme`):
+ * a — miękkie bloki (karta w kolorze sportu), b — ciemny sportowy, c — granatowy nagłówek marki.
+ * Komponenty używają tylko tych zmiennych (klasy bg-page, text-ink, bg-brand…), nigdy surowych kolorów.
+ */
+:root,
+[data-theme="c"] {
+  --page: #f4f4f5;
+  --card: #ffffff;
+  --card-2: #f1f5f9;
+  --ink: #0f172a;
+  --ink-2: #334155;
+  --ink-3: #64748b;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --brand: #ea580c;
+  --brand-hover: #c2410c;
+  --on-brand: #ffffff;
+  --link: #c2410c;
+  --date: #0369a1;
+  --header: #1e293b;
+  --on-header: #ffffff;
+  --on-header-2: #cbd5e1;
+  --header-link: #fdba74;
+  --track: #e2e8f0;
+  --fill: linear-gradient(90deg, #f97316, #10b981);
+  --card-sport-mix: 0%;
+  --tile-mix: 22%;
+  --card-shadow: 0 6px 20px rgb(15 23 42 / 0.08);
+  --ok: #166534;
+  --ok-soft: #dcfce7;
+  --ok-line: #86efac;
+  --warn: #92400e;
+  --warn-soft: #fef3c7;
+  --warn-line: #fcd34d;
+  --bad: #991b1b;
+  --bad-soft: #fee2e2;
+  --bad-line: #fca5a5;
+  --free: #9a3412;
+  --free-soft: #ffedd5;
+  --free-line: #fdba74;
+  color-scheme: light;
+}
+
+[data-theme="a"] {
+  --page: #f7f6f2;
+  --card: #ffffff;
+  --card-2: #efede6;
+  --ink: #111111;
+  --ink-2: #3f3f46;
+  --ink-3: #6b6b73;
+  --line: #e7e5de;
+  --line-strong: #d4d1c7;
+  --brand: #111111;
+  --brand-hover: #2a2a2a;
+  --on-brand: #ffffff;
+  --link: #c2410c;
+  --date: #1d4ed8;
+  --header: transparent;
+  --on-header: #111111;
+  --on-header-2: #3f3f46;
+  --header-link: #111111;
+  --track: rgb(255 255 255 / 0.7);
+  --fill: #111111;
+  --card-sport-mix: 38%;
+  --tile-mix: 0%;
+  --card-shadow: none;
+}
+
+[data-theme="b"] {
+  --page: #0b0b0f;
+  --card: #16161d;
+  --card-2: #1f1f28;
+  --ink: #fafafa;
+  --ink-2: #d4d4d8;
+  --ink-3: #a1a1aa;
+  --line: #26262f;
+  --line-strong: #3f3f46;
+  --brand: #ff6b2c;
+  --brand-hover: #ff8a50;
+  --on-brand: #0b0b0f;
+  --link: #ff8a50;
+  --date: #7dd3fc;
+  --header: transparent;
+  --on-header: #fafafa;
+  --on-header-2: #a1a1aa;
+  --header-link: #ff8a50;
+  --track: #26262f;
+  --fill: #4ade80;
+  --card-sport-mix: 0%;
+  --tile-mix: 28%;
+  --card-shadow: none;
+  --ok: #86efac;
+  --ok-soft: #12301c;
+  --ok-line: #166534;
+  --warn: #fcd34d;
+  --warn-soft: #3a2a0a;
+  --warn-line: #92400e;
+  --bad: #fca5a5;
+  --bad-soft: #3b1212;
+  --bad-line: #991b1b;
+  --free: #fdba74;
+  --free-soft: #3a1e0a;
+  --free-line: #c2410c;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-card: var(--card);
+  --color-card-2: var(--card-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-on-brand: var(--on-brand);
+  --color-link: var(--link);
+  --color-date: var(--date);
+  --color-header: var(--header);
+  --color-on-header: var(--on-header);
+  --color-on-header-2: var(--on-header-2);
+  --color-header-link: var(--header-link);
+  --color-track: var(--track);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-line: var(--ok-line);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-bad-line: var(--bad-line);
+  --color-free: var(--free);
+  --color-free-soft: var(--free-soft);
+  --color-free-line: var(--free-line);
+}
+
 @utility bg-app {
-  background-color: #f8fafc;
-  background-image:
-    radial-gradient(circle at 0% 0%, rgb(251 146 60 / 0.12), transparent 40%),
-    radial-gradient(circle at 100% 0%, rgb(52 211 153 / 0.12), transparent 40%),
-    radial-gradient(circle at 100% 100%, rgb(56 189 248 / 0.12), transparent 45%);
-  background-attachment: fixed;
+  background-color: var(--page);
+}
+
+/* Karta ogłoszenia: w motywie a zabarwiona kolorem sportu (`--sport` ustawia SportCard). */
+@utility bg-card-sport {
+  background-color: color-mix(in srgb, var(--sport, #94a3b8) var(--card-sport-mix), var(--card));
+  box-shadow: var(--card-shadow);
+}
+
+/* Kafelek z ikoną sportu. */
+@utility bg-sport-tile {
+  background-color: color-mix(
+    in srgb,
+    var(--sport, #94a3b8) calc(var(--tile-mix) + var(--card-sport-mix)),
+    var(--card)
+  );
+}
+
+@utility shadow-card {
+  box-shadow: var(--card-shadow);
+}
+
+/* Wypełnienie paska zajętości składu. */
+@utility bg-fill {
+  background: var(--fill);
+}
+
+/* Pełne logo ma granatowy napis: w ciemnym motywie stoi na jasnej plakietce. */
+[data-theme="b"] .logo-full {
+  background-color: #ffffff;
+  border-radius: 1.5rem;
+  padding: 0.75rem;
 }
 
 /* Napis w kolorach logo. */

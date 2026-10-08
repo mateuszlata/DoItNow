@@ -2,8 +2,16 @@
 import { createClient } from "@/lib/supabase";
 import { getDisplayName } from "@/lib/services/profiles";
 import { countPendingRequests } from "@/lib/services/events";
+import { THEMES, THEME_COOKIE, readTheme } from "@/lib/theme";
 
+interface Props {
+  /** Duży nagłówek strony wyświetlany w pasku (np. „W co dziś gramy?”). */
+  title?: string;
+}
+
+const { title } = Astro.props;
 const { user } = Astro.locals;
+const theme = readTheme(Astro.cookies);
 
 let displayName: string | null = null;
 let pending = 0;
@@ -12,50 +20,85 @@ if (user) {
   displayName = supabase ? await getDisplayName(supabase, user.id) : null;
   pending = supabase ? await countPendingRequests(supabase, user.id) : 0;
 }
+
+const link = "text-header-link font-semibold transition-opacity hover:opacity-80";
 ---
 
-<div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
-  <a href="/events" class="flex items-center gap-2 text-lg font-extrabold tracking-tight text-slate-800">
-    <img src="/logo-mark.webp" alt="" width="32" height="32" class="size-8" />
-    <span>
-      Ktoś<span class="text-orange-500">/</span>Coś
-    </span>
-  </a>
-  {user ? (
-    <div class="flex flex-wrap items-center gap-3">
-      {displayName && <span class="text-slate-600">{displayName}</span>}
-      <a href="/events" class="text-orange-600 transition-colors hover:text-orange-700 hover:underline">
-        Ogłoszenia
-      </a>
-      <a href="/my" class="text-orange-600 transition-colors hover:text-orange-700 hover:underline">
-        Moje spotkania
-        {pending > 0 && (
-          <span
-            class="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] font-semibold text-black"
-            data-testid="pending-badge"
-            title="Zgłoszenia czekające na Twoją decyzję"
-          >
-            {pending}
-          </span>
-        )}
-      </a>
-      <a href="/events/new" class="text-orange-600 transition-colors hover:text-orange-700 hover:underline">
-        Dodaj ogłoszenie
-      </a>
-      <form method="POST" action="/api/auth/signout">
-        <button type="submit" class="text-orange-600 transition-colors hover:text-orange-700 hover:underline">
-          Wyloguj
+<header class="bg-header text-on-header -mx-4 -mt-4 mb-5 rounded-b-[2rem] px-5 pt-4 pb-5 sm:mx-0 sm:mt-0 sm:rounded-[2rem]">
+  <div class="flex items-center justify-between gap-3">
+    <a href="/events" class="flex items-center gap-2 text-lg font-extrabold tracking-tight">
+      <img src="/logo-mark.webp" alt="" width="32" height="32" class="size-8" />
+      <span>
+        Ktoś<span class="text-orange-500">/</span>Coś
+      </span>
+    </a>
+    <div class="flex items-center gap-1" role="group" aria-label="Motyw" data-testid="theme-switcher">
+      {THEMES.map((t) => (
+        <button
+          type="button"
+          data-theme-choice={t.id}
+          title={t.label}
+          aria-pressed={t.id === theme ? "true" : "false"}
+          class:list={[
+            "size-7 rounded-full text-xs font-bold uppercase transition-colors",
+            t.id === theme ? "bg-brand text-on-brand" : "bg-card-2 text-ink-2",
+          ]}
+        >
+          {t.id}
         </button>
-      </form>
+      ))}
     </div>
-  ) : (
-    <div class="flex gap-3">
-      <a href="/auth/signin" class="text-orange-600 transition-colors hover:text-orange-700 hover:underline">
-        Zaloguj
-      </a>
-      <a href="/auth/signup" class="text-orange-600 transition-colors hover:text-orange-700 hover:underline">
-        Załóż konto
-      </a>
-    </div>
-  )}
-</div>
+  </div>
+
+  <nav class="text-on-header-2 mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+    {user ? (
+      <>
+        {displayName && <span>{displayName}</span>}
+        <a href="/events" class:list={link}>
+          Ogłoszenia
+        </a>
+        <a href="/my" class:list={link}>
+          Moje spotkania
+          {pending > 0 && (
+            <span
+              class="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] font-semibold text-black"
+              data-testid="pending-badge"
+              title="Zgłoszenia czekające na Twoją decyzję"
+            >
+              {pending}
+            </span>
+          )}
+        </a>
+        <a href="/events/new" class:list={link}>
+          Dodaj ogłoszenie
+        </a>
+        <form method="POST" action="/api/auth/signout">
+          <button type="submit" class:list={link}>
+            Wyloguj
+          </button>
+        </form>
+      </>
+    ) : (
+      <>
+        <a href="/auth/signin" class:list={link}>
+          Zaloguj
+        </a>
+        <a href="/auth/signup" class:list={link}>
+          Załóż konto
+        </a>
+      </>
+    )}
+  </nav>
+
+  {title && <h1 class="mt-4 text-3xl leading-tight font-extrabold tracking-tight">{title}</h1>}
+</header>
+
+<script is:inline define:vars={{ cookieName: THEME_COOKIE }}>
+  document.querySelectorAll("[data-theme-choice]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-theme-choice");
+      document.cookie = `${cookieName}=${id}; path=/; max-age=31536000; samesite=lax`;
+      location.reload();
+    });
+  });
+</script>
