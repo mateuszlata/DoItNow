@@ -26,17 +26,17 @@ async function signUpAndSignIn(browser: Browser, nick: string): Promise<Page> {
   await page.goto("/auth/signup");
   await waitForHydration(page);
   await page.getByLabel("Nick (widoczny dla innych)").fill(nick);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByLabel("Confirm password").fill(password);
-  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("E-mail").fill(email);
+  await page.getByLabel("Hasło", { exact: true }).fill(password);
+  await page.getByLabel("Powtórz hasło").fill(password);
+  await page.getByRole("button", { name: "Załóż konto" }).click();
   await page.waitForURL(/\/auth\/confirm-email$/);
 
   await page.goto("/auth/signin");
   await waitForHydration(page);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("E-mail").fill(email);
+  await page.getByLabel("Hasło", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Zaloguj się" }).click();
   await page.waitForURL(/\/events$/);
   await expect(page.getByText(nick)).toBeVisible();
   return page;
