@@ -216,9 +216,9 @@ export async function listUpcomingEvents(
     }
   }
 
-  const { data, error } = await query;
+  const { data, error, status } = await query;
   if (error) {
-    throw new Error(`Nie udało się pobrać ogłoszeń: ${error.message}`);
+    throw new Error(`Nie udało się pobrać ogłoszeń (HTTP ${String(status)}): ${JSON.stringify(error)}`);
   }
   const rows = data as unknown as EventListItem[];
   return { events: rows.slice(0, limit), hasMore: rows.length > limit };
