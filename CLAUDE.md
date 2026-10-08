@@ -10,6 +10,8 @@ This file provides guidance to AI Agent when working with code in this repositor
 - `npm run lint` — ESLint with type-checked rules
 - `npm run lint:fix` — auto-fix lint issues
 - `npm run format` — Prettier (includes prettier-plugin-astro + prettier-plugin-tailwindcss)
+- `npm test` — Vitest: unit tests (`tests/unit`) and integration tests against local Supabase (`tests/integration`, needs `npx supabase start`). Integration tests delete the accounts they create.
+- `npm run test:e2e` — Playwright end-to-end tests (`tests/e2e`) against the production build on port 4322 (builds and starts `astro preview` itself, or reuses a running one).
 - `npm run smoke` — dependency-free auth-flow smoke test (`scripts/smoke.mjs`) against a running server, `BASE_URL` env (default `http://localhost:4321`). Run after dependency upgrades; CI runs it against the production preview with a local Supabase.
 
 Pre-commit hooks: husky + lint-staged runs `eslint --fix` on `*.{ts,tsx,astro}` and `prettier --write` on `*.{json,css,md}`.
@@ -52,4 +54,12 @@ Full server-side rendering (`output: "server"` in astro.config.mjs). All pages a
 
 ## CI
 
-GitHub Actions workflow (`.github/workflows/ci.yml`) runs lint + build on every push and PR to master. Requires `SUPABASE_URL` and `SUPABASE_KEY` repository secrets for the build step.
+GitHub Actions (`.github/workflows/ci.yml`) on every push and PR to `main`:
+
+- **ci** — lint, `astro check`, build.
+- **test** — local Supabase in CI (migrations applied on start, no secrets), `npm test`, smoke test and Playwright e2e against the production preview.
+- **deploy** — on push to `main` after both jobs pass: `wrangler deploy` to Cloudflare Workers. Needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets (skipped with a warning when missing). `SUPABASE_URL` / `SUPABASE_KEY` for production are Worker secrets (`npx wrangler secret put`).
+
+## Business rules
+
+Domain rules (join requests, organizer approval, spot limit, 12 h cutoffs for withdrawal and editing, cancellation) are enforced in Postgres functions in `supabase/migrations/`; tables have no direct insert/update policies for those changes. App services in `src/lib/services/` call these functions and map their error codes to Polish messages.
