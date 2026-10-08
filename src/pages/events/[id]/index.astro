@@ -41,11 +41,13 @@ const summary = details
       reserve_spots: details.reserve_spots,
       reserve_count: details.reserves.length,
       min_people: details.min_people,
+      requires_approval: details.requires_approval,
     }
   : publicEvent;
 
 const SUCCESS_MESSAGES: Record<string, string> = {
   joined: "Zgłoszenie wysłane. Organizator musi je zaakceptować.",
+  removed: "Usunięto osobę ze spotkania.",
   withdrawn: "Twoje zgłoszenie zostało wycofane.",
   accepted: "Zgłoszenie zaakceptowane.",
   rejected: "Zgłoszenie odrzucone.",
@@ -56,11 +58,15 @@ const SUCCESS_MESSAGES: Record<string, string> = {
 };
 const okKey = Astro.url.searchParams.get("ok") ?? "";
 const okMessage =
-  okKey === "cancelled" && details?.status === "organizer_left"
-    ? "Odwołałeś spotkanie. Zaakceptowani uczestnicy zdecydują, czy spotkają się bez Ciebie."
-    : okKey === "stayed" && details?.organizer_id === user?.id
-      ? "Zostajesz w spotkaniu i przejmujesz jego organizację."
-      : SUCCESS_MESSAGES[okKey];
+  okKey === "joined" && details?.my_participation?.status === "accepted"
+    ? "Dołączyłeś — jesteś w składzie!"
+    : okKey === "joined" && details?.my_participation?.status === "reserve"
+      ? "Skład jest pełny — jesteś na liście rezerwowej i wskoczysz, gdy zwolni się miejsce."
+      : okKey === "cancelled" && details?.status === "organizer_left"
+        ? "Odwołałeś spotkanie. Zaakceptowani uczestnicy zdecydują, czy spotkają się bez Ciebie."
+        : okKey === "stayed" && details?.organizer_id === user?.id
+          ? "Zostajesz w spotkaniu i przejmujesz jego organizację."
+          : SUCCESS_MESSAGES[okKey];
 const errorMessage = participationErrorMessage(Astro.url.searchParams.get("error"));
 
 const isPast = summary ? new Date(summary.starts_at).getTime() <= Date.now() : false;
@@ -206,6 +212,12 @@ const navigateHref =
                 </dd>
               </div>
             )}
+            <div>
+              <dt class="text-blue-100/60">Dołączanie</dt>
+              <dd data-testid="join-mode">
+                {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
+              </dd>
+            </div>
             {minimum && (
               <div>
                 <dt class="text-blue-100/60">Minimum</dt>
@@ -251,7 +263,7 @@ const navigateHref =
                     type="submit"
                     class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
                   >
-                    Zgłoś się
+                    {details.requires_approval ? "Zgłoś się" : "Dołącz"}
                   </button>
                 </form>
               )}
@@ -303,7 +315,7 @@ const navigateHref =
             </section>
           )}
 
-          {isOrganizer && details && isOpen && (
+          {isOrganizer && details && isOpen && (details.requires_approval || details.pending.length > 0) && (
             <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
               <h2 class="mb-2 font-semibold">Zgłoszenia do rozpatrzenia</h2>
               {details.pending.length === 0 ? (
@@ -367,6 +379,7 @@ const navigateHref =
               reserveSpots={details.reserve_spots}
               reserves={details.reserves}
               handover={details.handover_at !== null}
+              removeFor={isOrganizer && isOpen ? details.id : undefined}
             />
           )}
           {!details && publicEvent && (

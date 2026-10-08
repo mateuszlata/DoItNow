@@ -17,6 +17,8 @@ export interface EventRecord {
   created_at: string;
   /** Czy organizator zajmuje miejsce w składzie. */
   organizer_plays: boolean;
+  /** Czy zgłoszenia czekają na akceptację organizatora (inaczej dołączenie jest natychmiastowe). */
+  requires_approval: boolean;
   /** Pinezka na mapie (opcjonalna, tylko dla zalogowanych). */
   lat: number | null;
   lng: number | null;
@@ -31,13 +33,22 @@ export interface EventRecord {
 /** Ograniczony widok ogłoszenia dla gości (FR-001), z liczbą zajętych miejsc. */
 export type PublicEvent = Pick<
   EventRecord,
-  "id" | "sport" | "area" | "starts_at" | "spots" | "organizer_plays" | "reserve_spots" | "min_people"
+  | "id"
+  | "sport"
+  | "area"
+  | "starts_at"
+  | "spots"
+  | "organizer_plays"
+  | "reserve_spots"
+  | "min_people"
+  | "requires_approval"
 > & {
   accepted_count: number;
   reserve_count: number;
 };
 
-export type ParticipationStatus = "pending" | "accepted" | "reserve" | "rejected" | "withdrawn";
+/** `removed`: organizator usunął osobę ze spotkania; nie może zgłosić się ponownie. */
+export type ParticipationStatus = "pending" | "accepted" | "reserve" | "rejected" | "withdrawn" | "removed";
 
 export interface ParticipationRecord {
   id: string;

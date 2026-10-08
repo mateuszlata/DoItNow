@@ -49,6 +49,7 @@ export async function insertEvent(
       place: "Hala testowa",
       starts_at: startsAt.toISOString(),
       spots,
+      requires_approval: true,
     })
     .select("id")
     .single<{ id: string }>();

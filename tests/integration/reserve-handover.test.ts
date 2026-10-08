@@ -32,6 +32,7 @@ async function createEventWith(spots: number, reserveSpots: number, startsAt = n
       starts_at: startsAt.toISOString(),
       spots,
       reserve_spots: reserveSpots,
+      requires_approval: true,
     })
     .select("id")
     .single<{ id: string }>();
@@ -132,6 +133,7 @@ describe("lista rezerwowa", () => {
       startsAt: toLocalDateTime(new Date(Date.now() + 96 * HOUR)),
       total: "2",
       organizerPlays: "on",
+      requiresApproval: "on",
       reserveSpots: "0",
       minPeople: "",
       lat: "",
@@ -159,6 +161,7 @@ describe("minimum osób", () => {
       startsAt: toLocalDateTime(new Date(Date.now() + 96 * HOUR)),
       total: "6",
       organizerPlays: "on",
+      requiresApproval: "on",
       reserveSpots: "",
       minPeople: "4",
       lat: "",

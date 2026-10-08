@@ -72,7 +72,8 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 
 ### Zapisy
 
-- FR-007: Użytkownik może zgłosić chęć udziału w ogłoszeniu; zgłoszenie oczekuje na akceptację organizatora. Priority: must-have
+- FR-007: Zalogowany użytkownik może dołączyć do ogłoszenia. Domyślnie dołączenie jest natychmiastowe (skład, a gdy pełny — lista rezerwowa); organizator może przy ogłoszeniu włączyć „Wymagaj mojej akceptacji”, wtedy zgłoszenie oczekuje na jego decyzję. Priority: must-have
+  > Zmiana 2026-10-08 (feedback z testów): ręczna akceptacja hamowała spontaniczne spotkania; domyślnie dołączenie jest automatyczne, a ochronę przed niechcianymi osobami daje FR-016 (usuwanie) i opcjonalny przełącznik akceptacji.
   > Socrates: Counter-argument considered: „dołączyć może każdy, także nieodpowiednia osoba”. Resolution: zmienione — zapis wymaga akceptacji organizatora; miejsce w limicie zajmuje dopiero zaakceptowane zgłoszenie.
 - FR-008: Uczestnik może zrezygnować z udziału najpóźniej 12 h przed wydarzeniem. Priority: must-have
   > Socrates: Counter-argument considered: „rezygnacja tuż przed meczem psuje skład”. Resolution: zmienione — rezygnacja tylko do granicy czasowej.
@@ -86,6 +87,7 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 - FR-013: Organizator może ustawić minimalną liczbę osób (łącznie z sobą, jeśli gra); karta i szczegóły pokazują, ilu osób brakuje albo że spotkanie dojdzie do skutku. Aplikacja tylko informuje — nie odwołuje spotkania automatycznie. Priority: nice-to-have
 - FR-014: Organizator może ustawić długość listy rezerwowej. Gdy skład jest pełny, akceptacja zgłoszenia dopisuje osobę do rezerwy; gdy w składzie zwolni się miejsce, pierwsza osoba z rezerwy (najdłużej czekająca) wskakuje automatycznie. Rezerwę można opuścić do startu. Priority: nice-to-have
 - FR-015: Gdy organizator odwołuje spotkanie z zaakceptowanymi uczestnikami, spotkanie nie znika: jego miejsce się zwalnia (może je zająć rezerwa), a zaakceptowani dostają w aplikacji pytanie „Zostaję / Rezygnuję” (do startu). Pierwsza osoba, która zostaje, przejmuje organizację; gdy wszyscy zrezygnują, spotkanie jest odwołane. Bez zaakceptowanych uczestników odwołanie działa jak dotąd. Priority: nice-to-have
+- FR-016: Organizator może do startu usunąć uczestnika ze składu, rezerwy lub oczekujących; zwolnione miejsce zajmuje pierwsza osoba z rezerwy, a usunięta osoba nie może ponownie dołączyć do tego spotkania. Priority: must-have
 
 ### Mapa
 

@@ -64,6 +64,8 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   // Skład 3 osób z grającym organizatorem (domyślnie zaznaczone) -> 2 miejsca do obsadzenia.
   await organizer.getByLabel("Ile osób łącznie w składzie?").fill("3");
   await expect(organizer.getByLabel("Biorę udział w spotkaniu")).toBeChecked();
+  // US-01 dotyczy ogłoszeń z akceptacją organizatora (domyślnie dołączenie jest natychmiastowe).
+  await organizer.getByLabel("Wymagaj mojej akceptacji").check();
   // Pinezka: kliknięcie w mapę zapisuje współrzędne w ukrytych polach formularza.
   const picker = organizer.getByTestId("map-picker");
   await picker.scrollIntoViewIfNeeded();
@@ -106,7 +108,47 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await expect(organizer.getByTestId("free-spots")).toContainText("1 z 3");
 
   await participant.reload();
-  await expect(participant.getByTestId("my-status")).toContainText("zaakceptowane");
+  await expect(participant.getByTestId("my-status")).toContainText("jesteś w składzie");
   await expect(participant.getByTestId("participants")).toContainText(participantNick);
   await expect(participant.getByTestId("free-spots")).toContainText("1 z 3");
+});
+
+test("joining without approval is instant and the organizer can remove a participant", async ({ browser }) => {
+  const organizerNick = `Ora${runId}`;
+  const participantNick = `Ucb${runId}`;
+  const area = `Osiedle ${runId}`;
+
+  const organizer = await signUpAndSignIn(browser, organizerNick);
+  await organizer.goto("/events/new");
+  await organizer.getByLabel("Sport").selectOption({ label: "Siatkówka" });
+  await organizer.getByLabel("Data i godzina").fill(inThreeDaysAt18());
+  await organizer.getByLabel("Okolica / dzielnica").fill(area);
+  await organizer.getByLabel("Dokładne miejsce").fill("Plaża E2E");
+  await organizer.getByLabel("Ile osób łącznie w składzie?").fill("4");
+  await expect(organizer.getByLabel("Wymagaj mojej akceptacji")).not.toBeChecked();
+  await organizer.getByRole("button", { name: "Opublikuj ogłoszenie" }).click();
+  await organizer.waitForURL(/\/events\?created=1$/);
+  await organizer.getByRole("listitem").filter({ hasText: area }).getByRole("link", { name: "Siatkówka" }).click();
+  await organizer.waitForURL(/\/events\/[0-9a-f-]{36}$/);
+  const eventUrl = organizer.url();
+
+  // Uczestnik dołącza jednym kliknięciem i od razu jest w składzie.
+  const participant = await signUpAndSignIn(browser, participantNick);
+  await participant.goto(eventUrl);
+  await expect(participant.getByTestId("join-mode")).toContainText("od razu");
+  await participant.getByRole("button", { name: "Dołącz" }).click();
+  await expect(participant.getByText("Dołączyłeś — jesteś w składzie!")).toBeVisible();
+  await expect(participant.getByTestId("participants")).toContainText(participantNick);
+  await expect(participant.getByTestId("free-spots")).toContainText("2 z 4");
+
+  // Organizator usuwa uczestnika; ten nie może dołączyć ponownie.
+  await organizer.reload();
+  organizer.once("dialog", (dialog) => void dialog.accept());
+  await organizer.getByRole("button", { name: `Usuń ${participantNick}` }).click();
+  await expect(organizer.getByText("Usunięto osobę ze spotkania.")).toBeVisible();
+  await expect(organizer.getByTestId("participants")).not.toContainText(participantNick);
+
+  await participant.reload();
+  await expect(participant.getByTestId("my-status")).toContainText("usunięte przez organizatora");
+  await expect(participant.getByRole("button", { name: "Dołącz" })).toHaveCount(0);
 });

@@ -109,6 +109,21 @@ const borderClass = (name: keyof FieldErrors) =>
     </span>
   </label>
 
+  <label class="flex items-start gap-2 text-sm text-blue-100/80">
+    <input
+      type="checkbox"
+      name="requiresApproval"
+      checked={values.requiresApproval === "on"}
+      class="mt-0.5 size-4 accent-purple-500"
+    />
+    <span>
+      Wymagaj mojej akceptacji
+      <span class="block text-xs text-blue-100/50">
+        Bez zaznaczenia każdy zalogowany dołącza od razu; niechcianą osobę możesz usunąć.
+      </span>
+    </span>
+  </label>
+
   <div class="grid grid-cols-2 gap-3">
     <label class="text-sm text-blue-100/80">
       Minimum osób (opcjonalnie)

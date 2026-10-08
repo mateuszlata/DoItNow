@@ -27,6 +27,7 @@ function editForm(overrides: Partial<EventFormValues> = {}): EventFormValues {
     // 5 osób w składzie, w tym grający organizator -> 4 miejsca do obsadzenia
     total: "5",
     organizerPlays: "on",
+    requiresApproval: "on",
     reserveSpots: "",
     minPeople: "",
     lat: "",
@@ -95,6 +96,7 @@ describe("edycja ogłoszenia (FR-004)", () => {
       p_lng: null,
       p_reserve_spots: 0,
       p_min_people: null,
+      p_requires_approval: false,
     });
     expect(error?.message).toBe("STARTS_IN_PAST");
   });
@@ -132,6 +134,7 @@ describe("skład i pinezka", () => {
       p_lng: 21,
       p_reserve_spots: 0,
       p_min_people: null,
+      p_requires_approval: false,
     });
     expect(error?.message).toBe("INVALID_DATA");
   });

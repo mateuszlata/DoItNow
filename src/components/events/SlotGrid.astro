@@ -14,14 +14,17 @@ interface Props {
   handover: boolean;
   /** Dla gości: liczby zajętych miejsc bez nicków. */
   anonymous?: { taken: number; reserved: number };
+  /** Id ogłoszenia, gdy ogląda organizator: przy osobach pojawia się przycisk „Usuń”. */
+  removeFor?: string;
 }
 
-const { teamSize, organizerName, participants, reserveSpots, reserves, handover, anonymous } = Astro.props;
+const { teamSize, organizerName, participants, reserveSpots, reserves, handover, anonymous, removeFor } = Astro.props;
 
 interface Slot {
   kind: "taken" | "free";
   name?: string;
   note?: string;
+  participationId?: string;
 }
 
 const taken: Slot[] = anonymous
@@ -31,6 +34,7 @@ const taken: Slot[] = anonymous
       ...participants.map((p) => ({
         kind: "taken" as const,
         name: p.display_name,
+        participationId: p.participation_id,
         note: handover && p.stay_confirmed == null ? "nie potwierdził(a)" : undefined,
       })),
     ];
@@ -41,7 +45,12 @@ const team: Slot[] = [
 
 const reserveTaken: Slot[] = anonymous
   ? Array.from({ length: anonymous.reserved }, () => ({ kind: "taken" as const }))
-  : reserves.map((p, i) => ({ kind: "taken" as const, name: p.display_name, note: `${String(i + 1)}. w kolejce` }));
+  : reserves.map((p, i) => ({
+      kind: "taken" as const,
+      name: p.display_name,
+      note: `${String(i + 1)}. w kolejce`,
+      participationId: p.participation_id,
+    }));
 const reserve: Slot[] = [
   ...reserveTaken,
   ...Array.from({ length: Math.max(reserveSpots - reserveTaken.length, 0) }, () => ({ kind: "free" as const })),
@@ -58,6 +67,22 @@ const base = "min-h-12 rounded-lg border px-2 py-1.5 text-xs leading-tight";
         <li class:list={[base, "border-green-400/50 bg-green-500/20 text-green-50"]} data-slot="taken">
           <span class="block truncate font-medium">{slot.name ?? "Zajęte"}</span>
           {slot.note && <span class="block truncate text-[11px] text-green-100/70">{slot.note}</span>}
+          {removeFor && slot.participationId && (
+            <form
+              method="POST"
+              action={`/api/participations/${slot.participationId}/remove`}
+              onsubmit="return confirm('Usunąć tę osobę ze spotkania? Nie będzie mogła zgłosić się ponownie.')"
+            >
+              <input type="hidden" name="eventId" value={removeFor} />
+              <button
+                type="submit"
+                class="mt-1 text-[11px] text-green-100/80 underline hover:text-white"
+                aria-label={`Usuń ${slot.name ?? ""}`}
+              >
+                Usuń
+              </button>
+            </form>
+          )}
         </li>
       ) : (
         <li
@@ -79,6 +104,22 @@ const base = "min-h-12 rounded-lg border px-2 py-1.5 text-xs leading-tight";
             <li class:list={[base, "border-red-400/50 bg-red-500/20 text-red-50"]} data-slot="reserve">
               <span class="block truncate font-medium">{slot.name ?? "Rezerwa"}</span>
               {slot.note && <span class="block truncate text-[11px] text-red-100/70">{slot.note}</span>}
+              {removeFor && slot.participationId && (
+                <form
+                  method="POST"
+                  action={`/api/participations/${slot.participationId}/remove`}
+                  onsubmit="return confirm('Usunąć tę osobę ze spotkania? Nie będzie mogła zgłosić się ponownie.')"
+                >
+                  <input type="hidden" name="eventId" value={removeFor} />
+                  <button
+                    type="submit"
+                    class="mt-1 text-[11px] text-red-100/80 underline hover:text-white"
+                    aria-label={`Usuń ${slot.name ?? ""}`}
+                  >
+                    Usuń
+                  </button>
+                </form>
+              )}
             </li>
           ) : (
             <li

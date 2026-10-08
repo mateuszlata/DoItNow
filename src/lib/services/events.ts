@@ -40,6 +40,8 @@ export const createEventSchema = z.object({
     .min(1, "Skład musi mieć co najmniej 1 osobę.")
     .max(50, "Maksymalnie 50 osób."),
   organizerPlays: checkbox,
+  // Zgłoszenia czekają na decyzję organizatora (domyślnie dołączenie jest natychmiastowe).
+  requiresApproval: checkbox,
   // Liczba miejsc na liście rezerwowej (puste = brak rezerwy).
   reserveSpots: z.preprocess(
     (v) => (v === "" || v === undefined ? 0 : v),
@@ -79,6 +81,7 @@ export interface ParsedEvent {
   /** Miejsca do obsadzenia: skład minus organizator, jeśli gra. */
   spots: number;
   organizerPlays: boolean;
+  requiresApproval: boolean;
   reserveSpots: number;
   minPeople: number | null;
   lat: number | null;
@@ -131,6 +134,7 @@ export function parseEventForm(
       startsAt,
       spots,
       organizerPlays: data.organizerPlays,
+      requiresApproval: data.requiresApproval,
       reserveSpots: data.reserveSpots,
       minPeople: data.minPeople,
       lat: data.lat,
@@ -167,6 +171,7 @@ export async function createEvent(
       lng: data.lng,
       reserve_spots: data.reserveSpots,
       min_people: data.minPeople,
+      requires_approval: data.requiresApproval,
     })
     .select()
     .single<EventRecord>();
@@ -216,6 +221,7 @@ export async function updateEvent(
     p_lng: data.lng,
     p_reserve_spots: data.reserveSpots,
     p_min_people: data.minPeople,
+    p_requires_approval: data.requiresApproval,
   });
   if (response.error) {
     return {
@@ -257,8 +263,8 @@ export async function listUpcomingEvents(
   const now = options.now ?? new Date();
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   const columns = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval";
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
@@ -297,7 +303,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   const { data, error } = await supabase
     .from("events_public")
     .select(
-      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people",
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval",
     )
     .eq("id", id)
     .maybeSingle<PublicEvent>();

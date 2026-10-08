@@ -13,8 +13,9 @@ export const PARTICIPATION_ERRORS = {
   EVENT_STARTED: "To spotkanie już się rozpoczęło.",
   ALREADY_REQUESTED: "Masz już zgłoszenie na to spotkanie.",
   ALREADY_REJECTED: "Organizator odrzucił Twoje zgłoszenie na to spotkanie.",
+  ALREADY_REMOVED: "Organizator usunął Cię z tego spotkania.",
   PARTICIPATION_NOT_FOUND: "Nie znaleziono zgłoszenia.",
-  NOT_ORGANIZER: "Tylko organizator może rozpatrywać zgłoszenia.",
+  NOT_ORGANIZER: "Tylko organizator może zarządzać uczestnikami.",
   NOT_PENDING: "To zgłoszenie zostało już rozpatrzone.",
   EVENT_FULL: "Brak wolnych miejsc w składzie i na liście rezerwowej.",
   NOT_PARTICIPATING: "Nie masz aktywnego zgłoszenia na to spotkanie.",
@@ -60,6 +61,15 @@ export async function decideParticipation(
   return toResult(response.data as unknown, response.error);
 }
 
+/** Organizator usuwa uczestnika ze składu, rezerwy lub oczekujących; miejsce zajmuje rezerwa. */
+export async function removeParticipant(
+  supabase: SupabaseClient,
+  participationId: string,
+): Promise<ParticipationResult> {
+  const response = await supabase.rpc("remove_participant", { p_participation_id: participationId });
+  return toResult(response.data as unknown, response.error);
+}
+
 export async function withdrawParticipation(supabase: SupabaseClient, eventId: string): Promise<ParticipationResult> {
   const response = await supabase.rpc("withdraw_participation", { p_event_id: eventId });
   return toResult(response.data as unknown, response.error);
@@ -90,8 +100,9 @@ export function canWithdrawAccepted(startsAt: string | Date, now: Date = new Dat
 
 export const STATUS_LABELS: Record<ParticipationStatus, string> = {
   pending: "oczekuje na akceptację",
-  accepted: "zaakceptowane",
+  accepted: "jesteś w składzie",
   reserve: "na liście rezerwowej",
   rejected: "odrzucone",
   withdrawn: "wycofane",
+  removed: "usunięte przez organizatora",
 };
