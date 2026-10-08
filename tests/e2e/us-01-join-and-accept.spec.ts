@@ -79,7 +79,11 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   const eventUrl = organizer.url();
   await expect(organizer.getByTestId("free-spots")).toContainText("2 z 3");
   // Organizator, który gra, jest na liście uczestników; mapa z pinezką jest w szczegółach.
-  await expect(organizer.getByTestId("participants")).toContainText(`${organizerNick} (organizator)`);
+  // Skład jako okienka: organizator w zielonym okienku, 2 wolne (pomarańczowe).
+  await expect(organizer.locator("[data-slot=taken]")).toHaveCount(1);
+  await expect(organizer.locator("[data-slot=taken]").first()).toContainText(organizerNick);
+  await expect(organizer.locator("[data-slot=taken]").first()).toContainText("organizator");
+  await expect(organizer.locator("[data-slot=free]")).toHaveCount(2);
   await expect(organizer.getByTestId("event-map")).toBeVisible();
 
   // Uczestnik zgłasza się — zgłoszenie oczekuje i nie zajmuje miejsca.

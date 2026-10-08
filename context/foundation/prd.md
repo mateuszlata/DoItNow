@@ -80,6 +80,13 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
   > Socrates: Counter-argument considered: „status widać też w szczegółach ogłoszenia”. Resolution: bez zmian.
 - FR-010: Organizator może zaakceptować lub odrzucić zgłoszenie do swojego ogłoszenia. Priority: must-have
 
+### Skład, rezerwa i przekazanie spotkania (dodane 2026-10-08, feedback użytkownika)
+
+- FR-012: Szczegóły ogłoszenia pokazują skład jako okienka: zielone — zajęte (z nickiem, organizator z dopiskiem), pomarańczowe — wolne, czerwone — lista rezerwowa. Goście widzą tylko kolory, bez nicków. Priority: nice-to-have
+- FR-013: Organizator może ustawić minimalną liczbę osób (łącznie z sobą, jeśli gra); karta i szczegóły pokazują, ilu osób brakuje albo że spotkanie dojdzie do skutku. Aplikacja tylko informuje — nie odwołuje spotkania automatycznie. Priority: nice-to-have
+- FR-014: Organizator może ustawić długość listy rezerwowej. Gdy skład jest pełny, akceptacja zgłoszenia dopisuje osobę do rezerwy; gdy w składzie zwolni się miejsce, pierwsza osoba z rezerwy (najdłużej czekająca) wskakuje automatycznie. Rezerwę można opuścić do startu. Priority: nice-to-have
+- FR-015: Gdy organizator odwołuje spotkanie z zaakceptowanymi uczestnikami, spotkanie nie znika: jego miejsce się zwalnia (może je zająć rezerwa), a zaakceptowani dostają w aplikacji pytanie „Zostaję / Rezygnuję” (do startu). Pierwsza osoba, która zostaje, przejmuje organizację; gdy wszyscy zrezygnują, spotkanie jest odwołane. Bez zaakceptowanych uczestników odwołanie działa jak dotąd. Priority: nice-to-have
+
 ### Mapa
 
 - FR-011: Organizator może zaznaczyć miejsce spotkania pinezką na mapie (opcjonalnie); zalogowany użytkownik widzi mapę z pinezką w szczegółach ogłoszenia i rozwijaną pod kartą na liście oraz może otworzyć nawigację do miejsca. Goście nie widzą pinezki (jak dokładnego miejsca, FR-001). Priority: nice-to-have (dodane 2026-10-08)

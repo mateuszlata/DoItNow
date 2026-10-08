@@ -109,6 +109,37 @@ const borderClass = (name: keyof FieldErrors) =>
     </span>
   </label>
 
+  <div class="grid grid-cols-2 gap-3">
+    <label class="text-sm text-blue-100/80">
+      Minimum osób (opcjonalnie)
+      <input
+        type="number"
+        name="minPeople"
+        min="1"
+        max="50"
+        placeholder="np. 8"
+        value={values.minPeople}
+        class:list={[inputClass, borderClass("minPeople")]}
+      />
+      <span class="mt-1 block text-xs text-blue-100/50">Ilu osób potrzeba, żeby zagrać.</span>
+      {errors.minPeople && <span class="mt-1 block text-xs text-red-300">{errors.minPeople}</span>}
+    </label>
+    <label class="text-sm text-blue-100/80">
+      Miejsca rezerwowe
+      <input
+        type="number"
+        name="reserveSpots"
+        min="0"
+        max="50"
+        placeholder="0"
+        value={values.reserveSpots}
+        class:list={[inputClass, borderClass("reserveSpots")]}
+      />
+      <span class="mt-1 block text-xs text-blue-100/50">Wskakują, gdy ktoś zrezygnuje.</span>
+      {errors.reserveSpots && <span class="mt-1 block text-xs text-red-300">{errors.reserveSpots}</span>}
+    </label>
+  </div>
+
   <div class="text-sm text-blue-100/80">
     Miejsce na mapie (opcjonalnie)
     <div class="mt-1">

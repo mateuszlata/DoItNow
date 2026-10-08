@@ -40,6 +40,24 @@ export const createEventSchema = z.object({
     .min(1, "Skład musi mieć co najmniej 1 osobę.")
     .max(50, "Maksymalnie 50 osób."),
   organizerPlays: checkbox,
+  // Liczba miejsc na liście rezerwowej (puste = brak rezerwy).
+  reserveSpots: z.preprocess(
+    (v) => (v === "" || v === undefined ? 0 : v),
+    z.coerce
+      .number({ error: "Podaj liczbę miejsc rezerwowych." })
+      .int("Liczba musi być całkowita.")
+      .min(0, "Nie może być ujemna.")
+      .max(50, "Maksymalnie 50 miejsc."),
+  ),
+  // Minimalna liczba osób w składzie (puste = bez minimum).
+  minPeople: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.coerce
+      .number({ error: "Podaj minimalną liczbę osób." })
+      .int("Liczba musi być całkowita.")
+      .min(1, "Minimum to co najmniej 1 osoba.")
+      .nullable(),
+  ),
   lat: coordinate(-90, 90),
   lng: coordinate(-180, 180),
   description: z.string().trim().max(1000, "Opis może mieć maks. 1000 znaków.").optional(),
@@ -61,6 +79,8 @@ export interface ParsedEvent {
   /** Miejsca do obsadzenia: skład minus organizator, jeśli gra. */
   spots: number;
   organizerPlays: boolean;
+  reserveSpots: number;
+  minPeople: number | null;
   lat: number | null;
   lng: number | null;
   description: string | null;
@@ -96,6 +116,9 @@ export function parseEventForm(
   if (spots < 1) {
     return { ok: false, errors: { total: "Skoro bierzesz udział, skład musi liczyć co najmniej 2 osoby." } };
   }
+  if (data.minPeople !== null && data.minPeople > data.total) {
+    return { ok: false, errors: { minPeople: "Minimum nie może być większe niż skład." } };
+  }
   if ((data.lat === null) !== (data.lng === null)) {
     return { ok: false, errors: { lat: "Nieprawidłowe położenie pinezki." } };
   }
@@ -108,6 +131,8 @@ export function parseEventForm(
       startsAt,
       spots,
       organizerPlays: data.organizerPlays,
+      reserveSpots: data.reserveSpots,
+      minPeople: data.minPeople,
       lat: data.lat,
       lng: data.lng,
       // puste pole opisu zapisujemy jako brak opisu
@@ -140,6 +165,8 @@ export async function createEvent(
       organizer_plays: data.organizerPlays,
       lat: data.lat,
       lng: data.lng,
+      reserve_spots: data.reserveSpots,
+      min_people: data.minPeople,
     })
     .select()
     .single<EventRecord>();
@@ -156,6 +183,7 @@ const UPDATE_ERRORS: Record<string, FieldErrors> = {
   STARTS_IN_PAST: { startsAt: "Wydarzenie musi odbyć się w przyszłości." },
   SPOTS_BELOW_ACCEPTED: { total: "Skład nie może być mniejszy niż liczba zaakceptowanych uczestników." },
   INVALID_DATA: { form: "Nieprawidłowe dane ogłoszenia." },
+  RESERVE_BELOW_COUNT: { reserveSpots: "Lista rezerwowa nie może być krótsza niż liczba osób, które już na niej są." },
   NOT_ORGANIZER: { form: "Tylko organizator może edytować ogłoszenie." },
   EVENT_CANCELLED: { form: "Odwołanego ogłoszenia nie można edytować." },
   EVENT_NOT_FOUND: { form: "Nie znaleziono ogłoszenia." },
@@ -186,6 +214,8 @@ export async function updateEvent(
     p_organizer_plays: data.organizerPlays,
     p_lat: data.lat,
     p_lng: data.lng,
+    p_reserve_spots: data.reserveSpots,
+    p_min_people: data.minPeople,
   });
   if (response.error) {
     return {
@@ -227,8 +257,8 @@ export async function listUpcomingEvents(
   const now = options.now ?? new Date();
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   const columns = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people";
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
@@ -266,7 +296,9 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   if (!UUID_PATTERN.test(id)) return null;
   const { data, error } = await supabase
     .from("events_public")
-    .select("id, sport, area, starts_at, spots, accepted_count, organizer_plays")
+    .select(
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people",
+    )
     .eq("id", id)
     .maybeSingle<PublicEvent>();
   if (error) throw new Error(`Nie udało się pobrać ogłoszenia: ${error.message}`);
@@ -277,15 +309,21 @@ interface ParticipationWithProfile {
   id: string;
   user_id: string;
   status: ParticipationStatus;
+  stay_confirmed: boolean | null;
   profile: { display_name: string } | null;
 }
 
 function toParticipant(row: ParticipationWithProfile): Participant {
-  return { participation_id: row.id, user_id: row.user_id, display_name: row.profile?.display_name ?? "Użytkownik" };
+  return {
+    participation_id: row.id,
+    user_id: row.user_id,
+    display_name: row.profile?.display_name ?? "Użytkownik",
+    stay_confirmed: row.stay_confirmed,
+  };
 }
 
 /**
- * Pełne szczegóły dla zalogowanego (FR-006): nick organizatora, zaakceptowani uczestnicy,
+ * Pełne szczegóły dla zalogowanego (FR-006): nick organizatora, skład, lista rezerwowa,
  * wolne miejsca, własne zgłoszenie oglądającego, a dla organizatora — oczekujące zgłoszenia.
  * Widoczność zgłoszeń ogranicza RLS, więc nie-organizator nie dostanie cudzych oczekujących.
  */
@@ -305,21 +343,24 @@ export async function getEventDetails(
 
   const { data: rows, error: participationsError } = await supabase
     .from("participations")
-    .select("id, user_id, status, created_at, updated_at, event_id, profile:profiles(display_name)")
+    .select("id, user_id, status, stay_confirmed, created_at, updated_at, event_id, profile:profiles(display_name)")
     .eq("event_id", id)
-    .in("status", ["pending", "accepted"])
-    .order("created_at", { ascending: true });
+    .in("status", ["pending", "accepted", "reserve"])
+    .order("updated_at", { ascending: true })
+    .order("id", { ascending: true });
   if (participationsError) throw new Error(`Nie udało się pobrać zgłoszeń: ${participationsError.message}`);
 
   const { data: mine } = await supabase
     .from("participations")
-    .select("id, event_id, user_id, status, created_at, updated_at")
+    .select("id, event_id, user_id, status, stay_confirmed, created_at, updated_at")
     .eq("event_id", id)
     .eq("user_id", viewerId)
     .maybeSingle<ParticipationRecord>();
 
   const all = rows as unknown as ParticipationWithProfile[];
   const participants = all.filter((r) => r.status === "accepted").map(toParticipant);
+  // Rezerwa w kolejności awansu: najdłużej czekający pierwszy (tak samo jak w bazie).
+  const reserves = all.filter((r) => r.status === "reserve").map(toParticipant);
   const isOrganizer = data.organizer_id === viewerId;
   const pending = isOrganizer ? all.filter((r) => r.status === "pending").map(toParticipant) : [];
 
@@ -328,15 +369,18 @@ export async function getEventDetails(
     ...event,
     organizer_name: organizer?.display_name ?? "Użytkownik",
     participants,
+    reserves,
     pending,
     my_participation: mine,
     free_spots: Math.max(event.spots - participants.length, 0),
   };
 }
 
+type MyEventRow = EventRecord & { accepted_count: number; reserve_count: number };
+
 /**
  * „Moje spotkania” (FR-009): ogłoszenia użytkownika i spotkania, na które się zgłosił,
- * posortowane od najbliższego.
+ * posortowane od najbliższego. `needs_answer` oznacza pytanie po odwołaniu przez organizatora.
  */
 export async function listMyEvents(
   supabase: SupabaseClient,
@@ -344,33 +388,57 @@ export async function listMyEvents(
 ): Promise<{ organized: MyEventItem[]; joined: MyEventItem[] }> {
   const { data: organized, error: organizedError } = await supabase
     .from("events")
-    .select("*, accepted_count, pending_count")
+    .select("*, accepted_count, pending_count, reserve_count")
     .eq("organizer_id", userId)
     .order("starts_at", { ascending: true });
   if (organizedError) throw new Error(`Nie udało się pobrać ogłoszeń: ${organizedError.message}`);
 
   const { data: joined, error: joinedError } = await supabase
     .from("participations")
-    .select("status, event:events(*, accepted_count)")
+    .select("status, stay_confirmed, event:events(*, accepted_count, reserve_count)")
     .eq("user_id", userId)
-    .in("status", ["pending", "accepted", "rejected"]);
+    .in("status", ["pending", "accepted", "reserve", "rejected"]);
   if (joinedError) throw new Error(`Nie udało się pobrać zgłoszeń: ${joinedError.message}`);
 
   const joinedItems = (
-    joined as unknown as { status: ParticipationStatus; event: (EventRecord & { accepted_count: number }) | null }[]
+    joined as unknown as { status: ParticipationStatus; stay_confirmed: boolean | null; event: MyEventRow | null }[]
   )
-    .filter((row) => row.event !== null)
+    .filter(
+      (row): row is { status: ParticipationStatus; stay_confirmed: boolean | null; event: MyEventRow } =>
+        row.event !== null,
+    )
     .map((row) => ({
-      ...(row.event as EventRecord & { accepted_count: number }),
+      ...row.event,
       pending_count: 0,
       my_status: row.status,
+      needs_answer: needsAnswer(row.event, row.status, row.stay_confirmed),
     }))
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 
   return {
-    organized: (organized as unknown as Omit<MyEventItem, "my_status">[]).map((e) => ({ ...e, my_status: null })),
+    organized: (organized as unknown as (MyEventRow & { pending_count: number })[]).map((e) => ({
+      ...e,
+      my_status: null,
+      needs_answer: false,
+    })),
     joined: joinedItems,
   };
+}
+
+/** Czy uczestnik musi odpowiedzieć, czy zostaje po odwołaniu przez organizatora (ta sama reguła co w bazie). */
+export function needsAnswer(
+  event: Pick<EventRecord, "handover_at" | "status" | "starts_at">,
+  status: ParticipationStatus | null,
+  stayConfirmed: boolean | null,
+  now: Date = new Date(),
+): boolean {
+  return (
+    event.handover_at !== null &&
+    event.status !== "cancelled" &&
+    new Date(event.starts_at).getTime() > now.getTime() &&
+    status === "accepted" &&
+    stayConfirmed === null
+  );
 }
 
 /** Czy organizator może jeszcze edytować ogłoszenie — ta sama granica 12 h co przy rezygnacji (PRD: Business Logic). */

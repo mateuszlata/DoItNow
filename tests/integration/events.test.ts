@@ -27,6 +27,8 @@ function editForm(overrides: Partial<EventFormValues> = {}): EventFormValues {
     // 5 osób w składzie, w tym grający organizator -> 4 miejsca do obsadzenia
     total: "5",
     organizerPlays: "on",
+    reserveSpots: "",
+    minPeople: "",
     lat: "",
     lng: "",
     description: "Nowy opis",
@@ -91,6 +93,8 @@ describe("edycja ogłoszenia (FR-004)", () => {
       p_organizer_plays: true,
       p_lat: null,
       p_lng: null,
+      p_reserve_spots: 0,
+      p_min_people: null,
     });
     expect(error?.message).toBe("STARTS_IN_PAST");
   });
@@ -126,6 +130,8 @@ describe("skład i pinezka", () => {
       p_organizer_plays: true,
       p_lat: 120,
       p_lng: 21,
+      p_reserve_spots: 0,
+      p_min_people: null,
     });
     expect(error?.message).toBe("INVALID_DATA");
   });
@@ -145,16 +151,16 @@ describe("skład i pinezka", () => {
 });
 
 describe("odwołanie ogłoszenia (FR-004)", () => {
-  it("the organizer can cancel even within 12 h; the event then closes for new requests", async () => {
+  it("the organizer can cancel even within 12 h; the event then closes for new requests and waits for participants", async () => {
     const eventId = await insertEvent(organizer, new Date(Date.now() + 2 * HOUR), 2);
     await acceptParticipant(eventId, alice);
 
     expect(await cancelEvent(organizer.client, eventId)).toEqual({ ok: true });
     expect(await requestToJoin(bob.client, eventId)).toEqual({ ok: false, code: "EVENT_CANCELLED" });
 
-    // Uczestnik nadal widzi spotkanie, ze statusem „odwołane”.
+    // Uczestnik nadal widzi spotkanie: z zaakceptowanymi uczestnikami czeka na ich decyzję, czy zostają.
     const { data } = await alice.client.from("events").select("status").eq("id", eventId).single<{ status: string }>();
-    expect(data?.status).toBe("cancelled");
+    expect(data?.status).toBe("organizer_left");
 
     // Odwołane ogłoszenie znika z publicznego widoku.
     const { data: publicRows } = await anonClient().from("events_public").select("id").eq("id", eventId);

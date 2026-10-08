@@ -16,9 +16,11 @@ export const PARTICIPATION_ERRORS = {
   PARTICIPATION_NOT_FOUND: "Nie znaleziono zgłoszenia.",
   NOT_ORGANIZER: "Tylko organizator może rozpatrywać zgłoszenia.",
   NOT_PENDING: "To zgłoszenie zostało już rozpatrzone.",
-  EVENT_FULL: "Brak wolnych miejsc — nie można zaakceptować kolejnej osoby.",
+  EVENT_FULL: "Brak wolnych miejsc w składzie i na liście rezerwowej.",
   NOT_PARTICIPATING: "Nie masz aktywnego zgłoszenia na to spotkanie.",
   WITHDRAW_DEADLINE_PASSED: "Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.",
+  NO_HANDOVER: "Organizator nie odwołał tego spotkania.",
+  NOT_ASKED: "Twoja odpowiedź nie jest potrzebna albo już ją przekazałeś.",
 } as const;
 
 export type ParticipationErrorCode = keyof typeof PARTICIPATION_ERRORS;
@@ -63,6 +65,24 @@ export async function withdrawParticipation(supabase: SupabaseClient, eventId: s
   return toResult(response.data as unknown, response.error);
 }
 
+/**
+ * Odpowiedź zaakceptowanego uczestnika po odwołaniu przez organizatora: zostaje (pierwsza taka
+ * osoba przejmuje organizację) albo rezygnuje (miejsce dostaje pierwsza osoba z rezerwy).
+ */
+export async function respondToCancellation(
+  supabase: SupabaseClient,
+  eventId: string,
+  stay: boolean,
+): Promise<{ ok: true } | { ok: false; code: ParticipationErrorCode | "UNKNOWN" }> {
+  const response = await supabase.rpc("respond_to_cancellation", { p_event_id: eventId, p_stay: stay });
+  if (response.error) {
+    const code =
+      response.error.message in PARTICIPATION_ERRORS ? (response.error.message as ParticipationErrorCode) : "UNKNOWN";
+    return { ok: false, code };
+  }
+  return { ok: true };
+}
+
 /** Czy zaakceptowany uczestnik może jeszcze zrezygnować (ta sama reguła co w bazie). */
 export function canWithdrawAccepted(startsAt: string | Date, now: Date = new Date()): boolean {
   return now.getTime() <= new Date(startsAt).getTime() - WITHDRAW_CUTOFF_MS;
@@ -71,6 +91,7 @@ export function canWithdrawAccepted(startsAt: string | Date, now: Date = new Dat
 export const STATUS_LABELS: Record<ParticipationStatus, string> = {
   pending: "oczekuje na akceptację",
   accepted: "zaakceptowane",
+  reserve: "na liście rezerwowej",
   rejected: "odrzucone",
   withdrawn: "wycofane",
 };

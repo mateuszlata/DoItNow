@@ -30,6 +30,8 @@ describe("createEvent validation", () => {
     startsAt: "2026-11-01T18:00",
     total: "4",
     organizerPlays: "on",
+    reserveSpots: "",
+    minPeople: "",
     lat: "",
     lng: "",
     description: "",
@@ -69,6 +71,8 @@ describe("parseEventForm: skład i pinezka", () => {
     startsAt: "2026-11-01T18:00",
     total: "12",
     organizerPlays: "on",
+    reserveSpots: "",
+    minPeople: "",
     lat: "",
     lng: "",
     description: "",
@@ -115,9 +119,7 @@ describe("capacity", () => {
 
 describe("participationErrorMessage", () => {
   it("maps database codes to Polish messages", () => {
-    expect(participationErrorMessage("EVENT_FULL")).toBe(
-      "Brak wolnych miejsc — nie można zaakceptować kolejnej osoby.",
-    );
+    expect(participationErrorMessage("EVENT_FULL")).toBe("Brak wolnych miejsc w składzie i na liście rezerwowej.");
   });
 
   it("falls back for unknown codes and returns null without a code", () => {

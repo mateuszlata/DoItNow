@@ -1,14 +1,15 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
+import SlotGrid from "@/components/events/SlotGrid.astro";
+import EventMap from "@/components/map/EventMap";
 import { createClient } from "@/lib/supabase";
-import { canEditEvent, getEventDetails, getPublicEvent } from "@/lib/services/events";
+import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/lib/services/events";
 import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
+import { freeReserve, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
 import { sportLabel } from "@/lib/sports";
 import { formatEventDate } from "@/lib/time";
 import type { EventDetails, PublicEvent } from "@/types";
-import EventMap from "@/components/map/EventMap";
-import { teamSize } from "@/lib/capacity";
 
 const { user } = Astro.locals;
 const id = Astro.params.id ?? "";
@@ -24,10 +25,24 @@ if (supabase) {
   }
 }
 
-const event = details ?? publicEvent;
-if (!event) {
+if (!details && !publicEvent) {
   Astro.response.status = 404;
 }
+
+// Wspólne liczby dla zalogowanych i gości (goście dostają je z ograniczonego widoku).
+const summary = details
+  ? {
+      sport: details.sport,
+      area: details.area,
+      starts_at: details.starts_at,
+      spots: details.spots,
+      organizer_plays: details.organizer_plays,
+      accepted_count: details.participants.length,
+      reserve_spots: details.reserve_spots,
+      reserve_count: details.reserves.length,
+      min_people: details.min_people,
+    }
+  : publicEvent;
 
 const SUCCESS_MESSAGES: Record<string, string> = {
   joined: "Zgłoszenie wysłane. Organizator musi je zaakceptować.",
@@ -36,33 +51,55 @@ const SUCCESS_MESSAGES: Record<string, string> = {
   rejected: "Zgłoszenie odrzucone.",
   updated: "Zmiany zostały zapisane.",
   cancelled: "Spotkanie zostało odwołane.",
+  stayed: "Zostajesz w spotkaniu.",
+  left: "Zrezygnowałeś ze spotkania.",
 };
-const okMessage = SUCCESS_MESSAGES[Astro.url.searchParams.get("ok") ?? ""];
+const okKey = Astro.url.searchParams.get("ok") ?? "";
+const okMessage =
+  okKey === "cancelled" && details?.status === "organizer_left"
+    ? "Odwołałeś spotkanie. Zaakceptowani uczestnicy zdecydują, czy spotkają się bez Ciebie."
+    : okKey === "stayed" && details?.organizer_id === user?.id
+      ? "Zostajesz w spotkaniu i przejmujesz jego organizację."
+      : SUCCESS_MESSAGES[okKey];
 const errorMessage = participationErrorMessage(Astro.url.searchParams.get("error"));
 
-const isPast = details ? new Date(details.starts_at).getTime() <= Date.now() : false;
+const isPast = summary ? new Date(summary.starts_at).getTime() <= Date.now() : false;
 const isCancelled = details?.status === "cancelled";
-const isOpen = details !== null && !isPast && !isCancelled;
+const organizerLeft = details?.status === "organizer_left";
+const isOpen = details !== null && !isPast && details.status === "active";
 const isOrganizer = details !== null && user !== null && details.organizer_id === user.id;
-const myStatus = details?.my_participation?.status ?? null;
+const myParticipation = details?.my_participation ?? null;
+const myStatus = myParticipation?.status ?? null;
+const mustAnswer = details !== null && needsAnswer(details, myStatus, myParticipation?.stay_confirmed ?? null);
+
 const canJoin = isOpen && !isOrganizer && (myStatus === null || myStatus === "withdrawn");
+// Oczekujące zgłoszenie i rezerwa nie zajmują miejsca, więc można je wycofać do startu;
+// zaakceptowany uczestnik do 12 h przed — chyba że organizator odwołał spotkanie.
 const canWithdraw =
   details !== null &&
-  isOpen &&
-  (myStatus === "pending" || (myStatus === "accepted" && canWithdrawAccepted(details.starts_at)));
-const withdrawLocked = isOpen && myStatus === "accepted" && !canWithdraw;
-const freeSpots = details
+  !isPast &&
+  !isCancelled &&
+  !mustAnswer &&
+  (myStatus === "pending" ||
+    myStatus === "reserve" ||
+    (myStatus === "accepted" && (details.handover_at !== null || canWithdrawAccepted(details.starts_at))));
+const withdrawLocked = isOpen && myStatus === "accepted" && !canWithdraw && !mustAnswer;
+
+const free = details
   ? details.free_spots
   : publicEvent
     ? Math.max(publicEvent.spots - publicEvent.accepted_count, 0)
     : 0;
+const reserveFree = summary ? freeReserve(summary) : 0;
+const minimum = summary ? minimumLabel(summary) : null;
+const minimumMet = summary ? missingToMinimum(summary) === 0 : false;
 const navigateHref =
   details?.lat != null && details.lng != null
     ? `https://www.google.com/maps/dir/?api=1&destination=${String(details.lat)},${String(details.lng)}`
     : null;
 ---
 
-<Layout title={event ? `${sportLabel(event.sport)} · DoItNow` : "Nie znaleziono · DoItNow"}>
+<Layout title={summary ? `${sportLabel(summary.sport)} · DoItNow` : "Nie znaleziono · DoItNow"}>
   <div class="bg-cosmic min-h-screen p-4">
     <div class="mx-auto max-w-xl">
       <Topbar />
@@ -81,14 +118,14 @@ const navigateHref =
         </p>
       )}
 
-      {!event && (
+      {!summary && (
         <div class="rounded-2xl border border-white/10 bg-white/10 p-6 text-center text-white">
           <h1 class="mb-2 text-xl font-bold">Nie znaleziono ogłoszenia</h1>
           <p class="text-sm text-blue-100/70">Ogłoszenie nie istnieje albo już się odbyło.</p>
         </div>
       )}
 
-      {event && (
+      {summary && (
         <article class="rounded-2xl border border-white/10 bg-white/10 p-6 text-white backdrop-blur-xl">
           {isCancelled && (
             <p class="mb-3 rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200">To spotkanie zostało odwołane.</p>
@@ -96,14 +133,51 @@ const navigateHref =
           {isPast && !isCancelled && (
             <p class="mb-3 rounded-lg bg-white/10 px-3 py-2 text-sm text-blue-100/80">To spotkanie już się odbyło.</p>
           )}
+          {organizerLeft && !isPast && (
+            <p class="mb-3 rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-100" data-testid="handover-status">
+              {isOrganizer
+                ? "Odwołałeś to spotkanie. Czekamy, czy ktoś z uczestników zostanie i przejmie organizację."
+                : "Organizator zrezygnował. Spotkanie odbędzie się, jeśli uczestnicy zdecydują się zostać — pierwsza osoba, która zostanie, przejmuje organizację."}
+            </p>
+          )}
 
-          <h1 class="text-2xl font-bold">{sportLabel(event.sport)}</h1>
-          <p class="mt-1 text-purple-200">{formatEventDate(event.starts_at)}</p>
+          {mustAnswer && details && (
+            <section
+              class="mb-4 rounded-xl border border-amber-400/50 bg-amber-500/15 p-4"
+              data-testid="handover-question"
+            >
+              <p class="text-sm text-amber-50">
+                <strong>Organizator odwołał spotkanie.</strong> Czy mimo to chcesz w nim zostać i spotkać się z osobami,
+                które się zapisały?
+              </p>
+              <form method="POST" action={`/api/events/${details.id}/respond`} class="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  name="stay"
+                  value="yes"
+                  class="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-500"
+                >
+                  Zostaję
+                </button>
+                <button
+                  type="submit"
+                  name="stay"
+                  value="no"
+                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                >
+                  Rezygnuję
+                </button>
+              </form>
+            </section>
+          )}
+
+          <h1 class="text-2xl font-bold">{sportLabel(summary.sport)}</h1>
+          <p class="mt-1 text-purple-200">{formatEventDate(summary.starts_at)}</p>
 
           <dl class="mt-4 grid gap-3 text-sm">
             <div>
               <dt class="text-blue-100/60">Okolica</dt>
-              <dd>{event.area}</dd>
+              <dd>{summary.area}</dd>
             </div>
             {details && (
               <>
@@ -113,17 +187,33 @@ const navigateHref =
                 </div>
                 <div>
                   <dt class="text-blue-100/60">Organizator</dt>
-                  <dd>{details.organizer_name}</dd>
+                  <dd>{organizerLeft ? "— (organizator zrezygnował)" : details.organizer_name}</dd>
                 </div>
               </>
             )}
             <div>
               <dt class="text-blue-100/60">Wolne miejsca</dt>
               <dd data-testid="free-spots">
-                <strong>{freeSpots}</strong> z {teamSize(event)}
-                {event.organizer_plays && <span class="text-blue-100/50"> (łącznie z organizatorem)</span>}
+                <strong>{free}</strong> z {teamSize(summary)}
+                {summary.organizer_plays && <span class="text-blue-100/50"> (łącznie z organizatorem)</span>}
               </dd>
             </div>
+            {summary.reserve_spots > 0 && (
+              <div>
+                <dt class="text-blue-100/60">Lista rezerwowa</dt>
+                <dd data-testid="reserve-summary">
+                  wolne: <strong>{reserveFree}</strong> z {summary.reserve_spots}
+                </dd>
+              </div>
+            )}
+            {minimum && (
+              <div>
+                <dt class="text-blue-100/60">Minimum</dt>
+                <dd class:list={[minimumMet ? "text-green-200" : "text-amber-200"]} data-testid="minimum">
+                  {minimum}
+                </dd>
+              </div>
+            )}
             {details?.description && (
               <div>
                 <dt class="text-blue-100/60">Opis</dt>
@@ -148,7 +238,7 @@ const navigateHref =
             </section>
           )}
 
-          {details && !isOrganizer && (
+          {details && !isOrganizer && !mustAnswer && (
             <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
               {myStatus && myStatus !== "withdrawn" && (
                 <p class="mb-3 text-sm" data-testid="my-status">
@@ -171,7 +261,11 @@ const navigateHref =
                     type="submit"
                     class="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
                   >
-                    {myStatus === "accepted" ? "Zrezygnuj z udziału" : "Wycofaj zgłoszenie"}
+                    {myStatus === "accepted"
+                      ? "Zrezygnuj z udziału"
+                      : myStatus === "reserve"
+                        ? "Zrezygnuj z rezerwy"
+                        : "Wycofaj zgłoszenie"}
                   </button>
                 </form>
               )}
@@ -197,7 +291,7 @@ const navigateHref =
               <form
                 method="POST"
                 action={`/api/events/${details.id}/cancel`}
-                onsubmit="return confirm('Odwołać spotkanie? Uczestnicy zobaczą status „odwołane”.')"
+                onsubmit="return confirm('Odwołać spotkanie? Jeśli są zaakceptowani uczestnicy, zdecydują, czy spotkają się bez Ciebie.')"
               >
                 <button
                   type="submit"
@@ -216,9 +310,14 @@ const navigateHref =
                 <p class="text-sm text-blue-100/60">Brak oczekujących zgłoszeń.</p>
               ) : (
                 <>
-                  {details.free_spots === 0 && (
+                  {details.free_spots === 0 && reserveFree > 0 && (
                     <p class="mb-2 text-sm text-amber-200">
-                      Wszystkie miejsca są zajęte — możesz tylko odrzucać zgłoszenia.
+                      Skład jest pełny — zaakceptowane osoby trafią na listę rezerwową.
+                    </p>
+                  )}
+                  {details.free_spots === 0 && reserveFree === 0 && (
+                    <p class="mb-2 text-sm text-amber-200">
+                      Skład i lista rezerwowa są pełne — możesz tylko odrzucać zgłoszenia.
                     </p>
                   )}
                   <ul class="grid gap-2">
@@ -238,7 +337,7 @@ const navigateHref =
                             type="submit"
                             name="decision"
                             value="accept"
-                            disabled={details.free_spots === 0}
+                            disabled={details.free_spots === 0 && reserveFree === 0}
                             class="rounded-lg bg-green-600 px-3 py-1 text-white transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Akceptuj
@@ -261,23 +360,28 @@ const navigateHref =
           )}
 
           {details && (
-            <section class="mt-6">
-              <h2 class="mb-2 font-semibold">Uczestnicy</h2>
-              {details.participants.length === 0 && !details.organizer_plays ? (
-                <p class="text-sm text-blue-100/60">Nikt jeszcze nie dołączył.</p>
-              ) : (
-                <ul class="grid gap-1 text-sm" data-testid="participants">
-                  {details.organizer_plays && (
-                    <li>
-                      {details.organizer_name} <span class="text-blue-100/50">(organizator)</span>
-                    </li>
-                  )}
-                  {details.participants.map((p) => (
-                    <li>{p.display_name}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <SlotGrid
+              teamSize={teamSize(details)}
+              organizerName={details.organizer_plays && !organizerLeft ? details.organizer_name : null}
+              participants={details.participants}
+              reserveSpots={details.reserve_spots}
+              reserves={details.reserves}
+              handover={details.handover_at !== null}
+            />
+          )}
+          {!details && publicEvent && (
+            <SlotGrid
+              teamSize={teamSize(publicEvent)}
+              organizerName={null}
+              participants={[]}
+              reserveSpots={publicEvent.reserve_spots}
+              reserves={[]}
+              handover={false}
+              anonymous={{
+                taken: publicEvent.accepted_count + (publicEvent.organizer_plays ? 1 : 0),
+                reserved: publicEvent.reserve_count,
+              }}
+            />
           )}
 
           {!user && (

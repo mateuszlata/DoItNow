@@ -8,7 +8,7 @@ import { formatEventDate } from "@/lib/time";
 import type { EventListItem } from "@/types";
 import SportCard from "@/components/events/SportCard.astro";
 import EventMap from "@/components/map/EventMap";
-import { freeSpots, teamSize } from "@/lib/capacity";
+import { freeReserve, freeSpots, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
 
 const { user } = Astro.locals;
 const sport = Astro.url.searchParams.get("sport") ?? "";
@@ -143,6 +143,20 @@ const inputClass =
               {event.place && <span class="text-blue-100/60"> · {event.place}</span>}
             </p>
             {event.organizer_plays && <p class="mt-1 text-xs text-blue-100/50">Skład łącznie z organizatorem.</p>}
+            {(minimumLabel(event) !== null || event.reserve_spots > 0) && (
+              <p class="mt-1 flex flex-wrap gap-x-3 text-xs">
+                {minimumLabel(event) && (
+                  <span class:list={[missingToMinimum(event) === 0 ? "text-green-200" : "text-amber-200"]}>
+                    {minimumLabel(event)}
+                  </span>
+                )}
+                {event.reserve_spots > 0 && (
+                  <span class="text-red-200/90">
+                    Rezerwa: wolne {freeReserve(event)} z {event.reserve_spots}
+                  </span>
+                )}
+              </p>
+            )}
             {event.description && <p class="mt-2 text-sm whitespace-pre-line text-blue-100/70">{event.description}</p>}
             {event.lat != null && event.lng != null && (
               <details class="mt-3">
