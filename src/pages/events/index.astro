@@ -1,0 +1,128 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import { createClient } from "@/lib/supabase";
+import { listUpcomingEvents } from "@/lib/services/events";
+import { SPORTS, sportLabel } from "@/lib/sports";
+import { formatEventDate } from "@/lib/time";
+import type { EventListItem } from "@/types";
+
+const { user } = Astro.locals;
+const sport = Astro.url.searchParams.get("sport") ?? "";
+const day = Astro.url.searchParams.get("day") ?? "";
+const created = Astro.url.searchParams.has("created");
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+let events: EventListItem[] = [];
+let loadError = false;
+if (supabase) {
+  try {
+    events = await listUpcomingEvents(supabase, { sport, day }, { authenticated: Boolean(user) });
+  } catch (error) {
+    // eslint-disable-next-line no-console -- server log for failed list queries
+    console.error(error);
+    loadError = true;
+  }
+}
+
+const inputClass =
+  "w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white focus:ring-2 focus:ring-purple-400 focus:outline-none";
+---
+
+<Layout title="Ogłoszenia · DoItNow">
+  <div class="bg-cosmic min-h-screen p-4">
+    <div class="mx-auto max-w-3xl">
+      <Topbar />
+
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-bold text-white">Nadchodzące spotkania</h1>
+        {user && (
+          <a
+            href="/events/new"
+            class="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-500"
+          >
+            Dodaj ogłoszenie
+          </a>
+        )}
+      </div>
+
+      {created && (
+        <p class="mb-4 rounded-lg border border-green-400/40 bg-green-500/10 px-4 py-2 text-sm text-green-200">
+          Ogłoszenie zostało dodane.
+        </p>
+      )}
+
+      <form
+        method="GET"
+        class="mb-6 grid gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:grid-cols-[1fr_1fr_auto]"
+      >
+        <label class="text-sm text-blue-100/80">
+          Sport
+          <select name="sport" class:list={[inputClass]}>
+            <option value="" class="text-black">
+              Wszystkie
+            </option>
+            {SPORTS.map((s) => (
+              <option value={s.id} selected={s.id === sport} class="text-black">
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label class="text-sm text-blue-100/80">
+          Dzień
+          <input type="date" name="day" value={day} class:list={[inputClass]} />
+        </label>
+        <div class="flex items-end gap-2">
+          <button
+            type="submit"
+            class="rounded-lg bg-white/15 px-4 py-2 text-sm text-white transition-colors hover:bg-white/25"
+          >
+            Filtruj
+          </button>
+          {(sport || day) && (
+            <a href="/events" class="px-2 py-2 text-sm text-purple-300 hover:underline">
+              Wyczyść
+            </a>
+          )}
+        </div>
+      </form>
+
+      {!user && (
+        <p class="mb-4 text-sm text-blue-100/60">
+          <a href="/auth/signin" class="text-purple-300 hover:underline">
+            Zaloguj się
+          </a>
+          , aby zobaczyć dokładne miejsce i szczegóły spotkań.
+        </p>
+      )}
+
+      {loadError && <p class="text-red-300">Nie udało się wczytać ogłoszeń. Spróbuj odświeżyć stronę.</p>}
+
+      {!loadError && events.length === 0 && (
+        <p class="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-blue-100/70">
+          Brak nadchodzących spotkań{sport || day ? " dla wybranych filtrów" : ""}.
+        </p>
+      )}
+
+      <ul class="grid gap-3">
+        {events.map((event) => (
+          <li class="rounded-xl border border-white/10 bg-white/10 p-4 text-white backdrop-blur-xl">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 class="text-lg font-semibold">{sportLabel(event.sport)}</h2>
+              <span class="text-sm text-blue-100/70">
+                Potrzeba osób: <strong class="text-white">{event.spots}</strong>
+              </span>
+            </div>
+            <p class="mt-1 text-sm text-purple-200">{formatEventDate(event.starts_at)}</p>
+            <p class="mt-1 text-sm text-blue-100/80">
+              {event.area}
+              {event.place && <span class="text-blue-100/60"> · {event.place}</span>}
+            </p>
+            {event.description && <p class="mt-2 text-sm whitespace-pre-line text-blue-100/70">{event.description}</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</Layout>

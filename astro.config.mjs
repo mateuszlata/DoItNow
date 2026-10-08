@@ -9,6 +9,9 @@ import cloudflare from "@astrojs/cloudflare";
 // https://astro.build/config
 export default defineConfig({
   output: "server",
+  redirects: {
+    "/": { status: 302, destination: "/events" },
+  },
   integrations: [react(), sitemap()],
   vite: {
     plugins: [tailwindcss()],

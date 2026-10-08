@@ -67,6 +67,8 @@ const astroConfig = defineConfig({
     "astro/no-set-html-directive": "error",
     "astro/no-unused-css-selector": "warn",
     "astro/prefer-class-list-directive": "warn",
+    // The rule crashes ("Expected node to have a parent") on top-level `return Astro.redirect(...)` in frontmatter.
+    "@typescript-eslint/no-misused-promises": "off",
   },
 });
 
