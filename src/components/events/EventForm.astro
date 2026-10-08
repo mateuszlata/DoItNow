@@ -1,0 +1,115 @@
+---
+// Formularz ogłoszenia wspólny dla dodawania (FR-003) i edycji (FR-004).
+import type { EventFormValues, FieldErrors } from "@/lib/services/events";
+import { SPORTS } from "@/lib/sports";
+import { nowLocalDateTime } from "@/lib/time";
+
+interface Props {
+  values: EventFormValues;
+  errors: FieldErrors;
+  submitLabel: string;
+}
+
+const { values, errors, submitLabel } = Astro.props;
+
+const minStartsAt = nowLocalDateTime();
+const inputClass =
+  "mt-1 w-full rounded-lg border bg-white/10 px-3 py-2 text-white placeholder-white/40 focus:ring-2 focus:outline-none";
+const borderClass = (name: keyof FieldErrors) =>
+  errors[name] ? "border-red-400/60 focus:ring-red-400" : "border-white/20 focus:ring-purple-400";
+---
+
+{errors.form && <p class="mb-4 rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200">{errors.form}</p>}
+
+<form method="POST" class="grid gap-4" novalidate>
+  <label class="text-sm text-blue-100/80">
+    Sport
+    <select name="sport" required class:list={[inputClass, borderClass("sport")]}>
+      <option value="" class="text-black">
+        Wybierz…
+      </option>
+      {SPORTS.map((s) => (
+        <option value={s.id} selected={s.id === values.sport} class="text-black">
+          {s.label}
+        </option>
+      ))}
+    </select>
+    {errors.sport && <span class="mt-1 block text-xs text-red-300">{errors.sport}</span>}
+  </label>
+
+  <label class="text-sm text-blue-100/80">
+    Data i godzina
+    <input
+      type="datetime-local"
+      name="startsAt"
+      required
+      min={minStartsAt}
+      value={values.startsAt}
+      class:list={[inputClass, borderClass("startsAt")]}
+    />
+    {errors.startsAt && <span class="mt-1 block text-xs text-red-300">{errors.startsAt}</span>}
+  </label>
+
+  <label class="text-sm text-blue-100/80">
+    Okolica / dzielnica
+    <input
+      type="text"
+      name="area"
+      required
+      maxlength="80"
+      placeholder="np. Mokotów"
+      value={values.area}
+      class:list={[inputClass, borderClass("area")]}
+    />
+    <span class="mt-1 block text-xs text-blue-100/50">Widoczna dla wszystkich, także niezalogowanych.</span>
+    {errors.area && <span class="mt-1 block text-xs text-red-300">{errors.area}</span>}
+  </label>
+
+  <label class="text-sm text-blue-100/80">
+    Dokładne miejsce
+    <input
+      type="text"
+      name="place"
+      required
+      maxlength="200"
+      placeholder="np. Orlik przy ul. Dolnej 5"
+      value={values.place}
+      class:list={[inputClass, borderClass("place")]}
+    />
+    <span class="mt-1 block text-xs text-blue-100/50">Widoczne tylko dla zalogowanych.</span>
+    {errors.place && <span class="mt-1 block text-xs text-red-300">{errors.place}</span>}
+  </label>
+
+  <label class="text-sm text-blue-100/80">
+    Ile osób potrzebujesz (bez Ciebie)
+    <input
+      type="number"
+      name="spots"
+      required
+      min="1"
+      max="50"
+      value={values.spots}
+      class:list={[inputClass, borderClass("spots")]}
+    />
+    {errors.spots && <span class="mt-1 block text-xs text-red-300">{errors.spots}</span>}
+  </label>
+
+  <label class="text-sm text-blue-100/80">
+    Opis (opcjonalnie)
+    <textarea
+      name="description"
+      rows="3"
+      maxlength="1000"
+      placeholder="Poziom gry, co zabrać, jak się rozpoznać…"
+      class:list={[inputClass, borderClass("description")]}
+    >{values.description}</textarea>
+    {errors.description && <span class="mt-1 block text-xs text-red-300">{errors.description}</span>}
+  </label>
+
+  <button
+    type="submit"
+    class="rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
+  >
+    {submitLabel}
+  </button>
+</form>

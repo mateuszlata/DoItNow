@@ -30,12 +30,15 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 ## Success Criteria
 
 ### Primary
+
 - Organizator tworzy ogłoszenie, inna zalogowana osoba znajduje je na liście i dołącza, a obie strony widzą listę uczestników i liczbę wolnych miejsc.
 
 ### Secondary
+
 - Przynajmniej jedno prawdziwe ogłoszenie osiąga limit uczestników.
 
 ### Guardrails
+
 - Prywatność danych kontaktowych: e-mail i dane użytkownika nie są widoczne publicznie, w tym dla gości.
 
 ## User Stories
@@ -49,12 +52,14 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 ## Functional Requirements
 
 ### Konto i dostęp
+
 - FR-001: Gość może przeglądać listę ogłoszeń bez logowania, widząc sport, dzień i ogólną lokalizację; dokładne miejsce i uczestnicy są widoczne dopiero po zalogowaniu. Priority: must-have
   > Socrates: Counter-argument considered: „obcy widzą, kiedy i gdzie ktoś będzie”. Resolution: zmienione — gość widzi tylko ogólne informacje, szczegóły po zalogowaniu.
 - FR-002: Użytkownik może założyć konto i zalogować się. Priority: must-have
   > Socrates: Counter-argument considered: „reset hasła to dodatkowa praca”. Resolution: bez zmian — konto jest niezbędne do przypisania ogłoszeń i zapisów.
 
 ### Ogłoszenia
+
 - FR-003: Użytkownik może utworzyć ogłoszenie: sport ze stałej listy, miejsce, data i godzina, limit osób, opcjonalny opis od organizatora. Priority: must-have
   > Socrates: Counter-argument considered: „limit 0/1 nie ma sensu; opis niczego nie blokuje”. Resolution: bez zmian.
 - FR-004: Autor może edytować własne ogłoszenie najpóźniej 12 h przed wydarzeniem oraz odwołać je w każdej chwili; uczestnicy widzą status „odwołane”. Priority: must-have
@@ -65,6 +70,7 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
   > Socrates: Counter-argument considered: „lista uczestników może zdradzać dane osobowe”. Resolution: zmienione — tylko imię/nick.
 
 ### Zapisy
+
 - FR-007: Użytkownik może zgłosić chęć udziału w ogłoszeniu; zgłoszenie oczekuje na akceptację organizatora. Priority: must-have
   > Socrates: Counter-argument considered: „dołączyć może każdy, także nieodpowiednia osoba”. Resolution: zmienione — zapis wymaga akceptacji organizatora; miejsce w limicie zajmuje dopiero zaakceptowane zgłoszenie.
 - FR-008: Uczestnik może zrezygnować z udziału najpóźniej 12 h przed wydarzeniem. Priority: must-have
@@ -90,9 +96,9 @@ Granica czasowa wynosi 12 h przed wydarzeniem i jest wspólna: po niej autor nie
 ## Access Control
 
 - Model płaski: jedna rola użytkownika. Konto jest wymagane, aby tworzyć ogłoszenia oraz dołączać do nich i rezygnować.
-- Tylko autor ogłoszenia może je edytować i usuwać. # TODO: usuwanie vs odwołanie — see Open Questions
+- Tylko autor ogłoszenia może je edytować (najpóźniej 12 h przed wydarzeniem) i odwołać (w każdej chwili przed startem). Ogłoszeń nie usuwa się trwale.
 - Niezalogowany gość może przeglądać listę ogłoszeń (zakres widocznych informacji: FR-001); próba utworzenia ogłoszenia lub dołączenia kieruje do logowania.
-- Metoda logowania: nieustalona — see Open Questions.
+- Logowanie: e-mail + hasło (rozstrzygnięte 2026-10-08, patrz Open Questions nr 2).
 
 ## Non-Goals
 
@@ -101,9 +107,9 @@ Granica czasowa wynosi 12 h przed wydarzeniem i jest wspólna: po niej autor nie
 ## Open Questions
 
 1. **Co faktycznie robią dziś osoby bez towarzystwa do aktywności?** Obraz „rezygnuje / ćwiczy sam” jest założeniem, niezweryfikowanym na konkretnych osobach. — Owner: user.
-2. **Jaka metoda logowania?** (e-mail + hasło / konto zewnętrznego dostawcy / link e-mail bez hasła) — Owner: user. Do rozstrzygnięcia przy wyborze stacku.
+2. ~~**Jaka metoda logowania?**~~ — Rozstrzygnięte 2026-10-08: e-mail + hasło.
 3. **Czat, mapy/odległość, powiadomienia, oceny uczestników: w MVP czy nie?** Nie zostały wykluczone jako non-goals ani dodane jako FR. Kandydaci na jedno rozszerzenie po MVP (okolica / powiadomienia / automatyczne testy i wdrożenie). — Owner: user. Do decyzji po działającym MVP. (Cross-check: Non-Goals zawiera tylko jedną pozycję — ryzyko, że te funkcje wejdą do zakresu bez decyzji.)
-4. **Usuwanie czy odwołanie ogłoszenia?** Access Control mówi „autor może edytować i usuwać”, a FR-004 zastępuje usunięcie odwołaniem ze statusem „odwołane”. Czy autor może dodatkowo trwale usunąć ogłoszenie (np. bez zgłoszeń)? — Owner: user. Przed implementacją FR-004.
+4. ~~**Usuwanie czy odwołanie ogłoszenia?**~~ — Rozstrzygnięte 2026-10-08: autor może tylko odwołać ogłoszenie (status „odwołane” widoczny dla uczestników); trwałego usuwania nie ma. Dodatkowa reguła: limit osób nie może spaść poniżej liczby zaakceptowanych uczestników.
 5. **Czy blokować nakładające się zgłoszenia jednego użytkownika?** (pytanie z pierwotnego opisu pomysłu, nierozstrzygnięte) — Owner: user. Przed implementacją FR-007.
 6. **Kto będzie pierwszymi użytkownikami?** (pytanie z pierwotnego opisu pomysłu; skala ustalona jako „Ty i garstka osób”, persona: jedno miasto) — Owner: user. Przed testem kryterium Secondary.
 7. **Kryteria akceptacji US-01** (np. co widzi użytkownik przy odrzuceniu, przy braku wolnych miejsc, po upływie granicy 12 h) — nieuchwycone w notatkach. — Owner: user.

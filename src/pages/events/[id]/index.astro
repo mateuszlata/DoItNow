@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
-import { getEventDetails, getPublicEvent } from "@/lib/services/events";
+import { canEditEvent, getEventDetails, getPublicEvent } from "@/lib/services/events";
 import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
 import { sportLabel } from "@/lib/sports";
 import { formatEventDate } from "@/lib/time";
@@ -32,6 +32,8 @@ const SUCCESS_MESSAGES: Record<string, string> = {
   withdrawn: "Twoje zgłoszenie zostało wycofane.",
   accepted: "Zgłoszenie zaakceptowane.",
   rejected: "Zgłoszenie odrzucone.",
+  updated: "Zmiany zostały zapisane.",
+  cancelled: "Spotkanie zostało odwołane.",
 };
 const okMessage = SUCCESS_MESSAGES[Astro.url.searchParams.get("ok") ?? ""];
 const errorMessage = participationErrorMessage(Astro.url.searchParams.get("error"));
@@ -154,6 +156,33 @@ const freeSpots = details
                 <p class="text-sm text-blue-100/70">Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.</p>
               )}
               {!isOpen && !myStatus && <p class="text-sm text-blue-100/70">Zapisy na to spotkanie są zamknięte.</p>}
+            </section>
+          )}
+
+          {isOrganizer && details && isOpen && (
+            <section class="mt-6 flex flex-wrap items-center gap-3" data-testid="organizer-actions">
+              {canEditEvent(details.starts_at) ? (
+                <a
+                  href={`/events/${details.id}/edit`}
+                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                >
+                  Edytuj
+                </a>
+              ) : (
+                <span class="text-sm text-blue-100/70">Edycja jest możliwa najpóźniej 12 h przed spotkaniem.</span>
+              )}
+              <form
+                method="POST"
+                action={`/api/events/${details.id}/cancel`}
+                onsubmit="return confirm('Odwołać spotkanie? Uczestnicy zobaczą status „odwołane”.')"
+              >
+                <button
+                  type="submit"
+                  class="rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm text-red-200 transition-colors hover:bg-red-500/20"
+                >
+                  Odwołaj spotkanie
+                </button>
+              </form>
             </section>
           )}
 

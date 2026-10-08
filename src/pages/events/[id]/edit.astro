@@ -1,0 +1,77 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import EventForm from "@/components/events/EventForm.astro";
+import { readEventForm } from "@/lib/event-form";
+import { createClient } from "@/lib/supabase";
+import {
+  canEditEvent,
+  getEventDetails,
+  updateEvent,
+  type EventFormValues,
+  type FieldErrors,
+} from "@/lib/services/events";
+import { toLocalDateTime } from "@/lib/time";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/auth/signin");
+
+const id = Astro.params.id ?? "";
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+const details = supabase ? await getEventDetails(supabase, id, user.id) : null;
+if (!details) return Astro.redirect("/events");
+if (details.organizer_id !== user.id) return Astro.redirect(`/events/${id}`);
+
+// FR-004: edycja tylko aktywnego ogłoszenia i najpóźniej 12 h przed spotkaniem.
+const editable = details.status === "active" && canEditEvent(details.starts_at);
+
+let values: EventFormValues = {
+  sport: details.sport,
+  area: details.area,
+  place: details.place,
+  startsAt: toLocalDateTime(details.starts_at),
+  spots: String(details.spots),
+  description: details.description ?? "",
+};
+let errors: FieldErrors = {};
+
+if (Astro.request.method === "POST" && editable && supabase) {
+  values = await readEventForm(Astro.request);
+  const result = await updateEvent(supabase, id, values);
+  if (result.ok) {
+    return Astro.redirect(`/events/${id}?ok=updated`);
+  }
+  errors = result.errors;
+  Astro.response.status = 400;
+}
+---
+
+<Layout title="Edytuj ogłoszenie · DoItNow">
+  <div class="bg-cosmic min-h-screen p-4">
+    <div class="mx-auto max-w-xl">
+      <Topbar />
+      <a href={`/events/${id}`} class="mb-3 inline-block text-sm text-purple-300 hover:underline">
+        ← Wróć do ogłoszenia
+      </a>
+      <div class="rounded-2xl border border-white/10 bg-white/10 p-6 text-white backdrop-blur-xl">
+        <h1 class="mb-4 text-2xl font-bold">Edytuj ogłoszenie</h1>
+        {editable ? (
+          <>
+            {details.participants.length > 0 && (
+              <p class="mb-4 text-sm text-blue-100/70">
+                Zaakceptowani uczestnicy: {details.participants.length}. Limitu nie można ustawić poniżej tej liczby.
+              </p>
+            )}
+            <EventForm values={values} errors={errors} submitLabel="Zapisz zmiany" />
+          </>
+        ) : (
+          <p class="text-sm text-blue-100/80">
+            {details.status === "cancelled"
+              ? "To ogłoszenie zostało odwołane i nie można go już edytować."
+              : "Edycja jest możliwa najpóźniej 12 h przed spotkaniem."}
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+</Layout>

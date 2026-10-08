@@ -42,8 +42,8 @@ export function dayRange(day: string, timeZone = APP_TIME_ZONE): { from: Date; t
   return from && to ? { from, to } : null;
 }
 
-/** Bieżąca data i czas w strefie aplikacji w formacie pola "datetime-local". */
-export function nowLocalDateTime(timeZone = APP_TIME_ZONE): string {
+/** Moment w czasie jako czas lokalny strefy aplikacji w formacie pola "datetime-local". */
+export function toLocalDateTime(date: Date | string, timeZone = APP_TIME_ZONE): string {
   const parts = new Intl.DateTimeFormat("sv-SE", {
     timeZone,
     year: "numeric",
@@ -51,8 +51,13 @@ export function nowLocalDateTime(timeZone = APP_TIME_ZONE): string {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date());
+  }).format(new Date(date));
   return parts.replace(" ", "T");
+}
+
+/** Bieżąca data i czas w strefie aplikacji w formacie pola "datetime-local". */
+export function nowLocalDateTime(timeZone = APP_TIME_ZONE): string {
+  return toLocalDateTime(new Date(), timeZone);
 }
 
 export function formatEventDate(iso: string, timeZone = APP_TIME_ZONE): string {

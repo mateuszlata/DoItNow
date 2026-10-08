@@ -2,6 +2,7 @@ import { z } from "astro/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate } from "@/lib/time";
+import { canWithdrawAccepted } from "@/lib/services/participations";
 import type {
   EventDetails,
   EventListItem,
@@ -37,16 +38,24 @@ export type FieldErrors = Partial<Record<EventFormField | "form", string>>;
 
 export type CreateEventResult = { ok: true; event: EventRecord } | { ok: false; errors: FieldErrors };
 
+/** Dane ogłoszenia po walidacji, gotowe do zapisu. */
+export interface ParsedEvent {
+  sport: string;
+  area: string;
+  place: string;
+  startsAt: Date;
+  spots: number;
+  description: string | null;
+}
+
 /**
- * Tworzy ogłoszenie zalogowanego użytkownika. Reguła z PRD: wydarzenie musi być w przyszłości.
- * `now` jest parametrem, żeby regułę dało się testować.
+ * Wspólna walidacja formularza dodawania i edycji. Reguła z PRD: wydarzenie musi być
+ * w przyszłości. `now` jest parametrem, żeby regułę dało się testować.
  */
-export async function createEvent(
-  supabase: SupabaseClient,
-  organizerId: string,
+export function parseEventForm(
   input: EventFormValues,
   now: Date = new Date(),
-): Promise<CreateEventResult> {
+): { ok: true; data: ParsedEvent } | { ok: false; errors: FieldErrors } {
   const parsed = createEventSchema.safeParse(input);
   if (!parsed.success) {
     const errors: FieldErrors = {};
@@ -65,6 +74,30 @@ export async function createEvent(
   if (startsAt.getTime() <= now.getTime()) {
     return { ok: false, errors: { startsAt: "Wydarzenie musi odbyć się w przyszłości." } };
   }
+  return {
+    ok: true,
+    data: {
+      sport: data.sport,
+      area: data.area,
+      place: data.place,
+      startsAt,
+      spots: data.spots,
+      // puste pole opisu zapisujemy jako brak opisu
+      description: data.description === "" ? null : (data.description ?? null),
+    },
+  };
+}
+
+/** Tworzy ogłoszenie zalogowanego użytkownika (FR-003). */
+export async function createEvent(
+  supabase: SupabaseClient,
+  organizerId: string,
+  input: EventFormValues,
+  now: Date = new Date(),
+): Promise<CreateEventResult> {
+  const parsed = parseEventForm(input, now);
+  if (!parsed.ok) return parsed;
+  const data = parsed.data;
 
   const { data: event, error } = await supabase
     .from("events")
@@ -73,10 +106,9 @@ export async function createEvent(
       sport: data.sport,
       area: data.area,
       place: data.place,
-      starts_at: startsAt.toISOString(),
+      starts_at: data.startsAt.toISOString(),
       spots: data.spots,
-      // puste pole opisu zapisujemy jako brak opisu
-      description: data.description === "" ? null : (data.description ?? null),
+      description: data.description,
     })
     .select()
     .single<EventRecord>();
@@ -85,6 +117,57 @@ export async function createEvent(
     return { ok: false, errors: { form: "Nie udało się zapisać ogłoszenia. Spróbuj ponownie." } };
   }
   return { ok: true, event };
+}
+
+/** Błędy reguł edycji zgłaszane przez bazę, przypisane do pól formularza. */
+const UPDATE_ERRORS: Record<string, FieldErrors> = {
+  EDIT_DEADLINE_PASSED: { form: "Edycja jest możliwa najpóźniej 12 h przed spotkaniem." },
+  STARTS_IN_PAST: { startsAt: "Wydarzenie musi odbyć się w przyszłości." },
+  SPOTS_BELOW_ACCEPTED: { spots: "Limit nie może być mniejszy niż liczba zaakceptowanych uczestników." },
+  NOT_ORGANIZER: { form: "Tylko organizator może edytować ogłoszenie." },
+  EVENT_CANCELLED: { form: "Odwołanego ogłoszenia nie można edytować." },
+  EVENT_NOT_FOUND: { form: "Nie znaleziono ogłoszenia." },
+};
+
+/**
+ * Edycja ogłoszenia przez organizatora (FR-004): najpóźniej 12 h przed dotychczasowym terminem,
+ * bez zmniejszania limitu poniżej liczby zaakceptowanych. Reguły pilnuje funkcja w bazie.
+ */
+export async function updateEvent(
+  supabase: SupabaseClient,
+  eventId: string,
+  input: EventFormValues,
+  now: Date = new Date(),
+): Promise<CreateEventResult> {
+  const parsed = parseEventForm(input, now);
+  if (!parsed.ok) return parsed;
+  const data = parsed.data;
+
+  const response = await supabase.rpc("update_event", {
+    p_event_id: eventId,
+    p_sport: data.sport,
+    p_area: data.area,
+    p_place: data.place,
+    p_starts_at: data.startsAt.toISOString(),
+    p_spots: data.spots,
+    p_description: data.description ?? "",
+  });
+  if (response.error) {
+    return {
+      ok: false,
+      errors: UPDATE_ERRORS[response.error.message] ?? { form: "Nie udało się zapisać zmian. Spróbuj ponownie." },
+    };
+  }
+  return { ok: true, event: response.data as unknown as EventRecord };
+}
+
+/** Odwołanie ogłoszenia przez organizatora w dowolnej chwili przed startem (FR-004). */
+export async function cancelEvent(
+  supabase: SupabaseClient,
+  eventId: string,
+): Promise<{ ok: true } | { ok: false; code: string }> {
+  const response = await supabase.rpc("cancel_event", { p_event_id: eventId });
+  return response.error ? { ok: false, code: response.error.message } : { ok: true };
 }
 
 export interface EventFilters {
@@ -241,4 +324,9 @@ export async function listMyEvents(
     organized: (organized as unknown as Omit<MyEventItem, "my_status">[]).map((e) => ({ ...e, my_status: null })),
     joined: joinedItems,
   };
+}
+
+/** Czy organizator może jeszcze edytować ogłoszenie — ta sama granica 12 h co przy rezygnacji (PRD: Business Logic). */
+export function canEditEvent(startsAt: string | Date, now: Date = new Date()): boolean {
+  return canWithdrawAccepted(startsAt, now);
 }
