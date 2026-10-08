@@ -22,7 +22,8 @@ export const POST: APIRoute = async (context) => {
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { display_name: displayName.data } },
+    // Link z e-maila potwierdzającego wraca do /auth/callback, który loguje użytkownika.
+    options: { data: { display_name: displayName.data }, emailRedirectTo: `${context.url.origin}/auth/callback` },
   });
 
   if (error) {
