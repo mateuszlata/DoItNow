@@ -42,7 +42,7 @@ const steps = [
   ["new event form redirects anonymous user", () => request("/events/new"), { status: 302, location: "/auth/signin" }],
   [
     "signup creates account",
-    () => request("/api/auth/signup", { method: "POST", form: { email, password } }),
+    () => request("/api/auth/signup", { method: "POST", form: { displayName: "Smoke", email, password } }),
     { status: 302, location: "/auth/confirm-email" },
   ],
   [

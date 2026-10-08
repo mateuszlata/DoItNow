@@ -19,5 +19,18 @@ export interface EventRecord {
 /** Ograniczony widok ogłoszenia dla gości (FR-001). */
 export type PublicEvent = Pick<EventRecord, "id" | "sport" | "area" | "starts_at" | "spots">;
 
+/** Uczestnik widoczny w szczegółach ogłoszenia: tylko nick, nigdy e-mail (FR-006). */
+export interface Participant {
+  user_id: string;
+  display_name: string;
+}
+
+/** Szczegóły ogłoszenia dla zalogowanego użytkownika. */
+export interface EventDetails extends EventRecord {
+  organizer_name: string;
+  participants: Participant[];
+  free_spots: number;
+}
+
 /** Element listy: pełne dane dla zalogowanych, ograniczone dla gości. */
 export type EventListItem = PublicEvent & Partial<Pick<EventRecord, "place" | "description" | "organizer_id">>;

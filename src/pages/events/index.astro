@@ -109,7 +109,11 @@ const inputClass =
         {events.map((event) => (
           <li class="rounded-xl border border-white/10 bg-white/10 p-4 text-white backdrop-blur-xl">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 class="text-lg font-semibold">{sportLabel(event.sport)}</h2>
+              <h2 class="text-lg font-semibold">
+                <a href={`/events/${event.id}`} class="hover:underline">
+                  {sportLabel(event.sport)}
+                </a>
+              </h2>
               <span class="text-sm text-blue-100/70">
                 Potrzeba osób: <strong class="text-white">{event.spots}</strong>
               </span>
