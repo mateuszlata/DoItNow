@@ -62,4 +62,4 @@ GitHub Actions (`.github/workflows/ci.yml`) on every push and PR to `main`:
 
 ## Business rules
 
-Domain rules (join requests, organizer approval, spot limit, 12 h cutoffs for withdrawal and editing, cancellation) are enforced in Postgres functions in `supabase/migrations/`; tables have no direct insert/update policies for those changes. App services in `src/lib/services/` call these functions and map their error codes to Polish messages.
+Domain rules (join requests, organizer approval, spot limit, reserve list with automatic promotion via `settle_event`, 12 h cutoffs for withdrawal and editing, cancellation with handover to participants via `respond_to_cancellation`) are enforced in Postgres functions in `supabase/migrations/`; tables have no direct insert/update policies for those changes. App services in `src/lib/services/` call these functions and map their error codes to Polish messages.
