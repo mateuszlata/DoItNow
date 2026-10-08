@@ -19,7 +19,7 @@ export const POST: APIRoute = async (context) => {
     return context.redirect(`/auth/signup?error=${encodeURIComponent(AUTH_NOT_CONFIGURED)}`);
   }
   // Nick trafia do metadanych konta; trigger w bazie tworzy z niego profil.
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     // Link z e-maila potwierdzającego wraca do /auth/callback, który loguje użytkownika.
@@ -30,5 +30,9 @@ export const POST: APIRoute = async (context) => {
     return context.redirect(`/auth/signup?error=${encodeURIComponent(authErrorMessage(error))}`);
   }
 
+  // Bez wymaganego potwierdzania e-maila Supabase od razu zwraca sesję — użytkownik jest zalogowany.
+  if (data.session) {
+    return context.redirect("/events");
+  }
   return context.redirect("/auth/confirm-email");
 };

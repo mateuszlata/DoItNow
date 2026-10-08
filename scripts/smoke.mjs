@@ -43,7 +43,8 @@ const steps = [
   [
     "signup creates account",
     () => request("/api/auth/signup", { method: "POST", form: { displayName: "Smoke", email, password } }),
-    { status: 302, location: "/auth/confirm-email" },
+    // lokalnie potwierdzanie e-maila jest wyłączone, więc rejestracja od razu loguje
+    { status: 302, location: "/events" },
   ],
   [
     "signin rejects wrong password",

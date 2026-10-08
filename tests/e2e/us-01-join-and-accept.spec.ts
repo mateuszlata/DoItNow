@@ -30,7 +30,8 @@ async function signUpAndSignIn(browser: Browser, nick: string): Promise<Page> {
   await page.getByLabel("Hasło", { exact: true }).fill(password);
   await page.getByLabel("Powtórz hasło").fill(password);
   await page.getByRole("button", { name: "Załóż konto" }).click();
-  await page.waitForURL(/\/auth\/confirm-email$/);
+  // Lokalnie potwierdzanie e-maila jest wyłączone: rejestracja od razu loguje i prowadzi do listy.
+  await page.waitForURL(/\/events$/);
 
   await page.goto("/auth/signin");
   await waitForHydration(page);
