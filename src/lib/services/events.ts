@@ -2,7 +2,16 @@ import { z } from "astro/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate } from "@/lib/time";
-import type { EventDetails, EventListItem, EventRecord, PublicEvent } from "@/types";
+import type {
+  EventDetails,
+  EventListItem,
+  EventRecord,
+  MyEventItem,
+  Participant,
+  ParticipationRecord,
+  ParticipationStatus,
+  PublicEvent,
+} from "@/types";
 
 export const createEventSchema = z.object({
   sport: z.enum(SPORT_IDS, { error: "Wybierz sport z listy." }),
@@ -94,8 +103,8 @@ export async function listUpcomingEvents(
 ): Promise<EventListItem[]> {
   const now = options.now ?? new Date();
   const columns = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id"
-    : "id, sport, area, starts_at, spots";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count"
+    : "id, sport, area, starts_at, spots, accepted_count";
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
@@ -127,15 +136,34 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   if (!UUID_PATTERN.test(id)) return null;
   const { data, error } = await supabase
     .from("events_public")
-    .select("id, sport, area, starts_at, spots")
+    .select("id, sport, area, starts_at, spots, accepted_count")
     .eq("id", id)
     .maybeSingle<PublicEvent>();
   if (error) throw new Error(`Nie udało się pobrać ogłoszenia: ${error.message}`);
   return data;
 }
 
-/** Pełne szczegóły dla zalogowanego: nick organizatora, uczestnicy i wolne miejsca (FR-006). */
-export async function getEventDetails(supabase: SupabaseClient, id: string): Promise<EventDetails | null> {
+interface ParticipationWithProfile {
+  id: string;
+  user_id: string;
+  status: ParticipationStatus;
+  profile: { display_name: string } | null;
+}
+
+function toParticipant(row: ParticipationWithProfile): Participant {
+  return { participation_id: row.id, user_id: row.user_id, display_name: row.profile?.display_name ?? "Użytkownik" };
+}
+
+/**
+ * Pełne szczegóły dla zalogowanego (FR-006): nick organizatora, zaakceptowani uczestnicy,
+ * wolne miejsca, własne zgłoszenie oglądającego, a dla organizatora — oczekujące zgłoszenia.
+ * Widoczność zgłoszeń ogranicza RLS, więc nie-organizator nie dostanie cudzych oczekujących.
+ */
+export async function getEventDetails(
+  supabase: SupabaseClient,
+  id: string,
+  viewerId: string,
+): Promise<EventDetails | null> {
   if (!UUID_PATTERN.test(id)) return null;
   const { data, error } = await supabase
     .from("events")
@@ -145,13 +173,72 @@ export async function getEventDetails(supabase: SupabaseClient, id: string): Pro
   if (error) throw new Error(`Nie udało się pobrać ogłoszenia: ${error.message}`);
   if (!data) return null;
 
+  const { data: rows, error: participationsError } = await supabase
+    .from("participations")
+    .select("id, user_id, status, created_at, updated_at, event_id, profile:profiles(display_name)")
+    .eq("event_id", id)
+    .in("status", ["pending", "accepted"])
+    .order("created_at", { ascending: true });
+  if (participationsError) throw new Error(`Nie udało się pobrać zgłoszeń: ${participationsError.message}`);
+
+  const { data: mine } = await supabase
+    .from("participations")
+    .select("id, event_id, user_id, status, created_at, updated_at")
+    .eq("event_id", id)
+    .eq("user_id", viewerId)
+    .maybeSingle<ParticipationRecord>();
+
+  const all = rows as unknown as ParticipationWithProfile[];
+  const participants = all.filter((r) => r.status === "accepted").map(toParticipant);
+  const isOrganizer = data.organizer_id === viewerId;
+  const pending = isOrganizer ? all.filter((r) => r.status === "pending").map(toParticipant) : [];
+
   const { organizer, ...event } = data;
-  // Zapisy i akceptacja (FR-007, FR-010) jeszcze nie istnieją, więc lista uczestników jest pusta.
-  const participants: EventDetails["participants"] = [];
   return {
     ...event,
     organizer_name: organizer?.display_name ?? "Użytkownik",
     participants,
-    free_spots: event.spots - participants.length,
+    pending,
+    my_participation: mine,
+    free_spots: Math.max(event.spots - participants.length, 0),
+  };
+}
+
+/**
+ * „Moje spotkania” (FR-009): ogłoszenia użytkownika i spotkania, na które się zgłosił,
+ * posortowane od najbliższego.
+ */
+export async function listMyEvents(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ organized: MyEventItem[]; joined: MyEventItem[] }> {
+  const { data: organized, error: organizedError } = await supabase
+    .from("events")
+    .select("*, accepted_count, pending_count")
+    .eq("organizer_id", userId)
+    .order("starts_at", { ascending: true });
+  if (organizedError) throw new Error(`Nie udało się pobrać ogłoszeń: ${organizedError.message}`);
+
+  const { data: joined, error: joinedError } = await supabase
+    .from("participations")
+    .select("status, event:events(*, accepted_count)")
+    .eq("user_id", userId)
+    .in("status", ["pending", "accepted", "rejected"]);
+  if (joinedError) throw new Error(`Nie udało się pobrać zgłoszeń: ${joinedError.message}`);
+
+  const joinedItems = (
+    joined as unknown as { status: ParticipationStatus; event: (EventRecord & { accepted_count: number }) | null }[]
+  )
+    .filter((row) => row.event !== null)
+    .map((row) => ({
+      ...(row.event as EventRecord & { accepted_count: number }),
+      pending_count: 0,
+      my_status: row.status,
+    }))
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+
+  return {
+    organized: (organized as unknown as Omit<MyEventItem, "my_status">[]).map((e) => ({ ...e, my_status: null })),
+    joined: joinedItems,
   };
 }

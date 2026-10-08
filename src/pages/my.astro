@@ -1,0 +1,109 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import { createClient } from "@/lib/supabase";
+import { listMyEvents } from "@/lib/services/events";
+import { STATUS_LABELS } from "@/lib/services/participations";
+import { sportLabel } from "@/lib/sports";
+import { formatEventDate } from "@/lib/time";
+import type { MyEventItem } from "@/types";
+
+// Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
+const user = Astro.locals.user;
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+let organized: MyEventItem[] = [];
+let joined: MyEventItem[] = [];
+if (supabase && user) {
+  ({ organized, joined } = await listMyEvents(supabase, user.id));
+}
+
+const now = Date.now();
+const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
+---
+
+<Layout title="Moje spotkania · DoItNow">
+  <div class="bg-cosmic min-h-screen p-4">
+    <div class="mx-auto max-w-3xl text-white">
+      <Topbar />
+      <h1 class="mb-4 text-2xl font-bold">Moje spotkania</h1>
+
+      <section class="mb-8">
+        <h2 class="mb-2 text-lg font-semibold">Organizuję</h2>
+        {organized.length === 0 ? (
+          <p class="text-sm text-blue-100/60">
+            Nie masz jeszcze ogłoszeń.{" "}
+            <a href="/events/new" class="text-purple-300 hover:underline">
+              Dodaj pierwsze
+            </a>
+          </p>
+        ) : (
+          <ul class="grid gap-3">
+            {organized.map((e) => (
+              <li
+                class:list={[
+                  "rounded-xl border border-white/10 bg-white/10 p-4",
+                  (isPast(e) || e.status === "cancelled") && "opacity-60",
+                ]}
+              >
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                  <a href={`/events/${e.id}`} class="font-semibold hover:underline">
+                    {sportLabel(e.sport)}
+                  </a>
+                  <span class="text-sm text-blue-100/70">
+                    Zajęte: {e.accepted_count} z {e.spots}
+                  </span>
+                </div>
+                <p class="mt-1 text-sm text-purple-200">{formatEventDate(e.starts_at)}</p>
+                <p class="mt-1 text-sm text-blue-100/70">
+                  {e.status === "cancelled"
+                    ? "Odwołane"
+                    : isPast(e)
+                      ? "Odbyło się"
+                      : e.pending_count > 0
+                        ? `Oczekujące zgłoszenia: ${e.pending_count}`
+                        : "Brak oczekujących zgłoszeń"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h2 class="mb-2 text-lg font-semibold">Moje zgłoszenia</h2>
+        {joined.length === 0 ? (
+          <p class="text-sm text-blue-100/60">
+            Nie zgłosiłeś się jeszcze na żadne spotkanie.{" "}
+            <a href="/events" class="text-purple-300 hover:underline">
+              Przeglądaj ogłoszenia
+            </a>
+          </p>
+        ) : (
+          <ul class="grid gap-3">
+            {joined.map((e) => (
+              <li
+                class:list={[
+                  "rounded-xl border border-white/10 bg-white/10 p-4",
+                  (isPast(e) || e.status === "cancelled") && "opacity-60",
+                ]}
+              >
+                <div class="flex flex-wrap items-baseline justify-between gap-2">
+                  <a href={`/events/${e.id}`} class="font-semibold hover:underline">
+                    {sportLabel(e.sport)}
+                  </a>
+                  {e.my_status && <span class="text-sm text-blue-100/70">{STATUS_LABELS[e.my_status]}</span>}
+                </div>
+                <p class="mt-1 text-sm text-purple-200">{formatEventDate(e.starts_at)}</p>
+                <p class="mt-1 text-sm text-blue-100/70">
+                  {e.area} · {e.place}
+                  {e.status === "cancelled" && " · Odwołane"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  </div>
+</Layout>

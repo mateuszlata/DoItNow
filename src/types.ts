@@ -16,11 +16,25 @@ export interface EventRecord {
   created_at: string;
 }
 
-/** Ograniczony widok ogłoszenia dla gości (FR-001). */
-export type PublicEvent = Pick<EventRecord, "id" | "sport" | "area" | "starts_at" | "spots">;
+/** Ograniczony widok ogłoszenia dla gości (FR-001), z liczbą zajętych miejsc. */
+export type PublicEvent = Pick<EventRecord, "id" | "sport" | "area" | "starts_at" | "spots"> & {
+  accepted_count: number;
+};
 
-/** Uczestnik widoczny w szczegółach ogłoszenia: tylko nick, nigdy e-mail (FR-006). */
+export type ParticipationStatus = "pending" | "accepted" | "rejected" | "withdrawn";
+
+export interface ParticipationRecord {
+  id: string;
+  event_id: string;
+  user_id: string;
+  status: ParticipationStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Uczestnik lub zgłaszający widoczny w szczegółach: tylko nick, nigdy e-mail (FR-006). */
 export interface Participant {
+  participation_id: string;
   user_id: string;
   display_name: string;
 }
@@ -28,9 +42,21 @@ export interface Participant {
 /** Szczegóły ogłoszenia dla zalogowanego użytkownika. */
 export interface EventDetails extends EventRecord {
   organizer_name: string;
+  /** Zaakceptowani uczestnicy. */
   participants: Participant[];
+  /** Oczekujące zgłoszenia — wypełnione tylko dla organizatora. */
+  pending: Participant[];
+  /** Zgłoszenie oglądającego użytkownika, jeśli istnieje. */
+  my_participation: ParticipationRecord | null;
   free_spots: number;
 }
 
 /** Element listy: pełne dane dla zalogowanych, ograniczone dla gości. */
 export type EventListItem = PublicEvent & Partial<Pick<EventRecord, "place" | "description" | "organizer_id">>;
+
+/** Spotkanie na stronie „Moje spotkania” (FR-009). */
+export interface MyEventItem extends EventRecord {
+  accepted_count: number;
+  pending_count: number;
+  my_status: ParticipationStatus | null;
+}

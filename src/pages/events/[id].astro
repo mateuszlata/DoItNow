@@ -3,6 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
 import { createClient } from "@/lib/supabase";
 import { getEventDetails, getPublicEvent } from "@/lib/services/events";
+import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
 import { sportLabel } from "@/lib/sports";
 import { formatEventDate } from "@/lib/time";
 import type { EventDetails, PublicEvent } from "@/types";
@@ -15,7 +16,7 @@ let details: EventDetails | null = null;
 let publicEvent: PublicEvent | null = null;
 if (supabase) {
   if (user) {
-    details = await getEventDetails(supabase, id);
+    details = await getEventDetails(supabase, id, user.id);
   } else {
     publicEvent = await getPublicEvent(supabase, id);
   }
@@ -26,8 +27,31 @@ if (!event) {
   Astro.response.status = 404;
 }
 
+const SUCCESS_MESSAGES: Record<string, string> = {
+  joined: "Zgłoszenie wysłane. Organizator musi je zaakceptować.",
+  withdrawn: "Twoje zgłoszenie zostało wycofane.",
+  accepted: "Zgłoszenie zaakceptowane.",
+  rejected: "Zgłoszenie odrzucone.",
+};
+const okMessage = SUCCESS_MESSAGES[Astro.url.searchParams.get("ok") ?? ""];
+const errorMessage = participationErrorMessage(Astro.url.searchParams.get("error"));
+
 const isPast = details ? new Date(details.starts_at).getTime() <= Date.now() : false;
 const isCancelled = details?.status === "cancelled";
+const isOpen = details !== null && !isPast && !isCancelled;
+const isOrganizer = details !== null && user !== null && details.organizer_id === user.id;
+const myStatus = details?.my_participation?.status ?? null;
+const canJoin = isOpen && !isOrganizer && (myStatus === null || myStatus === "withdrawn");
+const canWithdraw =
+  details !== null &&
+  isOpen &&
+  (myStatus === "pending" || (myStatus === "accepted" && canWithdrawAccepted(details.starts_at)));
+const withdrawLocked = isOpen && myStatus === "accepted" && !canWithdraw;
+const freeSpots = details
+  ? details.free_spots
+  : publicEvent
+    ? Math.max(publicEvent.spots - publicEvent.accepted_count, 0)
+    : 0;
 ---
 
 <Layout title={event ? `${sportLabel(event.sport)} · DoItNow` : "Nie znaleziono · DoItNow"}>
@@ -37,6 +61,17 @@ const isCancelled = details?.status === "cancelled";
       <a href="/events" class="mb-3 inline-block text-sm text-purple-300 hover:underline">
         ← Wszystkie ogłoszenia
       </a>
+
+      {okMessage && (
+        <p class="mb-3 rounded-lg border border-green-400/40 bg-green-500/10 px-4 py-2 text-sm text-green-200">
+          {okMessage}
+        </p>
+      )}
+      {errorMessage && (
+        <p class="mb-3 rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm text-red-200">
+          {errorMessage}
+        </p>
+      )}
 
       {!event && (
         <div class="rounded-2xl border border-white/10 bg-white/10 p-6 text-center text-white">
@@ -76,14 +111,8 @@ const isCancelled = details?.status === "cancelled";
             )}
             <div>
               <dt class="text-blue-100/60">Wolne miejsca</dt>
-              <dd>
-                {details ? (
-                  <>
-                    <strong>{details.free_spots}</strong> z {details.spots}
-                  </>
-                ) : (
-                  <>Potrzeba osób: {event.spots}</>
-                )}
+              <dd data-testid="free-spots">
+                <strong>{freeSpots}</strong> z {event.spots}
               </dd>
             </div>
             {details?.description && (
@@ -94,13 +123,98 @@ const isCancelled = details?.status === "cancelled";
             )}
           </dl>
 
+          {details && !isOrganizer && (
+            <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+              {myStatus && myStatus !== "withdrawn" && (
+                <p class="mb-3 text-sm" data-testid="my-status">
+                  Twoje zgłoszenie: <strong>{STATUS_LABELS[myStatus]}</strong>
+                </p>
+              )}
+              {canJoin && (
+                <form method="POST" action={`/api/events/${details.id}/join`}>
+                  <button
+                    type="submit"
+                    class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
+                  >
+                    Zgłoś się
+                  </button>
+                </form>
+              )}
+              {canWithdraw && (
+                <form method="POST" action={`/api/events/${details.id}/withdraw`}>
+                  <button
+                    type="submit"
+                    class="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                  >
+                    {myStatus === "accepted" ? "Zrezygnuj z udziału" : "Wycofaj zgłoszenie"}
+                  </button>
+                </form>
+              )}
+              {withdrawLocked && (
+                <p class="text-sm text-blue-100/70">Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.</p>
+              )}
+              {!isOpen && !myStatus && <p class="text-sm text-blue-100/70">Zapisy na to spotkanie są zamknięte.</p>}
+            </section>
+          )}
+
+          {isOrganizer && details && isOpen && (
+            <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+              <h2 class="mb-2 font-semibold">Zgłoszenia do rozpatrzenia</h2>
+              {details.pending.length === 0 ? (
+                <p class="text-sm text-blue-100/60">Brak oczekujących zgłoszeń.</p>
+              ) : (
+                <>
+                  {details.free_spots === 0 && (
+                    <p class="mb-2 text-sm text-amber-200">
+                      Wszystkie miejsca są zajęte — możesz tylko odrzucać zgłoszenia.
+                    </p>
+                  )}
+                  <ul class="grid gap-2">
+                    {details.pending.map((p) => (
+                      <li
+                        class="flex flex-wrap items-center justify-between gap-2 text-sm"
+                        data-testid="pending-request"
+                      >
+                        <span>{p.display_name}</span>
+                        <form
+                          method="POST"
+                          action={`/api/participations/${p.participation_id}/decide`}
+                          class="flex gap-2"
+                        >
+                          <input type="hidden" name="eventId" value={details.id} />
+                          <button
+                            type="submit"
+                            name="decision"
+                            value="accept"
+                            disabled={details.free_spots === 0}
+                            class="rounded-lg bg-green-600 px-3 py-1 text-white transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Akceptuj
+                          </button>
+                          <button
+                            type="submit"
+                            name="decision"
+                            value="reject"
+                            class="rounded-lg border border-white/20 bg-white/10 px-3 py-1 transition-colors hover:bg-white/20"
+                          >
+                            Odrzuć
+                          </button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+          )}
+
           {details && (
             <section class="mt-6">
               <h2 class="mb-2 font-semibold">Uczestnicy</h2>
               {details.participants.length === 0 ? (
                 <p class="text-sm text-blue-100/60">Nikt jeszcze nie dołączył.</p>
               ) : (
-                <ul class="grid gap-1 text-sm">
+                <ul class="grid gap-1 text-sm" data-testid="participants">
                   {details.participants.map((p) => (
                     <li>{p.display_name}</li>
                   ))}
@@ -111,10 +225,10 @@ const isCancelled = details?.status === "cancelled";
 
           {!user && (
             <p class="mt-6 text-sm text-blue-100/70">
+              Aby zobaczyć dokładne miejsce, organizatora i uczestników oraz się zgłosić,{" "}
               <a href="/auth/signin" class="text-purple-300 hover:underline">
-                Zaloguj się
+                zaloguj się
               </a>
-              , aby zobaczyć dokładne miejsce, organizatora i uczestników.
             </p>
           )}
         </article>

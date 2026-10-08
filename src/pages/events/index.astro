@@ -90,10 +90,10 @@ const inputClass =
 
       {!user && (
         <p class="mb-4 text-sm text-blue-100/60">
+          Aby zobaczyć dokładne miejsce i szczegóły spotkań,{" "}
           <a href="/auth/signin" class="text-purple-300 hover:underline">
-            Zaloguj się
+            zaloguj się
           </a>
-          , aby zobaczyć dokładne miejsce i szczegóły spotkań.
         </p>
       )}
 
@@ -115,7 +115,8 @@ const inputClass =
                 </a>
               </h2>
               <span class="text-sm text-blue-100/70">
-                Potrzeba osób: <strong class="text-white">{event.spots}</strong>
+                Wolne miejsca: <strong class="text-white">{Math.max(event.spots - event.accepted_count, 0)}</strong> z{" "}
+                {event.spots}
               </span>
             </div>
             <p class="mt-1 text-sm text-purple-200">{formatEventDate(event.starts_at)}</p>

@@ -1,0 +1,87 @@
+// US-01: Given zalogowany użytkownik i nadchodzące ogłoszenie z wolnym miejscem,
+// When użytkownik zgłasza chęć udziału, a organizator akceptuje zgłoszenie,
+// Then oboje widzą go na liście uczestników, a liczba wolnych miejsc spada o 1.
+import { expect, test, type Browser, type Page } from "@playwright/test";
+
+const runId = Date.now().toString(36);
+const password = "E2eTest-2026!";
+
+// Formularze logowania i rejestracji to wyspy Reacta: wpisanie danych przed hydratacją
+// zostałoby wyczyszczone, więc czekamy, aż Astro zdejmie atrybut `ssr` z wyspy.
+async function waitForHydration(page: Page): Promise<void> {
+  await page.locator("astro-island:not([ssr])").first().waitFor({ state: "attached" });
+}
+
+async function signUpAndSignIn(browser: Browser, nick: string): Promise<Page> {
+  const page = await browser.newPage();
+  const email = `e2e-${runId}-${nick.toLowerCase()}@example.com`;
+
+  await page.goto("/auth/signup");
+  await waitForHydration(page);
+  await page.getByLabel("Nick (widoczny dla innych)").fill(nick);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByLabel("Confirm password").fill(password);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.waitForURL(/\/auth\/confirm-email$/);
+
+  await page.goto("/auth/signin");
+  await waitForHydration(page);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL(/\/events$/);
+  await expect(page.getByText(nick)).toBeVisible();
+  return page;
+}
+
+function inThreeDaysAt18(): string {
+  const date = new Date(Date.now() + 3 * 24 * 3_600_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T18:00`;
+}
+
+test("US-01: participant requests to join, organizer accepts, both see the participant", async ({ browser }) => {
+  const organizerNick = `Org${runId}`;
+  const participantNick = `Ucz${runId}`;
+  const area = `Dzielnica ${runId}`;
+
+  // Organizator dodaje ogłoszenie z 2 wolnymi miejscami.
+  const organizer = await signUpAndSignIn(browser, organizerNick);
+  await organizer.goto("/events/new");
+  await organizer.getByLabel("Sport").selectOption({ label: "Koszykówka" });
+  await organizer.getByLabel("Data i godzina").fill(inThreeDaysAt18());
+  await organizer.getByLabel("Okolica / dzielnica").fill(area);
+  await organizer.getByLabel("Dokładne miejsce").fill("Hala sportowa E2E");
+  await organizer.getByLabel("Ile osób potrzebujesz (bez Ciebie)").fill("2");
+  await organizer.getByRole("button", { name: "Opublikuj ogłoszenie" }).click();
+  await organizer.waitForURL(/\/events\?created=1$/);
+
+  const card = organizer.getByRole("listitem").filter({ hasText: area });
+  await card.getByRole("link", { name: "Koszykówka" }).click();
+  await organizer.waitForURL(/\/events\/[0-9a-f-]{36}$/);
+  const eventUrl = organizer.url();
+  await expect(organizer.getByTestId("free-spots")).toHaveText("2 z 2");
+
+  // Uczestnik zgłasza się — zgłoszenie oczekuje i nie zajmuje miejsca.
+  const participant = await signUpAndSignIn(browser, participantNick);
+  await participant.goto(eventUrl);
+  await participant.getByRole("button", { name: "Zgłoś się" }).click();
+  await expect(participant.getByTestId("my-status")).toContainText("oczekuje na akceptację");
+  await expect(participant.getByTestId("free-spots")).toHaveText("2 z 2");
+
+  // Organizator akceptuje zgłoszenie.
+  await organizer.reload();
+  const request = organizer.getByTestId("pending-request").filter({ hasText: participantNick });
+  await request.getByRole("button", { name: "Akceptuj" }).click();
+  await expect(organizer.getByText("Zgłoszenie zaakceptowane.")).toBeVisible();
+
+  // Then: oboje widzą uczestnika, a wolnych miejsc jest o 1 mniej.
+  await expect(organizer.getByTestId("participants")).toContainText(participantNick);
+  await expect(organizer.getByTestId("free-spots")).toHaveText("1 z 2");
+
+  await participant.reload();
+  await expect(participant.getByTestId("my-status")).toContainText("zaakceptowane");
+  await expect(participant.getByTestId("participants")).toContainText(participantNick);
+  await expect(participant.getByTestId("free-spots")).toHaveText("1 z 2");
+});
