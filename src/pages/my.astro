@@ -7,6 +7,8 @@ import { STATUS_LABELS } from "@/lib/services/participations";
 import { sportLabel } from "@/lib/sports";
 import { formatEventDate } from "@/lib/time";
 import type { MyEventItem } from "@/types";
+import SportCard from "@/components/events/SportCard.astro";
+import { takenSpots, teamSize } from "@/lib/capacity";
 
 // Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
 const user = Astro.locals.user;
@@ -40,18 +42,13 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
         ) : (
           <ul class="grid gap-3">
             {organized.map((e) => (
-              <li
-                class:list={[
-                  "rounded-xl border border-white/10 bg-white/10 p-4",
-                  (isPast(e) || e.status === "cancelled") && "opacity-60",
-                ]}
-              >
+              <SportCard sport={e.sport} dimmed={isPast(e) || e.status === "cancelled"}>
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                   <a href={`/events/${e.id}`} class="font-semibold hover:underline">
                     {sportLabel(e.sport)}
                   </a>
                   <span class="text-sm text-blue-100/70">
-                    Zajęte: {e.accepted_count} z {e.spots}
+                    Zajęte: {takenSpots(e)} z {teamSize(e)}
                   </span>
                 </div>
                 <p class="mt-1 text-sm text-purple-200">{formatEventDate(e.starts_at)}</p>
@@ -64,7 +61,7 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
                         ? `Oczekujące zgłoszenia: ${e.pending_count}`
                         : "Brak oczekujących zgłoszeń"}
                 </p>
-              </li>
+              </SportCard>
             ))}
           </ul>
         )}
@@ -82,12 +79,7 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
         ) : (
           <ul class="grid gap-3">
             {joined.map((e) => (
-              <li
-                class:list={[
-                  "rounded-xl border border-white/10 bg-white/10 p-4",
-                  (isPast(e) || e.status === "cancelled") && "opacity-60",
-                ]}
-              >
+              <SportCard sport={e.sport} dimmed={isPast(e) || e.status === "cancelled"}>
                 <div class="flex flex-wrap items-baseline justify-between gap-2">
                   <a href={`/events/${e.id}`} class="font-semibold hover:underline">
                     {sportLabel(e.sport)}
@@ -99,7 +91,7 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
                   {e.area} · {e.place}
                   {e.status === "cancelled" && " · Odwołane"}
                 </p>
-              </li>
+              </SportCard>
             ))}
           </ul>
         )}

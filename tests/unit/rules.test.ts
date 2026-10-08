@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
-import { createEvent, type EventFormValues } from "@/lib/services/events";
+import { createEvent, parseEventForm, type EventFormValues } from "@/lib/services/events";
+import { freeSpots, takenSpots, teamSize } from "@/lib/capacity";
 import { canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
 
 const HOUR = 3_600_000;
@@ -27,7 +28,10 @@ describe("createEvent validation", () => {
     area: "Mokotów",
     place: "Boisko przy ul. Testowej 1",
     startsAt: "2026-11-01T18:00",
-    spots: "3",
+    total: "4",
+    organizerPlays: "on",
+    lat: "",
+    lng: "",
     description: "",
   };
   // Klient, który nie powinien zostać użyty, gdy walidacja odrzuca dane.
@@ -50,10 +54,62 @@ describe("createEvent validation", () => {
     expect(!result.ok && result.errors.sport).toBe("Wybierz sport z listy.");
   });
 
-  it("requires at least one needed person", async () => {
+  it("requires at least 2 people when the organizer takes part", async () => {
     const { client } = untouchedClient();
-    const result = await createEvent(client, "user-id", { ...valid, spots: "0" }, new Date("2026-10-01"));
-    expect(!result.ok && result.errors.spots).toBe("Potrzebna jest co najmniej 1 osoba.");
+    const result = await createEvent(client, "user-id", { ...valid, total: "1" }, new Date("2026-10-01"));
+    expect(!result.ok && result.errors.total).toBe("Skoro bierzesz udział, skład musi liczyć co najmniej 2 osoby.");
+  });
+});
+
+describe("parseEventForm: skład i pinezka", () => {
+  const base: EventFormValues = {
+    sport: "pilka-nozna",
+    area: "Wola",
+    place: "Orlik",
+    startsAt: "2026-11-01T18:00",
+    total: "12",
+    organizerPlays: "on",
+    lat: "",
+    lng: "",
+    description: "",
+  };
+  const now = new Date("2026-10-01T00:00:00Z");
+
+  it("a playing organizer takes one place in the team (12 total -> 11 to fill)", () => {
+    const result = parseEventForm(base, now);
+    expect(result.ok && result.data).toMatchObject({ spots: 11, organizerPlays: true });
+  });
+
+  it("an organizer who does not play leaves all places open (unchecked box sends nothing)", () => {
+    const result = parseEventForm({ ...base, organizerPlays: "" }, now);
+    expect(result.ok && result.data).toMatchObject({ spots: 12, organizerPlays: false });
+  });
+
+  it("accepts an optional pin and rejects coordinates out of range or without a pair", () => {
+    const pinned = parseEventForm({ ...base, lat: "52.2297", lng: "21.0122" }, now);
+    expect(pinned.ok && pinned.data).toMatchObject({ lat: 52.2297, lng: 21.0122 });
+    expect(parseEventForm({ ...base, lat: "", lng: "" }, now).ok && true).toBe(true);
+
+    const outOfRange = parseEventForm({ ...base, lat: "95", lng: "21" }, now);
+    expect(!outOfRange.ok && outOfRange.errors.lat).toBe("Nieprawidłowe położenie pinezki.");
+    const halfPin = parseEventForm({ ...base, lat: "52.2", lng: "" }, now);
+    expect(halfPin.ok).toBe(false);
+  });
+});
+
+describe("capacity", () => {
+  it("counts the playing organizer in the team and in taken places", () => {
+    const event = { spots: 11, organizer_plays: true, accepted_count: 3 };
+    expect(teamSize(event)).toBe(12);
+    expect(takenSpots(event)).toBe(4);
+    expect(freeSpots(event)).toBe(8);
+  });
+
+  it("does not count an organizer who only organizes", () => {
+    const event = { spots: 12, organizer_plays: false, accepted_count: 12 };
+    expect(teamSize(event)).toBe(12);
+    expect(takenSpots(event)).toBe(12);
+    expect(freeSpots(event)).toBe(0);
   });
 });
 

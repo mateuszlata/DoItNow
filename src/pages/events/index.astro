@@ -6,6 +6,9 @@ import { EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN, listUpcomingEvents } from "@/lib/se
 import { SPORTS, sportLabel } from "@/lib/sports";
 import { formatEventDate } from "@/lib/time";
 import type { EventListItem } from "@/types";
+import SportCard from "@/components/events/SportCard.astro";
+import EventMap from "@/components/map/EventMap";
+import { freeSpots, teamSize } from "@/lib/capacity";
 
 const { user } = Astro.locals;
 const sport = Astro.url.searchParams.get("sport") ?? "";
@@ -123,16 +126,15 @@ const inputClass =
 
       <ul class="grid gap-3">
         {events.map((event) => (
-          <li class="rounded-xl border border-white/10 bg-white/10 p-4 text-white backdrop-blur-xl">
+          <SportCard sport={event.sport}>
             <div class="flex flex-wrap items-baseline justify-between gap-2">
               <h2 class="text-lg font-semibold">
                 <a href={`/events/${event.id}`} class="hover:underline">
                   {sportLabel(event.sport)}
                 </a>
               </h2>
-              <span class="text-sm text-blue-100/70">
-                Wolne miejsca: <strong class="text-white">{Math.max(event.spots - event.accepted_count, 0)}</strong> z{" "}
-                {event.spots}
+              <span class="text-sm text-blue-100/70" data-testid="card-free-spots">
+                Wolne miejsca: <strong class="text-white">{freeSpots(event)}</strong> z {teamSize(event)}
               </span>
             </div>
             <p class="mt-1 text-sm text-purple-200">{formatEventDate(event.starts_at)}</p>
@@ -140,8 +142,17 @@ const inputClass =
               {event.area}
               {event.place && <span class="text-blue-100/60"> · {event.place}</span>}
             </p>
+            {event.organizer_plays && <p class="mt-1 text-xs text-blue-100/50">Skład łącznie z organizatorem.</p>}
             {event.description && <p class="mt-2 text-sm whitespace-pre-line text-blue-100/70">{event.description}</p>}
-          </li>
+            {event.lat != null && event.lng != null && (
+              <details class="mt-3">
+                <summary class="cursor-pointer text-sm text-purple-300 hover:underline">Pokaż na mapie</summary>
+                <div class="mt-2">
+                  <EventMap lat={event.lat} lng={event.lng} label={event.place ?? event.area} client:visible />
+                </div>
+              </details>
+            )}
+          </SportCard>
         ))}
       </ul>
 

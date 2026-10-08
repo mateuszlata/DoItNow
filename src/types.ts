@@ -14,10 +14,15 @@ export interface EventRecord {
   description: string | null;
   status: EventStatus;
   created_at: string;
+  /** Czy organizator zajmuje miejsce w składzie. */
+  organizer_plays: boolean;
+  /** Pinezka na mapie (opcjonalna, tylko dla zalogowanych). */
+  lat: number | null;
+  lng: number | null;
 }
 
 /** Ograniczony widok ogłoszenia dla gości (FR-001), z liczbą zajętych miejsc. */
-export type PublicEvent = Pick<EventRecord, "id" | "sport" | "area" | "starts_at" | "spots"> & {
+export type PublicEvent = Pick<EventRecord, "id" | "sport" | "area" | "starts_at" | "spots" | "organizer_plays"> & {
   accepted_count: number;
 };
 
@@ -52,7 +57,8 @@ export interface EventDetails extends EventRecord {
 }
 
 /** Element listy: pełne dane dla zalogowanych, ograniczone dla gości. */
-export type EventListItem = PublicEvent & Partial<Pick<EventRecord, "place" | "description" | "organizer_id">>;
+export type EventListItem = PublicEvent &
+  Partial<Pick<EventRecord, "place" | "description" | "organizer_id" | "lat" | "lng">>;
 
 /** Spotkanie na stronie „Moje spotkania” (FR-009). */
 export interface MyEventItem extends EventRecord {

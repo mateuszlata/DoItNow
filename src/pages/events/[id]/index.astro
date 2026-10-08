@@ -7,6 +7,8 @@ import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@
 import { sportLabel } from "@/lib/sports";
 import { formatEventDate } from "@/lib/time";
 import type { EventDetails, PublicEvent } from "@/types";
+import EventMap from "@/components/map/EventMap";
+import { teamSize } from "@/lib/capacity";
 
 const { user } = Astro.locals;
 const id = Astro.params.id ?? "";
@@ -54,6 +56,10 @@ const freeSpots = details
   : publicEvent
     ? Math.max(publicEvent.spots - publicEvent.accepted_count, 0)
     : 0;
+const navigateHref =
+  details?.lat != null && details.lng != null
+    ? `https://www.google.com/maps/dir/?api=1&destination=${String(details.lat)},${String(details.lng)}`
+    : null;
 ---
 
 <Layout title={event ? `${sportLabel(event.sport)} · DoItNow` : "Nie znaleziono · DoItNow"}>
@@ -114,7 +120,8 @@ const freeSpots = details
             <div>
               <dt class="text-blue-100/60">Wolne miejsca</dt>
               <dd data-testid="free-spots">
-                <strong>{freeSpots}</strong> z {event.spots}
+                <strong>{freeSpots}</strong> z {teamSize(event)}
+                {event.organizer_plays && <span class="text-blue-100/50"> (łącznie z organizatorem)</span>}
               </dd>
             </div>
             {details?.description && (
@@ -124,6 +131,22 @@ const freeSpots = details
               </div>
             )}
           </dl>
+
+          {details?.lat != null && details.lng != null && (
+            <section class="mt-4">
+              <EventMap lat={details.lat} lng={details.lng} label={details.place} client:visible />
+              {navigateHref && (
+                <a
+                  href={navigateHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mt-2 inline-block text-sm text-purple-300 hover:underline"
+                >
+                  Nawiguj do miejsca spotkania ↗
+                </a>
+              )}
+            </section>
+          )}
 
           {details && !isOrganizer && (
             <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
@@ -240,10 +263,15 @@ const freeSpots = details
           {details && (
             <section class="mt-6">
               <h2 class="mb-2 font-semibold">Uczestnicy</h2>
-              {details.participants.length === 0 ? (
+              {details.participants.length === 0 && !details.organizer_plays ? (
                 <p class="text-sm text-blue-100/60">Nikt jeszcze nie dołączył.</p>
               ) : (
                 <ul class="grid gap-1 text-sm" data-testid="participants">
+                  {details.organizer_plays && (
+                    <li>
+                      {details.organizer_name} <span class="text-blue-100/50">(organizator)</span>
+                    </li>
+                  )}
                   {details.participants.map((p) => (
                     <li>{p.display_name}</li>
                   ))}

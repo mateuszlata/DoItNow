@@ -60,7 +60,8 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 
 ### Ogłoszenia
 
-- FR-003: Użytkownik może utworzyć ogłoszenie: sport ze stałej listy, miejsce, data i godzina, limit osób, opcjonalny opis od organizatora. Priority: must-have
+- FR-003: Użytkownik może utworzyć ogłoszenie: sport ze stałej listy, miejsce, data i godzina, liczba osób w całym składzie, informacja, czy organizator bierze udział (domyślnie tak — zajmuje wtedy jedno miejsce), opcjonalny opis od organizatora. Priority: must-have
+  > Zmiana 2026-10-08 (feedback użytkownika): „11 z 11” było mylące, bo organizator też gra; skład liczony jest łącznie z organizatorem („11 z 12”).
   > Socrates: Counter-argument considered: „limit 0/1 nie ma sensu; opis niczego nie blokuje”. Resolution: bez zmian.
 - FR-004: Autor może edytować własne ogłoszenie najpóźniej 12 h przed wydarzeniem oraz odwołać je w każdej chwili; uczestnicy widzą status „odwołane”. Priority: must-have
   > Socrates: Counter-argument considered: „autor zmienia godzinę lub miejsce, a zapisani o tym nie wiedzą”. Resolution: zmienione — edycja do 12 h przed wydarzeniem; odwołanie zawsze, zamiast cichego usunięcia.
@@ -78,6 +79,10 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 - FR-009: Użytkownik może zobaczyć „Moje spotkania”: utworzone przez siebie oraz te, do których się zgłosił, ze statusem zgłoszenia. Priority: must-have
   > Socrates: Counter-argument considered: „status widać też w szczegółach ogłoszenia”. Resolution: bez zmian.
 - FR-010: Organizator może zaakceptować lub odrzucić zgłoszenie do swojego ogłoszenia. Priority: must-have
+
+### Mapa
+
+- FR-011: Organizator może zaznaczyć miejsce spotkania pinezką na mapie (opcjonalnie); zalogowany użytkownik widzi mapę z pinezką w szczegółach ogłoszenia i rozwijaną pod kartą na liście oraz może otworzyć nawigację do miejsca. Goście nie widzą pinezki (jak dokładnego miejsca, FR-001). Priority: nice-to-have (dodane 2026-10-08)
   > Socrates: Wynika bezpośrednio z decyzji przy FR-007 (akceptacja zapisów); bez osobnego kontrargumentu.
 
 ## Non-Functional Requirements
@@ -98,7 +103,7 @@ Granica czasowa wynosi 12 h przed wydarzeniem i jest wspólna: po niej autor nie
 - Model płaski: jedna rola użytkownika. Konto jest wymagane, aby tworzyć ogłoszenia oraz dołączać do nich i rezygnować.
 - Tylko autor ogłoszenia może je edytować (najpóźniej 12 h przed wydarzeniem) i odwołać (w każdej chwili przed startem). Ogłoszeń nie usuwa się trwale.
 - Niezalogowany gość może przeglądać listę ogłoszeń (zakres widocznych informacji: FR-001); próba utworzenia ogłoszenia lub dołączenia kieruje do logowania.
-- Logowanie: e-mail + hasło (rozstrzygnięte 2026-10-08, patrz Open Questions nr 2).
+- Logowanie: e-mail + hasło (rozstrzygnięte 2026-10-08, patrz Open Questions nr 2). Potwierdzanie adresu e-mail jest na produkcji wyłączone (limit wysyłki darmowej poczty Supabase); rejestracja od razu loguje. Do przywrócenia razem z własnym serwerem SMTP.
 
 ## Non-Goals
 
@@ -108,7 +113,7 @@ Granica czasowa wynosi 12 h przed wydarzeniem i jest wspólna: po niej autor nie
 
 1. **Co faktycznie robią dziś osoby bez towarzystwa do aktywności?** Obraz „rezygnuje / ćwiczy sam” jest założeniem, niezweryfikowanym na konkretnych osobach. — Owner: user.
 2. ~~**Jaka metoda logowania?**~~ — Rozstrzygnięte 2026-10-08: e-mail + hasło.
-3. **Czat, mapy/odległość, powiadomienia, oceny uczestników: w MVP czy nie?** Nie zostały wykluczone jako non-goals ani dodane jako FR. Kandydaci na jedno rozszerzenie po MVP (okolica / powiadomienia / automatyczne testy i wdrożenie). — Owner: user. Do decyzji po działającym MVP. (Cross-check: Non-Goals zawiera tylko jedną pozycję — ryzyko, że te funkcje wejdą do zakresu bez decyzji.)
+3. **Czat, mapy/odległość, powiadomienia, oceny uczestników: w MVP czy nie?** Częściowo rozstrzygnięte 2026-10-08: mapa z pinezką weszła jako FR-011. Kierunek docelowy (user): mapa wszystkich spotkań i wyszukiwanie chętnych na dany sport w okolicy (po odległości) — kolejna wersja; pinezki zapisują współrzędne, więc to rozszerzenie nie wymaga zmiany danych. Nie zostały wykluczone jako non-goals ani dodane jako FR. Kandydaci na jedno rozszerzenie po MVP (okolica / powiadomienia / automatyczne testy i wdrożenie). — Owner: user. Do decyzji po działającym MVP. (Cross-check: Non-Goals zawiera tylko jedną pozycję — ryzyko, że te funkcje wejdą do zakresu bez decyzji.)
 4. ~~**Usuwanie czy odwołanie ogłoszenia?**~~ — Rozstrzygnięte 2026-10-08: autor może tylko odwołać ogłoszenie (status „odwołane” widoczny dla uczestników); trwałego usuwania nie ma. Dodatkowa reguła: limit osób nie może spaść poniżej liczby zaakceptowanych uczestników.
 5. **Czy blokować nakładające się zgłoszenia jednego użytkownika?** (pytanie z pierwotnego opisu pomysłu, nierozstrzygnięte) — Owner: user. Przed implementacją FR-007.
 6. **Kto będzie pierwszymi użytkownikami?** (pytanie z pierwotnego opisu pomysłu; skala ustalona jako „Ty i garstka osób”, persona: jedno miasto) — Owner: user. Przed testem kryterium Secondary.

@@ -61,7 +61,15 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await organizer.getByLabel("Data i godzina").fill(inThreeDaysAt18());
   await organizer.getByLabel("Okolica / dzielnica").fill(area);
   await organizer.getByLabel("Dokładne miejsce").fill("Hala sportowa E2E");
-  await organizer.getByLabel("Ile osób potrzebujesz (bez Ciebie)").fill("2");
+  // Skład 3 osób z grającym organizatorem (domyślnie zaznaczone) -> 2 miejsca do obsadzenia.
+  await organizer.getByLabel("Ile osób łącznie w składzie?").fill("3");
+  await expect(organizer.getByLabel("Biorę udział w spotkaniu")).toBeChecked();
+  // Pinezka: kliknięcie w mapę zapisuje współrzędne w ukrytych polach formularza.
+  const picker = organizer.getByTestId("map-picker");
+  await picker.scrollIntoViewIfNeeded();
+  await expect(picker.locator(".leaflet-container, .leaflet-pane").first()).toBeAttached();
+  await picker.click();
+  await expect(organizer.getByText("Pinezka ustawiona")).toBeVisible();
   await organizer.getByRole("button", { name: "Opublikuj ogłoszenie" }).click();
   await organizer.waitForURL(/\/events\?created=1$/);
 
@@ -69,14 +77,17 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await card.getByRole("link", { name: "Koszykówka" }).click();
   await organizer.waitForURL(/\/events\/[0-9a-f-]{36}$/);
   const eventUrl = organizer.url();
-  await expect(organizer.getByTestId("free-spots")).toHaveText("2 z 2");
+  await expect(organizer.getByTestId("free-spots")).toContainText("2 z 3");
+  // Organizator, który gra, jest na liście uczestników; mapa z pinezką jest w szczegółach.
+  await expect(organizer.getByTestId("participants")).toContainText(`${organizerNick} (organizator)`);
+  await expect(organizer.getByTestId("event-map")).toBeVisible();
 
   // Uczestnik zgłasza się — zgłoszenie oczekuje i nie zajmuje miejsca.
   const participant = await signUpAndSignIn(browser, participantNick);
   await participant.goto(eventUrl);
   await participant.getByRole("button", { name: "Zgłoś się" }).click();
   await expect(participant.getByTestId("my-status")).toContainText("oczekuje na akceptację");
-  await expect(participant.getByTestId("free-spots")).toHaveText("2 z 2");
+  await expect(participant.getByTestId("free-spots")).toContainText("2 z 3");
 
   // Organizator akceptuje zgłoszenie.
   await organizer.reload();
@@ -86,10 +97,10 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
 
   // Then: oboje widzą uczestnika, a wolnych miejsc jest o 1 mniej.
   await expect(organizer.getByTestId("participants")).toContainText(participantNick);
-  await expect(organizer.getByTestId("free-spots")).toHaveText("1 z 2");
+  await expect(organizer.getByTestId("free-spots")).toContainText("1 z 3");
 
   await participant.reload();
   await expect(participant.getByTestId("my-status")).toContainText("zaakceptowane");
   await expect(participant.getByTestId("participants")).toContainText(participantNick);
-  await expect(participant.getByTestId("free-spots")).toHaveText("1 z 2");
+  await expect(participant.getByTestId("free-spots")).toContainText("1 z 3");
 });

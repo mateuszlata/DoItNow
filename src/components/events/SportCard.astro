@@ -1,0 +1,33 @@
+---
+// Karta ogłoszenia z grafiką sportu: duże emoji w tle i kolorowy pasek po lewej.
+import { sportVisual } from "@/lib/sports";
+
+interface Props {
+  sport: string;
+  /** Wyszarzenie kart spotkań minionych lub odwołanych. */
+  dimmed?: boolean;
+}
+
+const { sport, dimmed = false } = Astro.props;
+const { emoji, accent } = sportVisual(sport);
+---
+
+<li
+  class:list={[
+    "relative overflow-hidden rounded-xl border border-l-4 border-white/10 bg-white/10 p-4 text-white backdrop-blur-xl",
+    accent,
+    dimmed && "opacity-60",
+  ]}
+  data-sport={sport}
+>
+  <span
+    aria-hidden="true"
+    class="pointer-events-none absolute -right-3 -bottom-6 text-8xl opacity-15 select-none"
+    data-testid="sport-emoji"
+  >
+    {emoji}
+  </span>
+  <div class="relative">
+    <slot />
+  </div>
+</li>

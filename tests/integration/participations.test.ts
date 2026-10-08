@@ -26,7 +26,10 @@ describe("zgłoszenia (FR-007)", () => {
       area: "Ursynów",
       place: "Kort 3",
       startsAt: "2030-06-01T10:00",
-      spots: "1",
+      total: "2",
+      organizerPlays: "on",
+      lat: "",
+      lng: "",
       description: "",
     });
     expect(result.ok).toBe(true);
@@ -154,6 +157,7 @@ describe("widoczność (FR-001, FR-006)", () => {
       "accepted_count",
       "area",
       "id",
+      "organizer_plays",
       "sport",
       "spots",
       "starts_at",

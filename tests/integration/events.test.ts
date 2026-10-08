@@ -24,7 +24,11 @@ function editForm(overrides: Partial<EventFormValues> = {}): EventFormValues {
     area: "Wola",
     place: "Hala po zmianie",
     startsAt: toLocalDateTime(new Date(Date.now() + 96 * HOUR)),
-    spots: "4",
+    // 5 osób w składzie, w tym grający organizator -> 4 miejsca do obsadzenia
+    total: "5",
+    organizerPlays: "on",
+    lat: "",
+    lng: "",
     description: "Nowy opis",
     ...overrides,
   };
@@ -59,18 +63,18 @@ describe("edycja ogłoszenia (FR-004)", () => {
     expect(result).toEqual({ ok: false, errors: { form: "Edycja jest możliwa najpóźniej 12 h przed spotkaniem." } });
   });
 
-  it("the spot limit cannot drop below the number of accepted participants", async () => {
+  it("the team cannot shrink below the number of accepted participants", async () => {
     const eventId = await insertEvent(organizer, new Date(Date.now() + 72 * HOUR), 2);
     await acceptParticipant(eventId, alice);
     await acceptParticipant(eventId, bob);
 
-    const tooFew = await updateEvent(organizer.client, eventId, editForm({ spots: "1" }));
+    const tooFew = await updateEvent(organizer.client, eventId, editForm({ total: "2" }));
     expect(tooFew).toEqual({
       ok: false,
-      errors: { spots: "Limit nie może być mniejszy niż liczba zaakceptowanych uczestników." },
+      errors: { total: "Skład nie może być mniejszy niż liczba zaakceptowanych uczestników." },
     });
 
-    const exact = await updateEvent(organizer.client, eventId, editForm({ spots: "2" }));
+    const exact = await updateEvent(organizer.client, eventId, editForm({ total: "3" }));
     expect(exact.ok).toBe(true);
   });
 
@@ -84,6 +88,9 @@ describe("edycja ogłoszenia (FR-004)", () => {
       p_starts_at: new Date(Date.now() - HOUR).toISOString(),
       p_spots: 2,
       p_description: "",
+      p_organizer_plays: true,
+      p_lat: null,
+      p_lng: null,
     });
     expect(error?.message).toBe("STARTS_IN_PAST");
   });
@@ -92,6 +99,48 @@ describe("edycja ogłoszenia (FR-004)", () => {
     const eventId = await insertEvent(organizer, new Date(Date.now() + 2 * HOUR), 2);
     const { data } = await organizer.client.from("events").update({ spots: 9 }).eq("id", eventId).select("id");
     expect(data).toEqual([]);
+  });
+});
+
+describe("skład i pinezka", () => {
+  it("saves who plays and the pin; an organizer who stops playing frees one place for others", async () => {
+    const eventId = await insertEvent(organizer, new Date(Date.now() + 72 * HOUR), 2);
+    const result = await updateEvent(
+      organizer.client,
+      eventId,
+      editForm({ total: "3", organizerPlays: "", lat: "52.2297", lng: "21.0122" }),
+    );
+    expect(result.ok && result.event).toMatchObject({ spots: 3, organizer_plays: false, lat: 52.2297, lng: 21.0122 });
+  });
+
+  it("the database rejects an invalid pin even if the app check is skipped", async () => {
+    const eventId = await insertEvent(organizer, new Date(Date.now() + 72 * HOUR), 2);
+    const { error } = await organizer.client.rpc("update_event", {
+      p_event_id: eventId,
+      p_sport: "tenis",
+      p_area: "Wola",
+      p_place: "Kort",
+      p_starts_at: new Date(Date.now() + 96 * HOUR).toISOString(),
+      p_spots: 2,
+      p_description: "",
+      p_organizer_plays: true,
+      p_lat: 120,
+      p_lng: 21,
+    });
+    expect(error?.message).toBe("INVALID_DATA");
+  });
+
+  it("guests see whether the organizer plays but never the pin", async () => {
+    const eventId = await insertEvent(organizer, new Date(Date.now() + 72 * HOUR), 2);
+    await updateEvent(organizer.client, eventId, editForm({ lat: "52.2297", lng: "21.0122" }));
+    const { data } = await anonClient()
+      .from("events_public")
+      .select("*")
+      .eq("id", eventId)
+      .single<Record<string, unknown>>();
+    expect(data).toMatchObject({ organizer_plays: true });
+    expect(data).not.toHaveProperty("lat");
+    expect(data).not.toHaveProperty("lng");
   });
 });
 

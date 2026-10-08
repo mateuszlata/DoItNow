@@ -2,7 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
 import EventForm from "@/components/events/EventForm.astro";
-import { readEventForm } from "@/lib/event-form";
+import { eventToForm, readEventForm } from "@/lib/event-form";
 import { createClient } from "@/lib/supabase";
 import {
   canEditEvent,
@@ -11,7 +11,6 @@ import {
   type EventFormValues,
   type FieldErrors,
 } from "@/lib/services/events";
-import { toLocalDateTime } from "@/lib/time";
 
 const user = Astro.locals.user;
 if (!user) return Astro.redirect("/auth/signin");
@@ -25,14 +24,7 @@ if (details.organizer_id !== user.id) return Astro.redirect(`/events/${id}`);
 // FR-004: edycja tylko aktywnego ogłoszenia i najpóźniej 12 h przed spotkaniem.
 const editable = details.status === "active" && canEditEvent(details.starts_at);
 
-let values: EventFormValues = {
-  sport: details.sport,
-  area: details.area,
-  place: details.place,
-  startsAt: toLocalDateTime(details.starts_at),
-  spots: String(details.spots),
-  description: details.description ?? "",
-};
+let values: EventFormValues = eventToForm(details);
 let errors: FieldErrors = {};
 
 if (Astro.request.method === "POST" && editable && supabase) {
@@ -59,7 +51,8 @@ if (Astro.request.method === "POST" && editable && supabase) {
           <>
             {details.participants.length > 0 && (
               <p class="mb-4 text-sm text-blue-100/70">
-                Zaakceptowani uczestnicy: {details.participants.length}. Limitu nie można ustawić poniżej tej liczby.
+                Zaakceptowani uczestnicy: {details.participants.length}. Skład nie może być mniejszy niż ta liczba (plus
+                Ty, jeśli grasz).
               </p>
             )}
             <EventForm values={values} errors={errors} submitLabel="Zapisz zmiany" />

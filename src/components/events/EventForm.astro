@@ -3,6 +3,7 @@
 import type { EventFormValues, FieldErrors } from "@/lib/services/events";
 import { SPORTS } from "@/lib/sports";
 import { nowLocalDateTime } from "@/lib/time";
+import MapPicker from "@/components/map/MapPicker";
 
 interface Props {
   values: EventFormValues;
@@ -81,18 +82,41 @@ const borderClass = (name: keyof FieldErrors) =>
   </label>
 
   <label class="text-sm text-blue-100/80">
-    Ile osób potrzebujesz (bez Ciebie)
+    Ile osób łącznie w składzie?
     <input
       type="number"
-      name="spots"
+      name="total"
       required
       min="1"
       max="50"
-      value={values.spots}
-      class:list={[inputClass, borderClass("spots")]}
+      placeholder="np. 12 przy grze 6 na 6"
+      value={values.total}
+      class:list={[inputClass, borderClass("total")]}
     />
-    {errors.spots && <span class="mt-1 block text-xs text-red-300">{errors.spots}</span>}
+    {errors.total && <span class="mt-1 block text-xs text-red-300">{errors.total}</span>}
   </label>
+
+  <label class="flex items-start gap-2 text-sm text-blue-100/80">
+    <input
+      type="checkbox"
+      name="organizerPlays"
+      checked={values.organizerPlays === "on"}
+      class="mt-0.5 size-4 accent-purple-500"
+    />
+    <span>
+      Biorę udział w spotkaniu
+      <span class="block text-xs text-blue-100/50">Zajmujesz jedno miejsce w składzie.</span>
+    </span>
+  </label>
+
+  <div class="text-sm text-blue-100/80">
+    Miejsce na mapie (opcjonalnie)
+    <div class="mt-1">
+      <MapPicker initialLat={values.lat} initialLng={values.lng} client:visible />
+    </div>
+    <span class="mt-1 block text-xs text-blue-100/50">Widoczne tylko dla zalogowanych.</span>
+    {errors.lat && <span class="mt-1 block text-xs text-red-300">{errors.lat}</span>}
+  </div>
 
   <label class="text-sm text-blue-100/80">
     Opis (opcjonalnie)

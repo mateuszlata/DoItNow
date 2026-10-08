@@ -14,6 +14,16 @@ import type {
   PublicEvent,
 } from "@/types";
 
+/** Wartości pola wyboru z formularza HTML: zaznaczone pole wysyła "on". */
+const checkbox = z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean());
+
+/** Opcjonalna współrzędna z ukrytego pola formularza (puste = brak pinezki). */
+const coordinate = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? null : Number(v)),
+    z.number().min(min).max(max).nullable(),
+  );
+
 export const createEventSchema = z.object({
   sport: z.enum(SPORT_IDS, { error: "Wybierz sport z listy." }),
   area: z.string().trim().min(2, "Podaj okolicę (min. 2 znaki).").max(80, "Okolica może mieć maks. 80 znaków."),
@@ -23,11 +33,15 @@ export const createEventSchema = z.object({
     .min(2, "Podaj dokładne miejsce (min. 2 znaki).")
     .max(200, "Miejsce może mieć maks. 200 znaków."),
   startsAt: z.string().min(1, "Podaj datę i godzinę."),
-  spots: z.coerce
+  // Liczba osób w całym składzie, łącznie z organizatorem, jeśli bierze udział.
+  total: z.coerce
     .number({ error: "Podaj liczbę osób." })
     .int("Liczba osób musi być całkowita.")
-    .min(1, "Potrzebna jest co najmniej 1 osoba.")
+    .min(1, "Skład musi mieć co najmniej 1 osobę.")
     .max(50, "Maksymalnie 50 osób."),
+  organizerPlays: checkbox,
+  lat: coordinate(-90, 90),
+  lng: coordinate(-180, 180),
   description: z.string().trim().max(1000, "Opis może mieć maks. 1000 znaków.").optional(),
 });
 
@@ -44,7 +58,11 @@ export interface ParsedEvent {
   area: string;
   place: string;
   startsAt: Date;
+  /** Miejsca do obsadzenia: skład minus organizator, jeśli gra. */
   spots: number;
+  organizerPlays: boolean;
+  lat: number | null;
+  lng: number | null;
   description: string | null;
 }
 
@@ -61,7 +79,7 @@ export function parseEventForm(
     const errors: FieldErrors = {};
     for (const issue of parsed.error.issues) {
       const key = issue.path[0] as EventFormField;
-      errors[key] ??= issue.message;
+      errors[key] ??= key === "lat" || key === "lng" ? "Nieprawidłowe położenie pinezki." : issue.message;
     }
     return { ok: false, errors };
   }
@@ -74,6 +92,13 @@ export function parseEventForm(
   if (startsAt.getTime() <= now.getTime()) {
     return { ok: false, errors: { startsAt: "Wydarzenie musi odbyć się w przyszłości." } };
   }
+  const spots = data.total - (data.organizerPlays ? 1 : 0);
+  if (spots < 1) {
+    return { ok: false, errors: { total: "Skoro bierzesz udział, skład musi liczyć co najmniej 2 osoby." } };
+  }
+  if ((data.lat === null) !== (data.lng === null)) {
+    return { ok: false, errors: { lat: "Nieprawidłowe położenie pinezki." } };
+  }
   return {
     ok: true,
     data: {
@@ -81,7 +106,10 @@ export function parseEventForm(
       area: data.area,
       place: data.place,
       startsAt,
-      spots: data.spots,
+      spots,
+      organizerPlays: data.organizerPlays,
+      lat: data.lat,
+      lng: data.lng,
       // puste pole opisu zapisujemy jako brak opisu
       description: data.description === "" ? null : (data.description ?? null),
     },
@@ -109,6 +137,9 @@ export async function createEvent(
       starts_at: data.startsAt.toISOString(),
       spots: data.spots,
       description: data.description,
+      organizer_plays: data.organizerPlays,
+      lat: data.lat,
+      lng: data.lng,
     })
     .select()
     .single<EventRecord>();
@@ -123,7 +154,8 @@ export async function createEvent(
 const UPDATE_ERRORS: Record<string, FieldErrors> = {
   EDIT_DEADLINE_PASSED: { form: "Edycja jest możliwa najpóźniej 12 h przed spotkaniem." },
   STARTS_IN_PAST: { startsAt: "Wydarzenie musi odbyć się w przyszłości." },
-  SPOTS_BELOW_ACCEPTED: { spots: "Limit nie może być mniejszy niż liczba zaakceptowanych uczestników." },
+  SPOTS_BELOW_ACCEPTED: { total: "Skład nie może być mniejszy niż liczba zaakceptowanych uczestników." },
+  INVALID_DATA: { form: "Nieprawidłowe dane ogłoszenia." },
   NOT_ORGANIZER: { form: "Tylko organizator może edytować ogłoszenie." },
   EVENT_CANCELLED: { form: "Odwołanego ogłoszenia nie można edytować." },
   EVENT_NOT_FOUND: { form: "Nie znaleziono ogłoszenia." },
@@ -151,6 +183,9 @@ export async function updateEvent(
     p_starts_at: data.startsAt.toISOString(),
     p_spots: data.spots,
     p_description: data.description ?? "",
+    p_organizer_plays: data.organizerPlays,
+    p_lat: data.lat,
+    p_lng: data.lng,
   });
   if (response.error) {
     return {
@@ -192,8 +227,8 @@ export async function listUpcomingEvents(
   const now = options.now ?? new Date();
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   const columns = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count"
-    : "id, sport, area, starts_at, spots, accepted_count";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays";
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
@@ -231,7 +266,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   if (!UUID_PATTERN.test(id)) return null;
   const { data, error } = await supabase
     .from("events_public")
-    .select("id, sport, area, starts_at, spots, accepted_count")
+    .select("id, sport, area, starts_at, spots, accepted_count, organizer_plays")
     .eq("id", id)
     .maybeSingle<PublicEvent>();
   if (error) throw new Error(`Nie udało się pobrać ogłoszenia: ${error.message}`);

@@ -1,15 +1,37 @@
 import type { EventFormValues } from "@/lib/services/events";
+import { toLocalDateTime } from "@/lib/time";
+import { teamSize } from "@/lib/capacity";
+import type { EventRecord } from "@/types";
 
+// Nowe ogłoszenie: domyślnie organizator bierze udział.
 export const EMPTY_EVENT_FORM: EventFormValues = {
   sport: "",
   area: "",
   place: "",
   startsAt: "",
-  spots: "",
+  total: "",
+  organizerPlays: "on",
+  lat: "",
+  lng: "",
   description: "",
 };
 
-/** Odczytuje pola formularza ogłoszenia z żądania POST. */
+/** Wartości formularza edycji z zapisanego ogłoszenia. */
+export function eventToForm(event: EventRecord): EventFormValues {
+  return {
+    sport: event.sport,
+    area: event.area,
+    place: event.place,
+    startsAt: toLocalDateTime(event.starts_at),
+    total: String(teamSize(event)),
+    organizerPlays: event.organizer_plays ? "on" : "",
+    lat: event.lat === null ? "" : String(event.lat),
+    lng: event.lng === null ? "" : String(event.lng),
+    description: event.description ?? "",
+  };
+}
+
+/** Odczytuje pola formularza ogłoszenia z żądania POST. Niezaznaczone pole wyboru nie jest wysyłane. */
 export async function readEventForm(request: Request): Promise<EventFormValues> {
   const form = await request.formData();
   const field = (name: string) => {
@@ -21,7 +43,10 @@ export async function readEventForm(request: Request): Promise<EventFormValues> 
     area: field("area"),
     place: field("place"),
     startsAt: field("startsAt"),
-    spots: field("spots"),
+    total: field("total"),
+    organizerPlays: field("organizerPlays"),
+    lat: field("lat"),
+    lng: field("lng"),
     description: field("description"),
   };
 }
