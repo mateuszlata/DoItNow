@@ -105,42 +105,40 @@ const navigateHref =
     : null;
 ---
 
-<Layout title={summary ? `${sportLabel(summary.sport)} · DoItNow` : "Nie znaleziono · DoItNow"}>
-  <div class="bg-cosmic min-h-screen p-4">
+<Layout title={summary ? `${sportLabel(summary.sport)} · Ktoś/Coś` : "Nie znaleziono · Ktoś/Coś"}>
+  <div class="bg-app min-h-screen p-4">
     <div class="mx-auto max-w-xl">
       <Topbar />
-      <a href="/events" class="mb-3 inline-block text-sm text-purple-300 hover:underline">
+      <a href="/events" class="mb-3 inline-block text-sm text-orange-600 hover:underline">
         ← Wszystkie ogłoszenia
       </a>
 
       {okMessage && (
-        <p class="mb-3 rounded-lg border border-green-400/40 bg-green-500/10 px-4 py-2 text-sm text-green-200">
-          {okMessage}
-        </p>
+        <p class="mb-3 rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-sm text-green-700">{okMessage}</p>
       )}
       {errorMessage && (
-        <p class="mb-3 rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm text-red-200">
-          {errorMessage}
-        </p>
+        <p class="mb-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">{errorMessage}</p>
       )}
 
       {!summary && (
-        <div class="rounded-2xl border border-white/10 bg-white/10 p-6 text-center text-white">
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 text-center text-slate-900">
           <h1 class="mb-2 text-xl font-bold">Nie znaleziono ogłoszenia</h1>
-          <p class="text-sm text-blue-100/70">Ogłoszenie nie istnieje albo już się odbyło.</p>
+          <p class="text-sm text-slate-600">Ogłoszenie nie istnieje albo już się odbyło.</p>
         </div>
       )}
 
       {summary && (
-        <article class="rounded-2xl border border-white/10 bg-white/10 p-6 text-white backdrop-blur-xl">
+        <article class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 text-slate-900 backdrop-blur-xl">
           {isCancelled && (
-            <p class="mb-3 rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200">To spotkanie zostało odwołane.</p>
+            <p class="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">To spotkanie zostało odwołane.</p>
           )}
           {isPast && !isCancelled && (
-            <p class="mb-3 rounded-lg bg-white/10 px-3 py-2 text-sm text-blue-100/80">To spotkanie już się odbyło.</p>
+            <p class="mb-3 rounded-lg bg-white shadow-sm px-3 py-2 text-sm text-slate-700">
+              To spotkanie już się odbyło.
+            </p>
           )}
           {organizerLeft && !isPast && (
-            <p class="mb-3 rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-100" data-testid="handover-status">
+            <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="handover-status">
               {isOrganizer
                 ? "Odwołałeś to spotkanie. Czekamy, czy ktoś z uczestników zostanie i przejmie organizację."
                 : "Organizator zrezygnował. Spotkanie odbędzie się, jeśli uczestnicy zdecydują się zostać — pierwsza osoba, która zostanie, przejmuje organizację."}
@@ -148,11 +146,8 @@ const navigateHref =
           )}
 
           {mustAnswer && details && (
-            <section
-              class="mb-4 rounded-xl border border-amber-400/50 bg-amber-500/15 p-4"
-              data-testid="handover-question"
-            >
-              <p class="text-sm text-amber-50">
+            <section class="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4" data-testid="handover-question">
+              <p class="text-sm text-amber-900">
                 <strong>Organizator odwołał spotkanie.</strong> Czy mimo to chcesz w nim zostać i spotkać się z osobami,
                 które się zapisały?
               </p>
@@ -169,7 +164,7 @@ const navigateHref =
                   type="submit"
                   name="stay"
                   value="no"
-                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                  class="rounded-lg border border-slate-300 bg-white shadow-sm px-4 py-2 text-sm transition-colors hover:bg-slate-100"
                 >
                   Rezygnuję
                 </button>
@@ -178,57 +173,57 @@ const navigateHref =
           )}
 
           <h1 class="text-2xl font-bold">{sportLabel(summary.sport)}</h1>
-          <p class="mt-1 text-purple-200">{formatEventDate(summary.starts_at)}</p>
+          <p class="mt-1 text-sky-700">{formatEventDate(summary.starts_at)}</p>
 
           <dl class="mt-4 grid gap-3 text-sm">
             <div>
-              <dt class="text-blue-100/60">Okolica</dt>
+              <dt class="text-slate-500">Okolica</dt>
               <dd>{summary.area}</dd>
             </div>
             {details && (
               <>
                 <div>
-                  <dt class="text-blue-100/60">Dokładne miejsce</dt>
+                  <dt class="text-slate-500">Dokładne miejsce</dt>
                   <dd>{details.place}</dd>
                 </div>
                 <div>
-                  <dt class="text-blue-100/60">Organizator</dt>
+                  <dt class="text-slate-500">Organizator</dt>
                   <dd>{organizerLeft ? "— (organizator zrezygnował)" : details.organizer_name}</dd>
                 </div>
               </>
             )}
             <div>
-              <dt class="text-blue-100/60">Wolne miejsca</dt>
+              <dt class="text-slate-500">Wolne miejsca</dt>
               <dd data-testid="free-spots">
                 <strong>{free}</strong> z {teamSize(summary)}
-                {summary.organizer_plays && <span class="text-blue-100/50"> (łącznie z organizatorem)</span>}
+                {summary.organizer_plays && <span class="text-slate-500"> (łącznie z organizatorem)</span>}
               </dd>
             </div>
             {summary.reserve_spots > 0 && (
               <div>
-                <dt class="text-blue-100/60">Lista rezerwowa</dt>
+                <dt class="text-slate-500">Lista rezerwowa</dt>
                 <dd data-testid="reserve-summary">
                   wolne: <strong>{reserveFree}</strong> z {summary.reserve_spots}
                 </dd>
               </div>
             )}
             <div>
-              <dt class="text-blue-100/60">Dołączanie</dt>
+              <dt class="text-slate-500">Dołączanie</dt>
               <dd data-testid="join-mode">
                 {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
               </dd>
             </div>
             {minimum && (
               <div>
-                <dt class="text-blue-100/60">Minimum</dt>
-                <dd class:list={[minimumMet ? "text-green-200" : "text-amber-200"]} data-testid="minimum">
+                <dt class="text-slate-500">Minimum</dt>
+                <dd class:list={[minimumMet ? "text-green-700" : "text-amber-700"]} data-testid="minimum">
                   {minimum}
                 </dd>
               </div>
             )}
             {details?.description && (
               <div>
-                <dt class="text-blue-100/60">Opis</dt>
+                <dt class="text-slate-500">Opis</dt>
                 <dd class="whitespace-pre-line">{details.description}</dd>
               </div>
             )}
@@ -242,7 +237,7 @@ const navigateHref =
                   href={navigateHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="mt-2 inline-block text-sm text-purple-300 hover:underline"
+                  class="mt-2 inline-block text-sm text-orange-600 hover:underline"
                 >
                   Nawiguj do miejsca spotkania ↗
                 </a>
@@ -251,7 +246,7 @@ const navigateHref =
           )}
 
           {details && !isOrganizer && !mustAnswer && (
-            <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+            <section class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
               {myStatus && myStatus !== "withdrawn" && (
                 <p class="mb-3 text-sm" data-testid="my-status">
                   Twoje zgłoszenie: <strong>{STATUS_LABELS[myStatus]}</strong>
@@ -261,7 +256,7 @@ const navigateHref =
                 <form method="POST" action={`/api/events/${details.id}/join`}>
                   <button
                     type="submit"
-                    class="w-full rounded-lg bg-purple-600 px-4 py-2 font-medium text-white transition-colors hover:bg-purple-500"
+                    class="w-full rounded-lg bg-orange-600 px-4 py-2 font-medium text-white transition-colors hover:bg-orange-700"
                   >
                     {details.requires_approval ? "Zgłoś się" : "Dołącz"}
                   </button>
@@ -271,7 +266,7 @@ const navigateHref =
                 <form method="POST" action={`/api/events/${details.id}/withdraw`}>
                   <button
                     type="submit"
-                    class="w-full rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                    class="w-full rounded-lg border border-slate-300 bg-white shadow-sm px-4 py-2 text-sm transition-colors hover:bg-slate-100"
                   >
                     {myStatus === "accepted"
                       ? "Zrezygnuj z udziału"
@@ -282,9 +277,9 @@ const navigateHref =
                 </form>
               )}
               {withdrawLocked && (
-                <p class="text-sm text-blue-100/70">Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.</p>
+                <p class="text-sm text-slate-600">Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.</p>
               )}
-              {!isOpen && !myStatus && <p class="text-sm text-blue-100/70">Zapisy na to spotkanie są zamknięte.</p>}
+              {!isOpen && !myStatus && <p class="text-sm text-slate-600">Zapisy na to spotkanie są zamknięte.</p>}
             </section>
           )}
 
@@ -293,12 +288,12 @@ const navigateHref =
               {canEditEvent(details.starts_at) ? (
                 <a
                   href={`/events/${details.id}/edit`}
-                  class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+                  class="rounded-lg border border-slate-300 bg-white shadow-sm px-4 py-2 text-sm transition-colors hover:bg-slate-100"
                 >
                   Edytuj
                 </a>
               ) : (
-                <span class="text-sm text-blue-100/70">Edycja jest możliwa najpóźniej 12 h przed spotkaniem.</span>
+                <span class="text-sm text-slate-600">Edycja jest możliwa najpóźniej 12 h przed spotkaniem.</span>
               )}
               <form
                 method="POST"
@@ -307,7 +302,7 @@ const navigateHref =
               >
                 <button
                   type="submit"
-                  class="rounded-lg border border-red-400/40 bg-red-500/10 px-4 py-2 text-sm text-red-200 transition-colors hover:bg-red-500/20"
+                  class="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700 transition-colors hover:bg-red-100"
                 >
                   Odwołaj spotkanie
                 </button>
@@ -316,19 +311,19 @@ const navigateHref =
           )}
 
           {isOrganizer && details && isOpen && (details.requires_approval || details.pending.length > 0) && (
-            <section class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+            <section class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <h2 class="mb-2 font-semibold">Zgłoszenia do rozpatrzenia</h2>
               {details.pending.length === 0 ? (
-                <p class="text-sm text-blue-100/60">Brak oczekujących zgłoszeń.</p>
+                <p class="text-sm text-slate-500">Brak oczekujących zgłoszeń.</p>
               ) : (
                 <>
                   {details.free_spots === 0 && reserveFree > 0 && (
-                    <p class="mb-2 text-sm text-amber-200">
+                    <p class="mb-2 text-sm text-amber-700">
                       Skład jest pełny — zaakceptowane osoby trafią na listę rezerwową.
                     </p>
                   )}
                   {details.free_spots === 0 && reserveFree === 0 && (
-                    <p class="mb-2 text-sm text-amber-200">
+                    <p class="mb-2 text-sm text-amber-700">
                       Skład i lista rezerwowa są pełne — możesz tylko odrzucać zgłoszenia.
                     </p>
                   )}
@@ -358,7 +353,7 @@ const navigateHref =
                             type="submit"
                             name="decision"
                             value="reject"
-                            class="rounded-lg border border-white/20 bg-white/10 px-3 py-1 transition-colors hover:bg-white/20"
+                            class="rounded-lg border border-slate-300 bg-white shadow-sm px-3 py-1 transition-colors hover:bg-slate-100"
                           >
                             Odrzuć
                           </button>
@@ -398,9 +393,9 @@ const navigateHref =
           )}
 
           {!user && (
-            <p class="mt-6 text-sm text-blue-100/70">
+            <p class="mt-6 text-sm text-slate-600">
               Aby zobaczyć dokładne miejsce, organizatora i uczestników oraz się zgłosić,{" "}
-              <a href="/auth/signin" class="text-purple-300 hover:underline">
+              <a href="/auth/signin" class="text-orange-600 hover:underline">
                 zaloguj się
               </a>
             </p>

@@ -27,14 +27,14 @@ const totalPending = organized
 const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
 ---
 
-<Layout title="Moje spotkania · DoItNow">
-  <div class="bg-cosmic min-h-screen p-4">
-    <div class="mx-auto max-w-3xl text-white">
+<Layout title="Moje spotkania · Ktoś/Coś">
+  <div class="bg-app min-h-screen p-4">
+    <div class="mx-auto max-w-3xl text-slate-900">
       <Topbar />
       <h1 class="mb-4 text-2xl font-bold">Moje spotkania</h1>
 
       {totalPending > 0 && (
-        <p class="mb-4 rounded-lg border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-sm text-amber-50">
+        <p class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Masz zgłoszenia czekające na decyzję: {totalPending}. Wejdź w ogłoszenie, aby je zaakceptować lub odrzucić.
         </p>
       )}
@@ -42,9 +42,9 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
       <section class="mb-8">
         <h2 class="mb-2 text-lg font-semibold">Organizuję</h2>
         {organized.length === 0 ? (
-          <p class="text-sm text-blue-100/60">
+          <p class="text-sm text-slate-500">
             Nie masz jeszcze ogłoszeń.{" "}
-            <a href="/events/new" class="text-purple-300 hover:underline">
+            <a href="/events/new" class="text-orange-600 hover:underline">
               Dodaj pierwsze
             </a>
           </p>
@@ -56,15 +56,15 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
                   <a href={`/events/${e.id}`} class="font-semibold hover:underline">
                     {sportLabel(e.sport)}
                   </a>
-                  <span class="text-sm text-blue-100/70">
+                  <span class="text-sm text-slate-600">
                     Zajęte: {takenSpots(e)} z {teamSize(e)}
                   </span>
                 </div>
-                <p class="mt-1 text-sm text-purple-200">{formatEventDate(e.starts_at)}</p>
+                <p class="mt-1 text-sm text-sky-700">{formatEventDate(e.starts_at)}</p>
                 {e.status === "active" && minimumLabel(e) && (
-                  <p class="mt-1 text-xs text-blue-100/70">{minimumLabel(e)}</p>
+                  <p class="mt-1 text-xs text-slate-600">{minimumLabel(e)}</p>
                 )}
-                <p class="mt-1 text-sm text-blue-100/70">
+                <p class="mt-1 text-sm text-slate-600">
                   {e.status === "cancelled"
                     ? "Odwołane"
                     : e.status === "organizer_left"
@@ -84,9 +84,9 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
       <section>
         <h2 class="mb-2 text-lg font-semibold">Moje zgłoszenia</h2>
         {joined.length === 0 ? (
-          <p class="text-sm text-blue-100/60">
+          <p class="text-sm text-slate-500">
             Nie zgłosiłeś się jeszcze na żadne spotkanie.{" "}
-            <a href="/events" class="text-purple-300 hover:underline">
+            <a href="/events" class="text-orange-600 hover:underline">
               Przeglądaj ogłoszenia
             </a>
           </p>
@@ -98,18 +98,18 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
                   <a href={`/events/${e.id}`} class="font-semibold hover:underline">
                     {sportLabel(e.sport)}
                   </a>
-                  {e.my_status && <span class="text-sm text-blue-100/70">{STATUS_LABELS[e.my_status]}</span>}
+                  {e.my_status && <span class="text-sm text-slate-600">{STATUS_LABELS[e.my_status]}</span>}
                 </div>
                 {e.needs_answer && (
-                  <p class="mt-2 rounded-lg border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-sm text-amber-50">
+                  <p class="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                     Organizator odwołał spotkanie.{" "}
-                    <a href={`/events/${e.id}`} class="font-medium text-amber-200 underline">
+                    <a href={`/events/${e.id}`} class="font-medium text-amber-700 underline">
                       Zdecyduj, czy zostajesz
                     </a>
                   </p>
                 )}
-                <p class="mt-1 text-sm text-purple-200">{formatEventDate(e.starts_at)}</p>
-                <p class="mt-1 text-sm text-blue-100/70">
+                <p class="mt-1 text-sm text-sky-700">{formatEventDate(e.starts_at)}</p>
+                <p class="mt-1 text-sm text-slate-600">
                   {e.area} · {e.place}
                   {e.status === "cancelled" && " · Odwołane"}
                   {e.status === "organizer_left" && !e.needs_answer && " · Organizator zrezygnował"}

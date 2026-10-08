@@ -77,21 +77,21 @@ export default function MapPicker({ initialLat, initialLng }: Props) {
     <div>
       <div
         ref={container}
-        className="h-64 w-full overflow-hidden rounded-lg border border-white/20"
+        className="h-64 w-full overflow-hidden rounded-lg border border-slate-300"
         role="application"
         aria-label="Mapa: kliknij, aby zaznaczyć miejsce spotkania"
         data-testid="map-picker"
       />
       <input type="hidden" name="lat" value={point ? String(point.lat) : ""} />
       <input type="hidden" name="lng" value={point ? String(point.lng) : ""} />
-      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-blue-100/60">
+      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-slate-500">
         <span>
           {point
             ? "Pinezka ustawiona — możesz ją przeciągnąć."
             : "Kliknij na mapie, aby zaznaczyć miejsce (opcjonalnie)."}
         </span>
         {point && (
-          <button type="button" onClick={clear} className="text-purple-300 hover:underline">
+          <button type="button" onClick={clear} className="text-orange-600 hover:underline">
             Usuń pinezkę
           </button>
         )}

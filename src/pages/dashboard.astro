@@ -5,27 +5,25 @@ import Layout from "@/layouts/Layout.astro";
 const { user } = Astro.locals;
 ---
 
-<Layout title="Twoje konto · DoItNow">
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="rounded-2xl border border-white/10 bg-white/10 p-8 text-center text-white backdrop-blur-xl">
-      <h1 class="mb-4 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-3xl font-bold text-transparent">
-        Twoje konto
-      </h1>
-      <p class="text-blue-100/80">
-        Zalogowano jako <span class="font-semibold text-white">{user?.email}</span>
+<Layout title="Twoje konto · Ktoś/Coś">
+  <div class="bg-app flex min-h-screen items-center justify-center p-4">
+    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-8 text-center text-slate-900 backdrop-blur-xl">
+      <h1 class="mb-4 text-brand-gradient text-3xl font-bold">Twoje konto</h1>
+      <p class="text-slate-700">
+        Zalogowano jako <span class="font-semibold text-slate-900">{user?.email}</span>
       </p>
       <p class="mt-4 flex justify-center gap-4 text-sm">
-        <a href="/my" class="text-purple-300 hover:underline">
+        <a href="/my" class="text-orange-600 hover:underline">
           Moje spotkania
         </a>
-        <a href="/events" class="text-purple-300 hover:underline">
+        <a href="/events" class="text-orange-600 hover:underline">
           Ogłoszenia
         </a>
       </p>
       <form method="POST" action="/api/auth/signout" class="mt-6">
         <button
           type="submit"
-          class="rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-sm transition-colors hover:bg-white/20"
+          class="rounded-lg border border-slate-300 bg-white shadow-sm px-4 py-2 text-sm transition-colors hover:bg-slate-100"
         >
           Wyloguj
         </button>

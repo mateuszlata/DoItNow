@@ -2,6 +2,22 @@
 
 This file provides guidance to AI Agent when working with code in this repository.
 
+## Business rules
+
+Domain rules (instant join by default or organizer approval when the event has `requires_approval`, removing participants via `remove_participant`, spot limit, reserve list with automatic promotion via `settle_event`, 12 h cutoffs for withdrawal and editing, cancellation with handover to participants via `respond_to_cancellation`) are enforced in Postgres functions in `supabase/migrations/`; tables have no direct insert/update policies for those changes. App services in `src/lib/services/` call these functions and map their error codes to Polish messages.
+
+## Key conventions
+
+- **Path alias**: `@/*` maps to `./src/*` (tsconfig paths).
+- **Astro components** for static content/layout; **React components** only when interactivity is needed.
+- **Tailwind class merging**: use the `cn()` helper from `@/lib/utils` (clsx + tailwind-merge) for conditional/merged class names. Do not concatenate class strings manually.
+- **shadcn/ui**: components live in `src/components/ui/`, "new-york" style variant. Install new ones with `npx shadcn@latest add [name]`.
+- **API routes**: use uppercase `GET`, `POST` exports; validate input with zod.
+- **Supabase migrations**: `supabase/migrations/` using naming format `YYYYMMDDHHmmss_short_description.sql`. Always enable RLS on new tables with granular per-operation, per-role policies.
+- **React**: no Next.js directives ("use client" etc.). Extract hooks to `src/components/hooks/`.
+- **Services/helpers** go in `src/lib/` (or `src/lib/services/` for extracted business logic).
+- **Shared types** (entities, DTOs) go in `src/types.ts`.
+
 ## Commands
 
 - `npm run dev` — start dev server (Cloudflare workerd runtime)
@@ -32,26 +48,6 @@ Full server-side rendering (`output: "server"` in astro.config.mjs). All pages a
 - Auth pages: `src/pages/auth/{signin,signup,confirm-email}.astro`
 - Protected page example: `src/pages/dashboard.astro`
 
-### Key conventions
-
-- **Path alias**: `@/*` maps to `./src/*` (tsconfig paths).
-- **Astro components** for static content/layout; **React components** only when interactivity is needed.
-- **Tailwind class merging**: use the `cn()` helper from `@/lib/utils` (clsx + tailwind-merge) for conditional/merged class names. Do not concatenate class strings manually.
-- **shadcn/ui**: components live in `src/components/ui/`, "new-york" style variant. Install new ones with `npx shadcn@latest add [name]`.
-- **API routes**: use uppercase `GET`, `POST` exports; validate input with zod.
-- **Supabase migrations**: `supabase/migrations/` using naming format `YYYYMMDDHHmmss_short_description.sql`. Always enable RLS on new tables with granular per-operation, per-role policies.
-- **React**: no Next.js directives ("use client" etc.). Extract hooks to `src/components/hooks/`.
-- **Services/helpers** go in `src/lib/` (or `src/lib/services/` for extracted business logic).
-- **Shared types** (entities, DTOs) go in `src/types.ts`.
-
-### Environment
-
-- Node.js v22.14.0 (see `.nvmrc`)
-- Env vars: `SUPABASE_URL`, `SUPABASE_KEY` (copy `.env.example` to `.env` for Node, or `.dev.vars` for Cloudflare local dev)
-- Local Supabase: `npx supabase start` (requires Docker)
-- Cloudflare local dev: secrets go in `.dev.vars` (gitignored)
-- Deploy: `npx wrangler deploy` (requires Cloudflare account + `wrangler` auth)
-
 ## CI
 
 GitHub Actions (`.github/workflows/ci.yml`) on every push and PR to `main`:
@@ -60,6 +56,10 @@ GitHub Actions (`.github/workflows/ci.yml`) on every push and PR to `main`:
 - **test** — local Supabase in CI (migrations applied on start, no secrets), `npm test`, smoke test and Playwright e2e against the production preview.
 - **deploy** — on push to `main` after both jobs pass: `wrangler deploy` to Cloudflare Workers. Needs `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets (skipped with a warning when missing). `SUPABASE_URL` / `SUPABASE_KEY` for production are Worker secrets (`npx wrangler secret put`).
 
-## Business rules
+## Environment
 
-Domain rules (instant join by default or organizer approval when the event has `requires_approval`, removing participants via `remove_participant`, spot limit, reserve list with automatic promotion via `settle_event`, 12 h cutoffs for withdrawal and editing, cancellation with handover to participants via `respond_to_cancellation`) are enforced in Postgres functions in `supabase/migrations/`; tables have no direct insert/update policies for those changes. App services in `src/lib/services/` call these functions and map their error codes to Polish messages.
+- Node.js v22.14.0 (see `.nvmrc`)
+- Env vars: `SUPABASE_URL`, `SUPABASE_KEY` (copy `.env.example` to `.env` for Node, or `.dev.vars` for Cloudflare local dev)
+- Local Supabase: `npx supabase start` (requires Docker)
+- Cloudflare local dev: secrets go in `.dev.vars` (gitignored)
+- Deploy: `npx wrangler deploy` (requires Cloudflare account + `wrangler` auth)

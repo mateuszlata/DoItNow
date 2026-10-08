@@ -38,19 +38,19 @@ if (Astro.request.method === "POST" && editable && supabase) {
 }
 ---
 
-<Layout title="Edytuj ogłoszenie · DoItNow">
-  <div class="bg-cosmic min-h-screen p-4">
+<Layout title="Edytuj ogłoszenie · Ktoś/Coś">
+  <div class="bg-app min-h-screen p-4">
     <div class="mx-auto max-w-xl">
       <Topbar />
-      <a href={`/events/${id}`} class="mb-3 inline-block text-sm text-purple-300 hover:underline">
+      <a href={`/events/${id}`} class="mb-3 inline-block text-sm text-orange-600 hover:underline">
         ← Wróć do ogłoszenia
       </a>
-      <div class="rounded-2xl border border-white/10 bg-white/10 p-6 text-white backdrop-blur-xl">
+      <div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 text-slate-900 backdrop-blur-xl">
         <h1 class="mb-4 text-2xl font-bold">Edytuj ogłoszenie</h1>
         {editable ? (
           <>
             {details.participants.length > 0 && (
-              <p class="mb-4 text-sm text-blue-100/70">
+              <p class="mb-4 text-sm text-slate-600">
                 Zaakceptowani uczestnicy: {details.participants.length}. Skład nie może być mniejszy niż ta liczba (plus
                 Ty, jeśli grasz).
               </p>
@@ -58,7 +58,7 @@ if (Astro.request.method === "POST" && editable && supabase) {
             <EventForm values={values} errors={errors} submitLabel="Zapisz zmiany" />
           </>
         ) : (
-          <p class="text-sm text-blue-100/80">
+          <p class="text-sm text-slate-700">
             {details.status === "cancelled"
               ? "To ogłoszenie zostało odwołane i nie można go już edytować."
               : "Edycja jest możliwa najpóźniej 12 h przed spotkaniem."}

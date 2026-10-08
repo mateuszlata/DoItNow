@@ -6,21 +6,20 @@ const error = Astro.url.searchParams.get("error");
 const info = Astro.url.searchParams.get("info");
 ---
 
-<Layout title="Logowanie · DoItNow">
-  <div class="bg-cosmic flex min-h-screen items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-2xl border border-white/10 bg-white/10 p-8 text-white backdrop-blur-xl">
-      <h1 class="mb-6 bg-gradient-to-r from-blue-200 to-purple-200 bg-clip-text text-center text-2xl font-bold text-transparent">
-        Zaloguj się
-      </h1>
+<Layout title="Logowanie · Ktoś/Coś">
+  <div class="bg-app flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-sm p-8 text-slate-900 backdrop-blur-xl">
+      <a href="/events" class="mb-4 block">
+        <img src="/logo-full.webp" alt="Ktoś/Coś" width="480" height="417" class="mx-auto h-auto w-40" />
+      </a>
+      <h1 class="mb-6 text-brand-gradient text-center text-2xl font-bold">Zaloguj się</h1>
       {info && (
-        <p class="mb-4 rounded-lg border border-green-400/40 bg-green-500/10 px-3 py-2 text-sm text-green-200">
-          {info}
-        </p>
+        <p class="mb-4 rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{info}</p>
       )}
       <SignInForm serverError={error} client:load />
-      <p class="mt-4 text-center text-sm text-blue-100/60">
-        Nie masz konta?{" "}
-        <a href="/auth/signup" class="text-purple-300 hover:underline">
+      <p class="mt-4 text-center text-sm text-slate-500">
+        Nie masz konta?{""}
+        <a href="/auth/signup" class="text-orange-600 hover:underline">
           Załóż konto
         </a>
       </p>

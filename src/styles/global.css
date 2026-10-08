@@ -110,8 +110,25 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@utility bg-cosmic {
-  background-image: linear-gradient(to bottom, #0a0e1a, #0f1529, #0a0e1a);
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Jasne tło z delikatnymi plamami kolorów logo (pomarańcz, zieleń, niebieski). */
+@utility bg-app {
+  background-color: #f8fafc;
+  background-image:
+    radial-gradient(circle at 0% 0%, rgb(251 146 60 / 0.12), transparent 40%),
+    radial-gradient(circle at 100% 0%, rgb(52 211 153 / 0.12), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgb(56 189 248 / 0.12), transparent 45%);
+  background-attachment: fixed;
+}
+
+/* Napis w kolorach logo. */
+@utility text-brand-gradient {
+  background-image: linear-gradient(90deg, #f97316, #10b981, #0284c7);
+  background-clip: text;
+  color: transparent;
 }
 
 @layer base {
