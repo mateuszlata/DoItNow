@@ -95,6 +95,8 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
 
   // Organizator akceptuje zgłoszenie.
   await organizer.reload();
+  // Organizator widzi znaczek z liczbą zgłoszeń przy „Moje spotkania”.
+  await expect(organizer.getByTestId("pending-badge")).toHaveText("1");
   const request = organizer.getByTestId("pending-request").filter({ hasText: participantNick });
   await request.getByRole("button", { name: "Akceptuj" }).click();
   await expect(organizer.getByText("Zgłoszenie zaakceptowane.")).toBeVisible();

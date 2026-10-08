@@ -1,13 +1,16 @@
 ---
 import { createClient } from "@/lib/supabase";
 import { getDisplayName } from "@/lib/services/profiles";
+import { countPendingRequests } from "@/lib/services/events";
 
 const { user } = Astro.locals;
 
 let displayName: string | null = null;
+let pending = 0;
 if (user) {
   const supabase = createClient(Astro.request.headers, Astro.cookies);
   displayName = supabase ? await getDisplayName(supabase, user.id) : null;
+  pending = supabase ? await countPendingRequests(supabase, user.id) : 0;
 }
 ---
 
@@ -23,6 +26,15 @@ if (user) {
       </a>
       <a href="/my" class="text-purple-300 transition-colors hover:text-purple-100 hover:underline">
         Moje spotkania
+        {pending > 0 && (
+          <span
+            class="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] font-semibold text-black"
+            data-testid="pending-badge"
+            title="Zgłoszenia czekające na Twoją decyzję"
+          >
+            {pending}
+          </span>
+        )}
       </a>
       <a href="/events/new" class="text-purple-300 transition-colors hover:text-purple-100 hover:underline">
         Dodaj ogłoszenie

@@ -425,6 +425,18 @@ export async function listMyEvents(
   };
 }
 
+/** Liczba zgłoszeń czekających na decyzję w nadchodzących, aktywnych ogłoszeniach użytkownika (znaczek w pasku). */
+export async function countPendingRequests(supabase: SupabaseClient, userId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("events")
+    .select("pending_count")
+    .eq("organizer_id", userId)
+    .eq("status", "active")
+    .gt("starts_at", new Date().toISOString());
+  if (error) return 0;
+  return (data as unknown as { pending_count: number }[]).reduce((sum, e) => sum + e.pending_count, 0);
+}
+
 /** Czy uczestnik musi odpowiedzieć, czy zostaje po odwołaniu przez organizatora (ta sama reguła co w bazie). */
 export function needsAnswer(
   event: Pick<EventRecord, "handover_at" | "status" | "starts_at">,
