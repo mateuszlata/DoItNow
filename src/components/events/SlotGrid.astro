@@ -20,10 +20,22 @@ interface Props {
   removeFor?: string;
   /** Id oglądającego — jego koszulka jest pomarańczowa. */
   viewerId?: string;
+  /** Sport wydarzenia — wybiera krój stroju. */
+  sport?: string;
 }
 
-const { teamSize, organizerName, participants, reserveSpots, reserves, handover, anonymous, removeFor, viewerId } =
-  Astro.props;
+const {
+  sport,
+  teamSize,
+  organizerName,
+  participants,
+  reserveSpots,
+  reserves,
+  handover,
+  anonymous,
+  removeFor,
+  viewerId,
+} = Astro.props;
 
 interface Slot {
   kind: "taken" | "free";
@@ -82,6 +94,7 @@ const benchAll: Slot[] = [
           title={slot.captain ? "organizator (kapitan)" : undefined}
         >
           <Jersey
+            sport={sport}
             fill={slot.mine ? "#FF7A1A" : "#F3EAD3"}
             trim={slot.mine ? "#0F3B2E" : "#FF7A1A"}
             label={slot.number}
@@ -130,7 +143,7 @@ const benchAll: Slot[] = [
         </li>
       ) : (
         <li class="flex flex-col items-center gap-1" data-slot="free">
-          <Jersey fill="#1F5444" trim="#2B6553" numberColor="#FF7A1A" label="+" />
+          <Jersey sport={sport} fill="#1F5444" trim="#2B6553" numberColor="#FF7A1A" label="+" />
           <span class="text-xs font-bold text-page-ink-2">wolne</span>
         </li>
       ),
@@ -153,7 +166,13 @@ const benchAll: Slot[] = [
         {benchAll.map((slot) =>
           slot.kind === "taken" ? (
             <li class="relative flex flex-col items-center gap-1" data-slot="reserve">
-              <Jersey fill={slot.mine ? "#FF7A1A" : "#FFC58F"} numberColor="#0F3B2E" label={slot.number} width={50} />
+              <Jersey
+                sport={sport}
+                fill={slot.mine ? "#FF7A1A" : "#FFC58F"}
+                numberColor="#0F3B2E"
+                label={slot.number}
+                width={50}
+              />
               <span class="max-w-20 truncate text-xs font-bold text-bench">{slot.name ?? "rezerwa"}</span>
               {removeFor && slot.participationId && (
                 <form
@@ -186,7 +205,7 @@ const benchAll: Slot[] = [
             </li>
           ) : (
             <li class="flex flex-col items-center gap-1" data-slot="reserve-free">
-              <Jersey fill="#3D3A1E" numberColor="#FFC58F" label={slot.number} width={50} />
+              <Jersey sport={sport} fill="#3D3A1E" numberColor="#FFC58F" label={slot.number} width={50} />
               <span class="text-xs font-bold text-bench">wolne</span>
             </li>
           ),

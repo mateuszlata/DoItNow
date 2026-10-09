@@ -246,7 +246,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                   {shirts ? (
                     <div class="grid grid-cols-6 gap-[3px]" aria-hidden="true">
                       {shirts.map((taken) => (
-                        <Jersey fill={taken ? "var(--ok)" : "#BFD9C8"} width={18} />
+                        <Jersey sport={event.sport} fill={taken ? "var(--ok)" : "#BFD9C8"} width={18} />
                       ))}
                     </div>
                   ) : (

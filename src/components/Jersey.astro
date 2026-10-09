@@ -1,29 +1,77 @@
 ---
-// Koszulka z numerem: miejsce w składzie (projekt D2 z Claude Design).
+// Strój z numerem: miejsce w składzie (projekt D2). Krój zależy od sportu — koszulka piłkarska,
+// koszykarska bez rękawów, polo do gier rakietowych, kolarska z zamkiem albo numer startowy biegacza.
+import { sportKit, type Kit } from "@/lib/sports";
+
 interface Props {
-  /** Kolor koszulki, pasa i numeru. */
+  /** Id sportu wydarzenia (wybiera krój stroju). */
+  sport?: string;
+  /** Kolor stroju, wykończenia i numeru. */
   fill: string;
   trim?: string;
   numberColor?: string;
-  /** Numer albo znak („+”, „R1”); pusty dla mini-koszulek na kartach. */
+  /** Numer albo znak („+”, „R1”); pusty dla mini-strojów na kartach. */
   label?: string;
   /** Szerokość w px (wysokość wynika z proporcji). */
   width?: number;
 }
 
-const { fill, trim, numberColor = "#0F3B2E", label = "", width = 58 } = Astro.props;
+const { sport = "", fill, trim, numberColor = "#0F3B2E", label = "", width = 58 } = Astro.props;
+const kit: Kit = sportKit(sport);
 const height = Math.round((width * 52) / 48);
+
+// Sylwetki w polu 48×52; `numberTop` to położenie numeru jako ułamek wysokości.
+const SHAPES: Record<Kit, { body: string; stripe?: string; detail?: string; numberTop: number }> = {
+  tank: {
+    body: "M15 2h6c0 5 1.5 8 3 8s3-3 3-8h6c0 6 2 10 7 12v36H8V14c5-2 7-6 7-12z",
+    stripe: "M8 44h32",
+    numberTop: 0.32,
+  },
+  tee: {
+    body: "M16 3l-6 3-9 8 5 8 6-4v32h24V18l6 4 5-8-9-8-6-3c-1 4-4 6-8 6s-7-2-8-6z",
+    stripe: "M12 44h24",
+    numberTop: 0.36,
+  },
+  polo: {
+    body: "M16 3l-6 3-9 8 5 8 6-4v32h24V18l6 4 5-8-9-8-6-3c-1 4-4 6-8 6s-7-2-8-6z",
+    detail: "M17 4l7 8 7-8M24 12v6",
+    stripe: "M12 46h24",
+    numberTop: 0.42,
+  },
+  cycling: {
+    body: "M17 3l-7 3-8 15 7 4 5-9v34h20V16l5 9 7-4-8-15-7-3c-1 3-4 5-7 5s-6-2-7-5z",
+    detail: "M24 8v9",
+    stripe: "M14 46h20",
+    numberTop: 0.42,
+  },
+  bib: {
+    body: "M8 9h32a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4z",
+    numberTop: 0.36,
+  },
+};
+const shape = SHAPES[kit];
 ---
 
 <span class="relative inline-block shrink-0" style={`width: ${String(width)}px; height: ${String(height)}px`}>
   <svg width={width} height={height} viewBox="0 0 48 52" aria-hidden="true" class="absolute inset-0">
-    <path d="M15 2h6c0 5 1.5 8 3 8s3-3 3-8h6c0 6 2 10 7 12v36H8V14c5-2 7-6 7-12z" fill={fill}></path>
-    {trim && <path d="M8 44h32" stroke={trim} stroke-width="3"></path>}
+    <path d={shape.body} fill={fill}></path>
+    {kit === "bib" && trim && (
+      <>
+        <circle cx="9" cy="14" r="2" fill={trim} />
+        <circle cx="39" cy="14" r="2" fill={trim} />
+        <circle cx="9" cy="38" r="2" fill={trim} />
+        <circle cx="39" cy="38" r="2" fill={trim} />
+      </>
+    )}
+    {shape.detail && trim && (
+      <path d={shape.detail} fill="none" stroke={trim} stroke-width="2.5" stroke-linecap="round" />
+    )}
+    {shape.stripe && trim && <path d={shape.stripe} stroke={trim} stroke-width="3" />}
   </svg>
   {label && (
     <span
       class="display absolute inset-x-0 text-center leading-none"
-      style={`top: ${String(Math.round(height * 0.32))}px; font-size: ${String(Math.round(width * 0.41))}px; color: ${numberColor}`}
+      style={`top: ${String(Math.round(height * shape.numberTop))}px; font-size: ${String(Math.round(width * (kit === "bib" ? 0.46 : 0.41)))}px; color: ${numberColor}`}
       aria-hidden="true"
     >
       {label}

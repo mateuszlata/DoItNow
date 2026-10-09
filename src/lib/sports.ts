@@ -78,6 +78,25 @@ export type SportId = (typeof SPORTS)[number]["id"];
 
 export const SPORT_IDS = SPORTS.map((s) => s.id) as [SportId, ...SportId[]];
 
+/** Krój stroju w składzie: koszulka, bez rękawów, polo, kolarska albo numer startowy. */
+export type Kit = "tee" | "tank" | "polo" | "cycling" | "bib";
+
+const KITS: Record<string, Kit> = {
+  "pilka-nozna": "tee",
+  koszykowka: "tank",
+  siatkowka: "tee",
+  tenis: "polo",
+  badminton: "polo",
+  squash: "polo",
+  "tenis-stolowy": "polo",
+  bieganie: "bib",
+  rower: "cycling",
+};
+
+export function sportKit(id: string): Kit {
+  return KITS[id] ?? "tee";
+}
+
 export const ALL_SPORTS_ICON = "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z";
 
 export function sportIcon(id: string): string {

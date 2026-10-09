@@ -372,6 +372,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
 
           {details && (
             <SlotGrid
+              sport={details.sport}
               teamSize={teamSize(details)}
               organizerName={details.organizer_plays && !organizerLeft ? details.organizer_name : null}
               participants={details.participants}
@@ -384,6 +385,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           )}
           {!details && publicEvent && (
             <SlotGrid
+              sport={publicEvent.sport}
               teamSize={teamSize(publicEvent)}
               organizerName={null}
               participants={[]}
