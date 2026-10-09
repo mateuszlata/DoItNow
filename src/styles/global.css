@@ -268,17 +268,21 @@
 }
 
 /*
- * Animacja napisu logo: co 12 s po kolei MET → MEET (wsuwa się drugie „E”), AND, DO;
- * „D” jest wspólne dla AND i DO, więc zapala się dwa razy. Kolory i cień ustawia wariant logo.
+ * Animacja napisu logo — „jeb, jeb, jeb”: długa cisza, potem trzy szybkie uderzenia
+ * MEET (wskakuje drugie „E”), AND, DO, każde ok. 0,5 s, bez płynnego przenikania.
+ * Cykl 14 s; ujemne opóźnienie sprawia, że pierwsza seria pada ok. 2,5 s po wejściu na stronę.
+ * „D” jest wspólne dla AND i DO, więc uderza dwa razy. Kolory i cień ustawia wariant logo.
  */
-.logo-word {
-  --logo-cycle: 12s;
-}
 .logo-word .l {
   display: inline-block;
+  transform-origin: 50% 100%;
   color: var(--logo-base);
   text-shadow: var(--logo-shadow-base);
-  animation: var(--logo-cycle) ease-in-out infinite;
+  /* Osobne właściwości: skrócone `animation` bez nazwy minifikator zamienia na `none`. */
+  animation-duration: 14s;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  animation-delay: -8.7s;
+  animation-iteration-count: infinite;
 }
 .logo-word .l-met {
   animation-name: logo-met;
@@ -287,7 +291,6 @@
   overflow: hidden;
   vertical-align: bottom;
   max-width: 0;
-  opacity: 0;
   animation-name: logo-met, logo-e2;
 }
 .logo-word .l-and {
@@ -302,76 +305,101 @@
 
 @keyframes logo-met {
   0%,
-  30%,
-  46%,
+  79.9%,
+  84%,
   100% {
     color: var(--logo-base);
     text-shadow: var(--logo-shadow-base);
+    transform: none;
   }
-  33%,
-  43% {
+  80% {
     color: var(--logo-lit);
     text-shadow: var(--logo-shadow-lit);
+    transform: translateY(-14%) scale(1.32);
+  }
+  81.4%,
+  83.9% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+    transform: none;
   }
 }
 @keyframes logo-e2 {
   0%,
-  30%,
-  47%,
+  79.9%,
+  84%,
   100% {
     max-width: 0;
-    opacity: 0;
   }
-  34%,
-  42% {
+  80%,
+  83.9% {
     max-width: 0.62em;
-    opacity: 1;
   }
 }
 @keyframes logo-and {
   0%,
-  47%,
-  63%,
+  83.9%,
+  88%,
   100% {
     color: var(--logo-base);
     text-shadow: var(--logo-shadow-base);
+    transform: none;
   }
-  50%,
-  60% {
+  84% {
     color: var(--logo-lit);
     text-shadow: var(--logo-shadow-lit);
+    transform: translateY(-14%) scale(1.32);
+  }
+  85.4%,
+  87.9% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+    transform: none;
   }
 }
 @keyframes logo-d {
   0%,
-  47%,
-  63%,
-  64%,
-  80%,
+  83.9%,
+  92%,
   100% {
     color: var(--logo-base);
     text-shadow: var(--logo-shadow-base);
+    transform: none;
   }
-  50%,
-  60%,
-  67%,
-  77% {
+  84%,
+  88% {
     color: var(--logo-lit);
     text-shadow: var(--logo-shadow-lit);
+    transform: translateY(-14%) scale(1.32);
+  }
+  85.4%,
+  87.9%,
+  89.4%,
+  91.9% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+    transform: none;
   }
 }
 @keyframes logo-do {
   0%,
-  64%,
-  80%,
+  87.9%,
+  92%,
   100% {
     color: var(--logo-base);
     text-shadow: var(--logo-shadow-base);
+    transform: none;
   }
-  67%,
-  77% {
+  88% {
     color: var(--logo-lit);
     text-shadow: var(--logo-shadow-lit);
+    transform: translateY(-14%) scale(1.32);
+  }
+  89.4%,
+  91.9% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+    transform: none;
   }
 }
 
