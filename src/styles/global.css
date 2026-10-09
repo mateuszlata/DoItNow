@@ -266,3 +266,117 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Animacja napisu logo: co 12 s po kolei MET → MEET (wsuwa się drugie „E”), AND, DO;
+ * „D” jest wspólne dla AND i DO, więc zapala się dwa razy. Kolory i cień ustawia wariant logo.
+ */
+.logo-word {
+  --logo-cycle: 12s;
+}
+.logo-word .l {
+  display: inline-block;
+  color: var(--logo-base);
+  text-shadow: var(--logo-shadow-base);
+  animation: var(--logo-cycle) ease-in-out infinite;
+}
+.logo-word .l-met {
+  animation-name: logo-met;
+}
+.logo-word .l-e2 {
+  overflow: hidden;
+  vertical-align: bottom;
+  max-width: 0;
+  opacity: 0;
+  animation-name: logo-met, logo-e2;
+}
+.logo-word .l-and {
+  animation-name: logo-and;
+}
+.logo-word .l-d {
+  animation-name: logo-d;
+}
+.logo-word .l-do {
+  animation-name: logo-do;
+}
+
+@keyframes logo-met {
+  0%,
+  30%,
+  46%,
+  100% {
+    color: var(--logo-base);
+    text-shadow: var(--logo-shadow-base);
+  }
+  33%,
+  43% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+  }
+}
+@keyframes logo-e2 {
+  0%,
+  30%,
+  47%,
+  100% {
+    max-width: 0;
+    opacity: 0;
+  }
+  34%,
+  42% {
+    max-width: 0.62em;
+    opacity: 1;
+  }
+}
+@keyframes logo-and {
+  0%,
+  47%,
+  63%,
+  100% {
+    color: var(--logo-base);
+    text-shadow: var(--logo-shadow-base);
+  }
+  50%,
+  60% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+  }
+}
+@keyframes logo-d {
+  0%,
+  47%,
+  63%,
+  64%,
+  80%,
+  100% {
+    color: var(--logo-base);
+    text-shadow: var(--logo-shadow-base);
+  }
+  50%,
+  60%,
+  67%,
+  77% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+  }
+}
+@keyframes logo-do {
+  0%,
+  64%,
+  80%,
+  100% {
+    color: var(--logo-base);
+    text-shadow: var(--logo-shadow-base);
+  }
+  67%,
+  77% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-word .l {
+    animation: none;
+  }
+}

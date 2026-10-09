@@ -1,12 +1,30 @@
 ---
-// Znak i napis Metando (projekt z Claude Design): „M” na pomarańczowym kafelku i pochylony napis.
+// Znak i napis Metando (projekt z Claude Design): „M” na pomarańczowym kafelku i pochylony napis,
+// w którym co jakiś czas zapalają się słowa MEET (wsuwa się drugie „E”), AND i DO — „meet and do”.
 interface Props {
-  /** `bar` — pasek aplikacji, `hero` — duże logo z hasłem (logowanie, rejestracja). */
+  /** `bar` — pasek aplikacji, `hero` — duże logo z podpisem (logowanie, rejestracja). */
   size?: "bar" | "hero";
 }
 
 const { size = "bar" } = Astro.props;
+// Litery napisu i ich słowo w animacji; drugie „E” wsuwa się, tworząc MEET.
+const LETTERS = [
+  ["M", "met"],
+  ["E", "met"],
+  ["E", "e2"],
+  ["T", "met"],
+  ["A", "and"],
+  ["N", "and"],
+  ["D", "d"],
+  ["O", "do"],
+] as const;
 const px = size === "hero" ? 64 : 32;
+// Na zielonym pasku napis jest kremowy z pomarańczowym cieniem; na kremowej karcie — granatowy.
+// Zapalone słowo zmienia kolor na pomarańcz, a cień na kolor bazowy.
+const colors =
+  size === "hero"
+    ? "--logo-base: var(--ink); --logo-lit: var(--brand); --logo-shadow-base: 3px 3px 0 var(--brand); --logo-shadow-lit: 3px 3px 0 var(--ink)"
+    : "--logo-base: var(--page-ink); --logo-lit: var(--brand); --logo-shadow-base: 2px 2px 0 var(--brand); --logo-shadow-lit: 2px 2px 0 var(--page-ink)";
 ---
 
 <span class:list={["inline-flex items-center", size === "hero" ? "flex-col gap-3" : "gap-2.5"]}>
@@ -24,14 +42,31 @@ const px = size === "hero" ? 64 : 32;
   <span class:list={["flex flex-col", size === "hero" && "items-center gap-2"]}>
     <span
       class:list={[
-        "display",
-        size === "hero"
-          ? "display-hero text-6xl text-ink"
-          : "text-page-ink text-[30px] [text-shadow:2px_2px_0_#ff7a1a] [transform:skewX(-10deg)]",
+        "display logo-word inline-block [transform:skewX(-10deg)]",
+        size === "hero" ? "text-6xl" : "text-[30px]",
       ]}
+      style={colors}
     >
-      Metando
+      <span class="sr-only">Metando</span>
+      <span aria-hidden="true">
+        {LETTERS.map(([char, group]) => (
+          <span class:list={`l l-${group}`}>{char}</span>
+        ))}
+      </span>
     </span>
+    {size === "hero" && (
+      <span
+        class="logo-word flex gap-2 text-xs font-bold tracking-[0.22em] uppercase"
+        style="--logo-base: var(--ink-3); --logo-lit: var(--brand); --logo-shadow-base: none; --logo-shadow-lit: none"
+        aria-hidden="true"
+      >
+        <span class="l l-met">meet</span>
+        <span class="text-ink-3">·</span>
+        <span class="l l-and">and</span>
+        <span class="text-ink-3">·</span>
+        <span class="l l-do">do</span>
+      </span>
+    )}
     {size === "hero" && <span class="text-sm text-ink-2">spotkaj się i zrób coś razem</span>}
   </span>
 </span>
