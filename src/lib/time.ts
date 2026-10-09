@@ -70,3 +70,46 @@ export function formatEventDate(iso: string, timeZone = APP_TIME_ZONE): string {
     minute: "2-digit",
   }).format(new Date(iso));
 }
+
+/** Szybkie filtry terminu na liście ogłoszeń. */
+export const WHEN_OPTIONS = ["today", "tomorrow", "weekend"] as const;
+export type When = (typeof WHEN_OPTIONS)[number];
+
+function addDays(day: string, days: number): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Przedział [początek, koniec) dla „dziś”, „jutro” albo „weekend” (najbliższa sobota i niedziela,
+ * a w weekend — bieżący) w strefie aplikacji.
+ */
+export function whenRange(
+  when: string,
+  now: Date = new Date(),
+  timeZone = APP_TIME_ZONE,
+): { from: Date; to: Date } | null {
+  const today = toLocalDateTime(now, timeZone).slice(0, 10);
+  if (when === "today") return dayRange(today, timeZone);
+  if (when === "tomorrow") return dayRange(addDays(today, 1), timeZone);
+  if (when !== "weekend") return null;
+  const weekday = new Date(`${today}T12:00:00Z`).getUTCDay();
+  const saturday = weekday === 0 ? addDays(today, -1) : addDays(today, 6 - weekday);
+  const start = dayRange(saturday, timeZone);
+  const end = dayRange(addDays(saturday, 1), timeZone);
+  return start && end ? { from: start.from, to: end.to } : null;
+}
+
+/** Godzina wydarzenia, np. „18:00”. */
+export function formatEventTime(iso: string, timeZone = APP_TIME_ZONE): string {
+  return new Intl.DateTimeFormat("pl-PL", { timeZone, hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+}
+
+/** Dzień tygodnia i data do dużego nagłówka, np. { weekday: "sobota", date: "10.10" }. */
+export function eventDayParts(iso: string, timeZone = APP_TIME_ZONE): { weekday: string; date: string } {
+  const date = new Date(iso);
+  const weekday = new Intl.DateTimeFormat("pl-PL", { timeZone, weekday: "long" }).format(date);
+  const dayMonth = new Intl.DateTimeFormat("pl-PL", { timeZone, day: "2-digit", month: "2-digit" }).format(date);
+  return { weekday, date: dayMonth };
+}

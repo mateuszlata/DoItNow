@@ -79,9 +79,9 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await card.getByRole("link", { name: "Koszykówka" }).click();
   await organizer.waitForURL(/\/events\/[0-9a-f-]{36}$/);
   const eventUrl = organizer.url();
-  await expect(organizer.getByTestId("free-spots")).toContainText("2 z 3");
+  await expect(organizer.getByTestId("free-spots")).toContainText(/2\s*wolne z 3/);
   // Organizator, który gra, jest na liście uczestników; mapa z pinezką jest w szczegółach.
-  // Skład jako okienka: organizator w zielonym okienku, 2 wolne (pomarańczowe).
+  // Skład jako koszulki: organizator (kapitan) w pierwszej, 2 wolne z „+”.
   await expect(organizer.locator("[data-slot=taken]")).toHaveCount(1);
   await expect(organizer.locator("[data-slot=taken]").first()).toContainText(organizerNick);
   await expect(organizer.locator("[data-slot=taken]").first()).toContainText("organizator");
@@ -93,7 +93,7 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await participant.goto(eventUrl);
   await participant.getByRole("button", { name: "Zgłoś się" }).click();
   await expect(participant.getByTestId("my-status")).toContainText("oczekuje na akceptację");
-  await expect(participant.getByTestId("free-spots")).toContainText("2 z 3");
+  await expect(participant.getByTestId("free-spots")).toContainText(/2\s*wolne z 3/);
 
   // Organizator akceptuje zgłoszenie.
   await organizer.reload();
@@ -105,12 +105,12 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
 
   // Then: oboje widzą uczestnika, a wolnych miejsc jest o 1 mniej.
   await expect(organizer.getByTestId("participants")).toContainText(participantNick);
-  await expect(organizer.getByTestId("free-spots")).toContainText("1 z 3");
+  await expect(organizer.getByTestId("free-spots")).toContainText(/1\s*wolne z 3/);
 
   await participant.reload();
   await expect(participant.getByTestId("my-status")).toContainText("jesteś w składzie");
   await expect(participant.getByTestId("participants")).toContainText(participantNick);
-  await expect(participant.getByTestId("free-spots")).toContainText("1 z 3");
+  await expect(participant.getByTestId("free-spots")).toContainText(/1\s*wolne z 3/);
 });
 
 test("joining without approval is instant and the organizer can remove a participant", async ({ browser }) => {
@@ -139,7 +139,7 @@ test("joining without approval is instant and the organizer can remove a partici
   await participant.getByRole("button", { name: "Dołącz" }).click();
   await expect(participant.getByText("Dołączyłeś — jesteś w składzie!")).toBeVisible();
   await expect(participant.getByTestId("participants")).toContainText(participantNick);
-  await expect(participant.getByTestId("free-spots")).toContainText("2 z 4");
+  await expect(participant.getByTestId("free-spots")).toContainText(/2\s*wolne z 4/);
 
   // Organizator usuwa uczestnika; ten nie może dołączyć ponownie.
   await organizer.reload();

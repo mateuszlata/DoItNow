@@ -1,11 +1,13 @@
 ---
-// Skład jako okienka: zielone zajęte, pomarańczowe wolne, czerwone lista rezerwowa.
-// Zalogowani widzą nicki; goście tylko kolory (bez danych osób, FR-001).
+// Skład jako koszulki z numerami (projekt D2): kremowe zajęte, pomarańczowa Twoja, ciemnozielone „+” wolne,
+// a pod spodem ławka rezerwowych. Zalogowani widzą nicki; goście tylko koszulki (bez danych osób, FR-001).
+import Jersey from "@/components/Jersey.astro";
+import { jerseyNumber } from "@/lib/jerseys";
 import type { Participant } from "@/types";
 
 interface Props {
   teamSize: number;
-  /** Nick grającego organizatora (pierwsze okienko) albo null, gdy organizator nie gra. */
+  /** Nick grającego organizatora (pierwsza koszulka, kapitan) albo null, gdy organizator nie gra. */
   organizerName: string | null;
   participants: Participant[];
   reserveSpots: number;
@@ -16,77 +18,120 @@ interface Props {
   anonymous?: { taken: number; reserved: number };
   /** Id ogłoszenia, gdy ogląda organizator: przy osobach pojawia się przycisk „Usuń”. */
   removeFor?: string;
+  /** Id oglądającego — jego koszulka jest pomarańczowa. */
+  viewerId?: string;
 }
 
-const { teamSize, organizerName, participants, reserveSpots, reserves, handover, anonymous, removeFor } = Astro.props;
+const { teamSize, organizerName, participants, reserveSpots, reserves, handover, anonymous, removeFor, viewerId } =
+  Astro.props;
 
 interface Slot {
   kind: "taken" | "free";
+  number: string;
   name?: string;
   note?: string;
+  captain?: boolean;
+  mine?: boolean;
   participationId?: string;
 }
 
 const taken: Slot[] = anonymous
-  ? Array.from({ length: anonymous.taken }, () => ({ kind: "taken" as const }))
+  ? Array.from({ length: anonymous.taken }, (_, i) => ({ kind: "taken" as const, number: jerseyNumber(i) }))
   : [
-      ...(organizerName ? [{ kind: "taken" as const, name: organizerName, note: "organizator" }] : []),
+      ...(organizerName ? [{ name: organizerName, captain: true }] : []),
       ...participants.map((p) => ({
-        kind: "taken" as const,
         name: p.display_name,
+        mine: p.user_id === viewerId,
         participationId: p.participation_id,
         note: handover && p.stay_confirmed == null ? "nie potwierdził(a)" : undefined,
       })),
-    ];
+    ].map((p, i) => ({ kind: "taken" as const, number: jerseyNumber(i), ...p }));
 const team: Slot[] = [
   ...taken,
-  ...Array.from({ length: Math.max(teamSize - taken.length, 0) }, () => ({ kind: "free" as const })),
+  ...Array.from({ length: Math.max(teamSize - taken.length, 0) }, () => ({ kind: "free" as const, number: "+" })),
 ];
 
-const reserveTaken: Slot[] = anonymous
-  ? Array.from({ length: anonymous.reserved }, () => ({ kind: "taken" as const }))
-  : reserves.map((p, i) => ({
-      kind: "taken" as const,
-      name: p.display_name,
-      note: `${String(i + 1)}. w kolejce`,
-      participationId: p.participation_id,
-    }));
-const reserve: Slot[] = [
-  ...reserveTaken,
-  ...Array.from({ length: Math.max(reserveSpots - reserveTaken.length, 0) }, () => ({ kind: "free" as const })),
+const bench: Slot[] = [
+  ...(anonymous
+    ? Array.from({ length: anonymous.reserved }, (_, i) => ({ kind: "taken" as const, number: `R${String(i + 1)}` }))
+    : reserves.map((p, i) => ({
+        kind: "taken" as const,
+        number: `R${String(i + 1)}`,
+        name: p.display_name,
+        mine: p.user_id === viewerId,
+        participationId: p.participation_id,
+      }))),
 ];
-
-const base = "min-h-12 rounded-lg border px-2 py-1.5 text-xs leading-tight";
+const benchAll: Slot[] = [
+  ...bench,
+  ...Array.from({ length: Math.max(reserveSpots - bench.length, 0) }, (_, i) => ({
+    kind: "free" as const,
+    number: `R${String(bench.length + i + 1)}`,
+  })),
+];
 ---
 
-<section class="mt-6" data-testid="slots">
-  <h2 class="mb-2 font-semibold">Skład</h2>
-  <ul class="grid grid-cols-3 gap-2 sm:grid-cols-4" data-testid="participants">
+<section class="flex flex-col gap-4 rounded-[20px] bg-page-2 px-3.5 py-4 text-page-ink" data-testid="slots">
+  <h2 class="display display-hero text-[30px]">Skład</h2>
+  <ul class="grid grid-cols-4 gap-x-1 gap-y-3" data-testid="participants">
     {team.map((slot) =>
       slot.kind === "taken" ? (
-        <li class:list={[base, "border-ok-line bg-ok-soft text-ok"]} data-slot="taken">
-          <span class="block truncate font-medium">{slot.name ?? "Zajęte"}</span>
-          {slot.note && <span class="block truncate text-[11px] text-ok">{slot.note}</span>}
+        <li
+          class="relative flex flex-col items-center gap-1"
+          data-slot="taken"
+          title={slot.captain ? "organizator (kapitan)" : undefined}
+        >
+          <Jersey
+            fill={slot.mine ? "#FF7A1A" : "#F3EAD3"}
+            trim={slot.mine ? "#0F3B2E" : "#FF7A1A"}
+            label={slot.number}
+          />
+          {slot.captain && (
+            <span
+              class="display absolute top-0 left-1 grid size-6 place-items-center rounded-full bg-brand text-sm text-on-brand shadow-[0_0_0_3px_var(--page-2)]"
+              aria-hidden="true"
+            >
+              K
+            </span>
+          )}
+          <span class:list={["max-w-full truncate px-1 text-xs font-bold", slot.mine ? "text-brand" : "text-page-ink"]}>
+            {slot.name ?? "zajęte"}
+            {slot.captain && <span class="sr-only"> (kapitan, organizator)</span>}
+          </span>
+          {slot.note && <span class="text-[11px] text-bench">{slot.note}</span>}
           {removeFor && slot.participationId && (
             <form
               method="POST"
               action={`/api/participations/${slot.participationId}/remove`}
+              class="absolute -top-1.5 right-0"
               onsubmit="return confirm('Usunąć tę osobę ze spotkania? Nie będzie mogła zgłosić się ponownie.')"
             >
               <input type="hidden" name="eventId" value={removeFor} />
               <button
                 type="submit"
-                class="mt-1 text-[11px] text-ok underline hover:text-ink"
                 aria-label={`Usuń ${slot.name ?? ""}`}
+                class="grid size-[26px] place-items-center rounded-full bg-bad text-white shadow-[0_0_0_3px_var(--page-2)]"
               >
-                Usuń
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3.2"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
               </button>
             </form>
           )}
         </li>
       ) : (
-        <li class:list={[base, "border-dashed border-free-line bg-free-soft text-free"]} data-slot="free">
-          Wolne
+        <li class="flex flex-col items-center gap-1" data-slot="free">
+          <Jersey fill="#1F5444" trim="#2B6553" numberColor="#FF7A1A" label="+" />
+          <span class="text-xs font-bold text-page-ink-2">wolne</span>
         </li>
       ),
     )}
@@ -94,51 +139,59 @@ const base = "min-h-12 rounded-lg border px-2 py-1.5 text-xs leading-tight";
 
   {reserveSpots > 0 && (
     <>
-      <h3 class="mt-4 mb-2 text-sm font-semibold">Lista rezerwowa</h3>
-      <ul class="grid grid-cols-3 gap-2 sm:grid-cols-4" data-testid="reserves">
-        {reserve.map((slot) =>
+      <div class="sleeve" aria-hidden="true">
+        <span />
+        <span />
+      </div>
+      <div class="flex items-baseline justify-between">
+        <h3 class="display text-[22px]">Ławka rezerwowych</h3>
+        <span class="text-[13px] font-bold text-bench">
+          {bench.length} z {reserveSpots}
+        </span>
+      </div>
+      <ul class="flex flex-wrap justify-around gap-3" data-testid="reserves">
+        {benchAll.map((slot) =>
           slot.kind === "taken" ? (
-            <li class:list={[base, "border-bad-line bg-bad-soft text-bad"]} data-slot="reserve">
-              <span class="block truncate font-medium">{slot.name ?? "Rezerwa"}</span>
-              {slot.note && <span class="block truncate text-[11px] text-bad">{slot.note}</span>}
+            <li class="relative flex flex-col items-center gap-1" data-slot="reserve">
+              <Jersey fill={slot.mine ? "#FF7A1A" : "#FFC58F"} numberColor="#0F3B2E" label={slot.number} width={50} />
+              <span class="max-w-20 truncate text-xs font-bold text-bench">{slot.name ?? "rezerwa"}</span>
               {removeFor && slot.participationId && (
                 <form
                   method="POST"
                   action={`/api/participations/${slot.participationId}/remove`}
-                  onsubmit="return confirm('Usunąć tę osobę ze spotkania? Nie będzie mogła zgłosić się ponownie.')"
+                  class="absolute -top-1.5 -right-2"
+                  onsubmit="return confirm('Usunąć tę osobę z listy rezerwowej? Nie będzie mogła zgłosić się ponownie.')"
                 >
                   <input type="hidden" name="eventId" value={removeFor} />
                   <button
                     type="submit"
-                    class="mt-1 text-[11px] text-bad underline hover:text-ink"
                     aria-label={`Usuń ${slot.name ?? ""}`}
+                    class="grid size-[26px] place-items-center rounded-full bg-bad text-white shadow-[0_0_0_3px_var(--page-2)]"
                   >
-                    Usuń
+                    <svg
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3.2"
+                      stroke-linecap="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
                   </button>
                 </form>
               )}
             </li>
           ) : (
-            <li class:list={[base, "border-dashed border-bad-line bg-bad-soft text-bad"]} data-slot="reserve-free">
-              Wolna rezerwa
+            <li class="flex flex-col items-center gap-1" data-slot="reserve-free">
+              <Jersey fill="#3D3A1E" numberColor="#FFC58F" label={slot.number} width={50} />
+              <span class="text-xs font-bold text-bench">wolne</span>
             </li>
           ),
         )}
       </ul>
     </>
   )}
-
-  <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-ink-3">
-    <span>
-      <span class="mr-1 inline-block size-2.5 rounded-sm bg-ok-line"></span>zajęte
-    </span>
-    <span>
-      <span class="mr-1 inline-block size-2.5 rounded-sm bg-free-line"></span>wolne
-    </span>
-    {reserveSpots > 0 && (
-      <span>
-        <span class="mr-1 inline-block size-2.5 rounded-sm bg-bad-line"></span>rezerwa
-      </span>
-    )}
-  </p>
 </section>

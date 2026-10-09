@@ -1,18 +1,20 @@
 ---
+// Górny pasek (logo, nick) i dolna nawigacja aplikacji: Gramy · + · Moje.
 import { createClient } from "@/lib/supabase";
 import { getDisplayName } from "@/lib/services/profiles";
 import { countPendingRequests } from "@/lib/services/events";
 import Logo from "@/components/Logo.astro";
-import { THEMES, THEME_COOKIE, readTheme } from "@/lib/theme";
 
 interface Props {
-  /** Duży nagłówek strony wyświetlany w pasku (np. „W co dziś gramy?”). */
+  /** Duży nagłówek strony (np. „W co dziś gramy?”); znak `|` łamie linię. */
   title?: string;
+  /** Strona ma własny przypięty pasek akcji zamiast dolnej nawigacji (szczegóły ogłoszenia). */
+  hideNav?: boolean;
 }
 
-const { title } = Astro.props;
+const { title, hideNav = false } = Astro.props;
 const { user } = Astro.locals;
-const theme = readTheme(Astro.cookies);
+const path = Astro.url.pathname;
 
 let displayName: string | null = null;
 let pending = 0;
@@ -22,86 +24,112 @@ if (user) {
   pending = supabase ? await countPendingRequests(supabase, user.id) : 0;
 }
 
-const link = "text-header-link font-semibold transition-opacity hover:opacity-80";
+const titleLines = title?.split("|") ?? [];
+const navItem = "flex min-w-16 flex-col items-center gap-1 text-xs font-bold tracking-wide uppercase";
 ---
 
-<header class="bg-header text-on-header -mx-4 -mt-4 mb-5 rounded-b-[2rem] px-5 pt-4 pb-5 sm:mx-0 sm:mt-0 sm:rounded-[2rem]">
-  <div class="flex items-center justify-between gap-3">
-    <a href="/events" aria-label="Metando — ogłoszenia">
-      <Logo />
+<header class="mb-5 flex h-12 items-center justify-between gap-3">
+  <a href="/events" aria-label="Metando — ogłoszenia">
+    <Logo />
+  </a>
+  {user ? (
+    <a
+      href="/my"
+      class="flex h-11 max-w-[45%] items-center rounded-full bg-card px-4 text-sm font-bold text-ink"
+      title="Moje spotkania"
+    >
+      <span class="truncate">{displayName ?? "Moje konto"}</span>
     </a>
-    <div class="flex items-center gap-1" role="group" aria-label="Motyw" data-testid="theme-switcher">
-      {THEMES.map((t) => (
-        <button
-          type="button"
-          data-theme-choice={t.id}
-          title={t.label}
-          aria-pressed={t.id === theme ? "true" : "false"}
-          class:list={[
-            "h-7 min-w-7 rounded-full px-1.5 text-xs font-bold uppercase transition-colors",
-            t.id === theme ? "bg-brand text-on-brand ring-2 ring-on-header" : "bg-card-2 text-ink-2",
-          ]}
-        >
-          {t.id}
-        </button>
-      ))}
-    </div>
-  </div>
-
-  <nav class="text-on-header-2 mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-    {user ? (
-      <>
-        {displayName && <span>{displayName}</span>}
-        <a href="/events" class:list={link}>
-          Ogłoszenia
-        </a>
-        <a href="/my" class:list={link}>
-          Moje spotkania
-          {pending > 0 && (
-            <span
-              class="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] font-semibold text-black"
-              data-testid="pending-badge"
-              title="Zgłoszenia czekające na Twoją decyzję"
-            >
-              {pending}
-            </span>
-          )}
-        </a>
-        <a href="/events/new" class:list={link}>
-          Dodaj ogłoszenie
-        </a>
-        <form method="POST" action="/api/auth/signout">
-          <button type="submit" class:list={link}>
-            Wyloguj
-          </button>
-        </form>
-      </>
-    ) : (
-      <>
-        <a href="/auth/signin" class:list={link}>
-          Zaloguj
-        </a>
-        <a href="/auth/signup" class:list={link}>
-          Załóż konto
-        </a>
-      </>
-    )}
-  </nav>
-
-  {title && <h1 class="display display-shadow mt-4 text-4xl leading-tight font-extrabold">{title}</h1>}
+  ) : (
+    <a href="/auth/signin" class="flex h-11 items-center rounded-full bg-card px-5 text-sm font-bold text-ink">
+      Zaloguj
+    </a>
+  )}
 </header>
-<div class="theme-stripes -mx-4 -mt-5 mb-5 flex-col gap-[3px] sm:mx-0" aria-hidden="true">
-  <span class="h-1 bg-[#f3ead3]"></span>
-  <span class="h-1.5 bg-[#ff7a1a]"></span>
-  <span class="h-1 bg-[#f3ead3]"></span>
-</div>
 
-<script is:inline define:vars={{ cookieName: THEME_COOKIE }}>
-  document.querySelectorAll("[data-theme-choice]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const id = button.getAttribute("data-theme-choice");
-      document.cookie = `${cookieName}=${id}; path=/; max-age=31536000; samesite=lax`;
-      location.reload();
-    });
-  });
-</script>
+{titleLines.length > 0 && (
+  <h1 class="display display-hero mb-6 text-[56px] leading-[0.86] text-page-ink sm:text-[64px]">
+    {titleLines.map((line, i) => (
+      <>
+        {i > 0 && <br />}
+        {line}
+      </>
+    ))}
+  </h1>
+)}
+
+{!hideNav && (
+  <nav class="fixed inset-x-0 bottom-0 z-40 bg-page-deep" aria-label="Nawigacja">
+    <div class="sleeve" aria-hidden="true">
+      <span />
+      <span />
+    </div>
+    <div class="mx-auto flex h-[76px] max-w-3xl items-center justify-between px-6 pb-1.5">
+      <a
+        href="/events"
+        class:list={[navItem, path.startsWith("/events") && path !== "/events/new" ? "text-brand" : "text-page-ink-2"]}
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15zM16 16l5 5" />
+        </svg>
+        Gramy
+      </a>
+      <a
+        href={user ? "/events/new" : "/auth/signin"}
+        aria-label="Dodaj ogłoszenie"
+        class="grid size-14 place-items-center rounded-full bg-brand text-on-brand shadow-[0_0_0_3px_var(--page-deep),0_0_0_5px_var(--page-ink)] transition-colors hover:bg-brand-hover"
+      >
+        <svg
+          width="26"
+          height="26"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.8"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </a>
+      <a
+        href={user ? "/my" : "/auth/signin"}
+        class:list={[navItem, "relative", path === "/my" ? "text-brand" : "text-page-ink-2"]}
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" />
+        </svg>
+        {user ? "Moje" : "Zaloguj"}
+        {pending > 0 && (
+          <span
+            class="absolute -top-1.5 right-2 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-extrabold text-on-brand"
+            data-testid="pending-badge"
+            title="Zgłoszenia czekające na Twoją decyzję"
+          >
+            {pending}
+          </span>
+        )}
+      </a>
+    </div>
+  </nav>
+)}

@@ -111,17 +111,17 @@
 }
 
 /*
- * Motywy Metando z Claude Design (przełącznik w pasku, cookie `theme`):
- * a — Nocny Orlik, b — Podwórko, c — Kort, d — Szatnia, d2 — Szatnia ’96 (domyślny).
- * Komponenty używają tylko tych zmiennych (bg-card, text-ink, bg-brand…), nigdy surowych kolorów.
- * `ink*` i `link` to tekst na kartach, `page-ink*` i `page-link` — tekst leżący wprost na tle strony.
+ * Wygląd Metando: połączenie kierunków D (Szatnia) i D2 (Szatnia ’96) z Claude Design.
+ * Z D2 charakter marki — pochylony napis z pomarańczowym cieniem (logo i duże nagłówki: `display-hero`),
+ * koszulki z numerami, pasy jak na rękawie. Z D spokój w treści — tytuły kart i sekcji proste (`display`).
+ * `ink*` i `link` to tekst na kremowych kartach, `page-ink*` i `page-link` — tekst wprost na zielonym tle.
  */
-:root,
-[data-theme="d2"],
-[data-theme="d"] {
+:root {
   --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
   --font-head: "Big Shoulders Display", "Work Sans", sans-serif;
   --page: #0f3b2e;
+  --page-2: #164a3a;
+  --page-deep: #0a2e23;
   --page-ink: #f3ead3;
   --page-ink-2: #b9cfc3;
   --page-link: #ff9a4d;
@@ -137,12 +137,6 @@
   --on-brand: #13261f;
   --link: #a84a00;
   --date: #0f6b4e;
-  --header: #0a2e23;
-  --on-header: #f3ead3;
-  --on-header-2: #b9cfc3;
-  --header-link: #ff9a4d;
-  --chip: #164a3a;
-  --on-chip: #f3ead3;
   --track: #e8dcbf;
   --fill: #ff7a1a;
   --tile-mix: 26%;
@@ -159,149 +153,16 @@
   --free: #0f6b4e;
   --free-soft: #d5ebdf;
   --free-line: #8cc4a8;
+  --bench: #ffc58f;
   color-scheme: dark;
-}
-
-[data-theme="d"] {
-  --header: #164a3a;
-}
-
-[data-theme="a"] {
-  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-head: "Archivo", "Manrope", sans-serif;
-  --page: #0e1110;
-  --page-ink: #f2f5f0;
-  --page-ink-2: #b4bcb6;
-  --page-link: #c8f135;
-  --card: #181c1b;
-  --card-2: #222826;
-  --ink: #f2f5f0;
-  --ink-2: #b4bcb6;
-  --ink-3: #8a938d;
-  --line: #2c3330;
-  --line-strong: #3d4642;
-  --brand: #c8f135;
-  --brand-hover: #e2ff7a;
-  --on-brand: #0e1110;
-  --link: #c8f135;
-  --date: #c8f135;
-  --header: #181c1b;
-  --on-header: #f2f5f0;
-  --on-header-2: #b4bcb6;
-  --header-link: #c8f135;
-  --chip: #222826;
-  --on-chip: #f2f5f0;
-  --track: #2c3330;
-  --fill: #c8f135;
-  --tile-mix: 26%;
-  --card-shadow: none;
-  --ok: #4fd1c5;
-  --ok-soft: rgb(79 209 197 / 0.14);
-  --ok-line: rgb(79 209 197 / 0.45);
-  --warn: #ffb547;
-  --warn-soft: rgb(255 181 71 / 0.14);
-  --warn-line: rgb(255 181 71 / 0.45);
-  --bad: #ff6b5e;
-  --bad-soft: rgb(255 107 94 / 0.14);
-  --bad-line: rgb(255 107 94 / 0.45);
-  --free: #c8f135;
-  --free-soft: rgb(200 241 53 / 0.1);
-  --free-line: rgb(200 241 53 / 0.45);
-  color-scheme: dark;
-}
-
-[data-theme="b"] {
-  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-head: "Bricolage Grotesque", "DM Sans", sans-serif;
-  --page: #f6ebdd;
-  --page-ink: #2a1a12;
-  --page-ink-2: #5c4335;
-  --page-link: #b2340f;
-  --card: #fffbf5;
-  --card-2: #efdfcb;
-  --ink: #2a1a12;
-  --ink-2: #5c4335;
-  --ink-3: #7a5f4f;
-  --line: #e6d3bc;
-  --line-strong: #d9c2a6;
-  --brand: #cc3d18;
-  --brand-hover: #b2340f;
-  --on-brand: #ffffff;
-  --link: #b2340f;
-  --date: #1d6fd1;
-  --header: transparent;
-  --on-header: #2a1a12;
-  --on-header-2: #5c4335;
-  --header-link: #b2340f;
-  --chip: #fffbf5;
-  --on-chip: #2a1a12;
-  --track: #efdfcb;
-  --fill: #cc3d18;
-  --tile-mix: 22%;
-  --card-shadow: 0 3px 0 #e6d3bc;
-  --ok: #2f7a4a;
-  --ok-soft: #dcebdd;
-  --ok-line: #9cc7a6;
-  --warn: #a35a00;
-  --warn-soft: #f5e2c4;
-  --warn-line: #e0b677;
-  --bad: #8e1b1b;
-  --bad-soft: #f7dcd6;
-  --bad-line: #e8a99b;
-  --free: #1d6fd1;
-  --free-soft: #dce7f7;
-  --free-line: #9dbceb;
-  color-scheme: light;
-}
-
-[data-theme="c"] {
-  --font-body: "Onest", ui-sans-serif, system-ui, sans-serif;
-  --font-head: "Unbounded", "Onest", sans-serif;
-  --page: #e9ecff;
-  --page-ink: #0b0f2e;
-  --page-ink-2: #3b4170;
-  --page-link: #2f3dff;
-  --card: #ffffff;
-  --card-2: #dfe4ff;
-  --ink: #0b0f2e;
-  --ink-2: #3b4170;
-  --ink-3: #565c8c;
-  --line: #cdd3f5;
-  --line-strong: #b3bbee;
-  --brand: #2f3dff;
-  --brand-hover: #1a24b8;
-  --on-brand: #ffffff;
-  --link: #2f3dff;
-  --date: #2f3dff;
-  --header: #2f3dff;
-  --on-header: #ffffff;
-  --on-header-2: #dde1ff;
-  --header-link: #ffffff;
-  --chip: #ffffff;
-  --on-chip: #0b0f2e;
-  --track: #dfe4ff;
-  --fill: #2f3dff;
-  --tile-mix: 18%;
-  --card-shadow: none;
-  --ok: #0e7a50;
-  --ok-soft: #d7f2e6;
-  --ok-line: #8fd3b5;
-  --warn: #b25400;
-  --warn-soft: #ffebd6;
-  --warn-line: #f5be85;
-  --bad: #c4122f;
-  --bad-soft: #ffe3e7;
-  --bad-line: #f4a3b0;
-  --free: #2f3dff;
-  --free-soft: #dfe4ff;
-  --free-line: #a9b2ff;
-  color-scheme: light;
 }
 
 @theme inline {
   --font-sans: var(--font-body);
   --font-display: var(--font-head);
   --color-page: var(--page);
+  --color-page-2: var(--page-2);
+  --color-page-deep: var(--page-deep);
   --color-page-ink: var(--page-ink);
   --color-page-ink-2: var(--page-ink-2);
   --color-page-link: var(--page-link);
@@ -317,12 +178,6 @@
   --color-on-brand: var(--on-brand);
   --color-link: var(--link);
   --color-date: var(--date);
-  --color-header: var(--header);
-  --color-on-header: var(--on-header);
-  --color-on-header-2: var(--on-header-2);
-  --color-header-link: var(--header-link);
-  --color-chip: var(--chip);
-  --color-on-chip: var(--on-chip);
   --color-track: var(--track);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
@@ -336,25 +191,20 @@
   --color-free: var(--free);
   --color-free-soft: var(--free-soft);
   --color-free-line: var(--free-line);
+  --color-bench: var(--bench);
 }
 
+/* Zielone tło z delikatnymi pionowymi paskami, jak na koszulce. */
 @utility bg-app {
   background-color: var(--page);
+  background-image: repeating-linear-gradient(90deg, rgb(243 234 211 / 0.04) 0 2px, transparent 2px 26px);
   color: var(--page-ink);
 }
 
-/* Szatnia ’96: delikatne pionowe paski na tle, jak na koszulce. */
-[data-theme="d2"] .bg-app {
-  background-image: repeating-linear-gradient(90deg, rgb(243 234 211 / 0.04) 0 2px, transparent 2px 28px);
-}
-
-/* Karta ogłoszenia (`--sport` ustawia SportCard). */
 @utility bg-card-sport {
   background-color: var(--card);
-  box-shadow: var(--card-shadow);
 }
 
-/* Kafelek z ikoną sportu w kolorze sportu. */
 @utility bg-sport-tile {
   background-color: color-mix(in srgb, var(--sport, #94a3b8) var(--tile-mix), var(--card));
 }
@@ -363,46 +213,49 @@
   box-shadow: var(--card-shadow);
 }
 
-/* Wypełnienie paska zajętości składu. */
 @utility bg-fill {
   background: var(--fill);
 }
 
-/* Nagłówki i logo: krój i charakter kierunku. */
+/* Tytuły kart i sekcji: wąski krój, wersaliki, prosto. */
 .display {
   font-family: var(--font-head);
-  letter-spacing: -0.02em;
-}
-[data-theme="a"] .display {
-  font-stretch: 118%;
-  font-weight: 850;
-}
-[data-theme="c"] .display {
-  letter-spacing: -0.04em;
-}
-[data-theme="d"] .display,
-[data-theme="d2"] .display {
   font-weight: 900;
   letter-spacing: 0.01em;
   text-transform: uppercase;
   line-height: 0.95;
 }
-[data-theme="d2"] .display {
+
+/* Duże nagłówki i logo: pochylenie i pomarańczowy cień (tylko ≥ 28 px, nigdy w treści). */
+.display-hero {
   display: inline-block;
   transform: skewX(-10deg);
   transform-origin: left;
-}
-/* Pomarańczowy cień tylko w dużych nagłówkach (≥ 28 px), nigdy w treści. */
-[data-theme="d2"] .display-shadow {
-  text-shadow: 3px 3px 0 #ff7a1a;
+  text-shadow: 3px 3px 0 var(--brand);
 }
 
-/* Paski pod nagłówkiem tylko w Szatni ’96. */
-.theme-stripes {
-  display: none;
+/* Duże liczby na kremowych kartach. */
+.number-shadow {
+  text-shadow: 3px 3px 0 var(--brand);
 }
-[data-theme="d2"] .theme-stripes {
+
+/* Pasy jak na rękawie koszulki (krem–pomarańcz albo zieleń–pomarańcz). */
+.sleeve {
   display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sleeve > span:first-child {
+  height: 3px;
+  background: var(--page-ink);
+}
+.sleeve > span:last-child {
+  height: 5px;
+  background: var(--brand);
+}
+.sleeve-dark > span:first-child {
+  height: 5px;
+  background: var(--page);
 }
 
 @layer base {

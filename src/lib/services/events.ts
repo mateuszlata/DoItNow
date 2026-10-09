@@ -1,7 +1,7 @@
 import { z } from "astro/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
-import { dayRange, localDateTimeToDate } from "@/lib/time";
+import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
 import { canWithdrawAccepted } from "@/lib/services/participations";
 import type {
   EventDetails,
@@ -248,6 +248,8 @@ export const MAX_EVENTS_SHOWN = 500;
 export interface EventFilters {
   sport?: string;
   day?: string;
+  /** Szybki filtr terminu: today | tomorrow | weekend (ma pierwszeństwo przed `day`). */
+  when?: string;
 }
 
 /**
@@ -280,7 +282,10 @@ export async function listUpcomingEvents(
   if (filters.sport && (SPORT_IDS as readonly string[]).includes(filters.sport)) {
     query = query.eq("sport", filters.sport);
   }
-  if (filters.day) {
+  const quickRange = filters.when ? whenRange(filters.when, now) : null;
+  if (quickRange) {
+    query = query.gte("starts_at", quickRange.from.toISOString()).lt("starts_at", quickRange.to.toISOString());
+  } else if (filters.day) {
     const range = dayRange(filters.day);
     if (range) {
       query = query.gte("starts_at", range.from.toISOString()).lt("starts_at", range.to.toISOString());

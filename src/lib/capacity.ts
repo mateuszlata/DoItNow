@@ -40,3 +40,11 @@ export function minimumLabel(event: Capacity & { accepted_count: number; min_peo
   const people = missing === 1 ? "osoby" : "osób";
   return `Brakuje ${String(missing)} ${people} do minimum (${String(event.min_people)})`;
 }
+
+/** Odmiana „wolne / wolnych” do liczby miejsc: 1, 2–4 (poza 12–14) → „wolne”, reszta → „wolnych”. */
+export function freeWord(count: number): string {
+  const lastDigit = count % 10;
+  const lastTwo = count % 100;
+  if (count === 1 || (lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14))) return "wolne";
+  return "wolnych";
+}

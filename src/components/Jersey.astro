@@ -1,0 +1,32 @@
+---
+// Koszulka z numerem: miejsce w składzie (projekt D2 z Claude Design).
+interface Props {
+  /** Kolor koszulki, pasa i numeru. */
+  fill: string;
+  trim?: string;
+  numberColor?: string;
+  /** Numer albo znak („+”, „R1”); pusty dla mini-koszulek na kartach. */
+  label?: string;
+  /** Szerokość w px (wysokość wynika z proporcji). */
+  width?: number;
+}
+
+const { fill, trim, numberColor = "#0F3B2E", label = "", width = 58 } = Astro.props;
+const height = Math.round((width * 52) / 48);
+---
+
+<span class="relative inline-block shrink-0" style={`width: ${String(width)}px; height: ${String(height)}px`}>
+  <svg width={width} height={height} viewBox="0 0 48 52" aria-hidden="true" class="absolute inset-0">
+    <path d="M15 2h6c0 5 1.5 8 3 8s3-3 3-8h6c0 6 2 10 7 12v36H8V14c5-2 7-6 7-12z" fill={fill}></path>
+    {trim && <path d="M8 44h32" stroke={trim} stroke-width="3"></path>}
+  </svg>
+  {label && (
+    <span
+      class="display absolute inset-x-0 text-center leading-none"
+      style={`top: ${String(Math.round(height * 0.32))}px; font-size: ${String(Math.round(width * 0.41))}px; color: ${numberColor}`}
+      aria-hidden="true"
+    >
+      {label}
+    </span>
+  )}
+</span>

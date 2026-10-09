@@ -28,7 +28,7 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
 ---
 
 <Layout title="Moje spotkania · Metando">
-  <div class="bg-app min-h-screen p-4">
+  <div class="bg-app min-h-screen p-4 pb-32">
     <div class="mx-auto max-w-3xl">
       <Topbar title="Moje spotkania" />
 
@@ -116,6 +116,15 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
           </ul>
         )}
       </section>
+
+      <form method="POST" action="/api/auth/signout" class="mt-10 text-center">
+        <button
+          type="submit"
+          class="h-11 rounded-full bg-page-2 px-6 text-sm font-bold text-page-ink transition-colors hover:bg-page-deep"
+        >
+          Wyloguj się
+        </button>
+      </form>
     </div>
   </div>
 </Layout>

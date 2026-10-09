@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayRange, localDateTimeToDate } from "@/lib/time";
+import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
 
 describe("localDateTimeToDate (Europe/Warsaw)", () => {
   it("converts summer time (UTC+2)", () => {
@@ -34,5 +34,27 @@ describe("dayRange", () => {
 
   it("rejects malformed input", () => {
     expect(dayRange("25.10.2026")).toBeNull();
+  });
+});
+
+describe("whenRange", () => {
+  // Czwartek 8.10.2026, 15:00 w Warszawie.
+  const thursday = new Date("2026-10-08T13:00:00Z");
+
+  it("today and tomorrow cover whole local days", () => {
+    expect(whenRange("today", thursday)?.from.toISOString()).toBe("2026-10-07T22:00:00.000Z");
+    expect(whenRange("tomorrow", thursday)?.to.toISOString()).toBe("2026-10-09T22:00:00.000Z");
+  });
+
+  it("weekend is the coming Saturday and Sunday, or the current one during the weekend", () => {
+    const range = whenRange("weekend", thursday);
+    expect(range?.from.toISOString()).toBe("2026-10-09T22:00:00.000Z");
+    expect(range?.to.toISOString()).toBe("2026-10-11T22:00:00.000Z");
+    const sunday = new Date("2026-10-11T10:00:00Z");
+    expect(whenRange("weekend", sunday)?.from.toISOString()).toBe("2026-10-09T22:00:00.000Z");
+  });
+
+  it("returns null for an unknown option", () => {
+    expect(whenRange("someday", thursday)).toBeNull();
   });
 });

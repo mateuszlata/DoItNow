@@ -3,12 +3,14 @@ import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
 import SlotGrid from "@/components/events/SlotGrid.astro";
 import EventMap from "@/components/map/EventMap";
+import SportIcon from "@/components/SportIcon.astro";
+import { jerseyNumber } from "@/lib/jerseys";
 import { createClient } from "@/lib/supabase";
 import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/lib/services/events";
 import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
-import { freeReserve, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
+import { freeReserve, freeWord, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
 import { sportLabel } from "@/lib/sports";
-import { formatEventDate } from "@/lib/time";
+import { eventDayParts, formatEventTime } from "@/lib/time";
 import type { EventDetails, PublicEvent } from "@/types";
 
 const { user } = Astro.locals;
@@ -98,47 +100,114 @@ const free = details
     : 0;
 const reserveFree = summary ? freeReserve(summary) : 0;
 const minimum = summary ? minimumLabel(summary) : null;
-const minimumMet = summary ? missingToMinimum(summary) === 0 : false;
 const navigateHref =
   details?.lat != null && details.lng != null
     ? `https://www.google.com/maps/dir/?api=1&destination=${String(details.lat)},${String(details.lng)}`
     : null;
+
+const day = summary ? eventDayParts(summary.starts_at) : null;
+const team = summary ? teamSize(summary) : 0;
+const missing = summary ? missingToMinimum(summary) : null;
+// Numer koszulki oglądającego: kapitan (grający organizator) ma pierwszą, potem kolejność w składzie.
+const captainOffset = details?.organizer_plays && !organizerLeft ? 1 : 0;
+const myIndex = details && user ? details.participants.findIndex((p) => p.user_id === user.id) : -1;
+const myNumber =
+  isOrganizer && details?.organizer_plays
+    ? jerseyNumber(0)
+    : myIndex >= 0
+      ? jerseyNumber(myIndex + captainOffset)
+      : null;
+const joinLabel = summary?.requires_approval
+  ? "Zgłoś się"
+  : free > 0
+    ? `Dołącz · ${String(free)} ${freeWord(free)}`
+    : "Dołącz na rezerwę";
+const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isOpen : true)));
 ---
 
 <Layout title={summary ? `${sportLabel(summary.sport)} · Metando` : "Nie znaleziono · Metando"}>
-  <div class="bg-app min-h-screen p-4">
-    <div class="mx-auto max-w-xl">
-      <Topbar />
-      <a href="/events" class="mb-3 inline-block text-sm text-page-link font-semibold hover:underline">
-        ← Wszystkie ogłoszenia
-      </a>
+  <div class="bg-app min-h-screen p-4 pb-40">
+    <div class="mx-auto flex max-w-xl flex-col gap-5">
+      <Topbar hideNav />
+
+      <div class="-mt-2 flex items-center justify-between gap-3">
+        <a
+          href="/events"
+          aria-label="Wszystkie ogłoszenia"
+          class="grid size-11 place-items-center rounded-full bg-page-2 text-page-ink transition-colors hover:bg-page-deep"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M15 5l-7 7 7 7"></path>
+          </svg>
+        </a>
+        {summary && (
+          <span class="inline-flex items-center gap-2 rounded-full bg-brand px-3 py-1.5 text-[13px] font-extrabold tracking-wider text-on-brand uppercase">
+            <SportIcon sport={summary.sport} size={16} strokeWidth={2.4} />
+            {sportLabel(summary.sport)} · {team} {team === 1 ? "osoba" : team < 5 ? "osoby" : "osób"}
+          </span>
+        )}
+        <button
+          type="button"
+          aria-label="Udostępnij"
+          data-share
+          class="grid size-11 place-items-center rounded-full bg-page-2 text-page-ink transition-colors hover:bg-page-deep"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"></path>
+          </svg>
+        </button>
+      </div>
 
       {okMessage && (
-        <p class="mb-3 rounded-2xl border border-ok-line bg-ok-soft px-4 py-2 text-sm text-ok">{okMessage}</p>
+        <p class="rounded-2xl border border-ok-line bg-ok-soft px-4 py-2.5 text-sm font-semibold text-ok">
+          {okMessage}
+        </p>
       )}
       {errorMessage && (
-        <p class="mb-3 rounded-2xl border border-bad-line bg-bad-soft px-4 py-2 text-sm text-bad">{errorMessage}</p>
+        <p class="rounded-2xl border border-bad-line bg-bad-soft px-4 py-2.5 text-sm font-semibold text-bad">
+          {errorMessage}
+        </p>
       )}
 
       {!summary && (
-        <div class="rounded-3xl border border-line bg-card shadow-card p-6 text-center text-ink">
-          <h1 class="mb-2 text-xl font-bold">Nie znaleziono ogłoszenia</h1>
-          <p class="text-sm text-ink-2">Ogłoszenie nie istnieje albo już się odbyło.</p>
+        <div class="rounded-[20px] bg-card p-6 text-center text-ink">
+          <h1 class="display text-3xl">Nie znaleziono ogłoszenia</h1>
+          <p class="mt-2 text-sm text-ink-2">Ogłoszenie nie istnieje albo już się odbyło.</p>
         </div>
       )}
 
-      {summary && (
-        <article class="rounded-3xl border border-line bg-card shadow-card p-6 text-ink backdrop-blur-xl">
+      {summary && day && (
+        <>
           {isCancelled && (
-            <p class="mb-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">To spotkanie zostało odwołane.</p>
-          )}
-          {isPast && !isCancelled && (
-            <p class="mb-3 rounded-2xl bg-card shadow-card px-3 py-2 text-sm text-ink-2">
-              To spotkanie już się odbyło.
+            <p class="rounded-2xl bg-bad-soft px-4 py-2.5 text-sm font-semibold text-bad">
+              To spotkanie zostało odwołane.
             </p>
           )}
+          {isPast && !isCancelled && (
+            <p class="rounded-2xl bg-page-2 px-4 py-2.5 text-sm text-page-ink-2">To spotkanie już się odbyło.</p>
+          )}
           {organizerLeft && !isPast && (
-            <p class="mb-3 rounded-2xl bg-warn-soft px-3 py-2 text-sm text-warn" data-testid="handover-status">
+            <p class="rounded-2xl bg-warn-soft px-4 py-2.5 text-sm text-warn" data-testid="handover-status">
               {isOrganizer
                 ? "Odwołałeś to spotkanie. Czekamy, czy ktoś z uczestników zostanie i przejmie organizację."
                 : "Organizator zrezygnował. Spotkanie odbędzie się, jeśli uczestnicy zdecydują się zostać — pierwsza osoba, która zostanie, przejmuje organizację."}
@@ -146,17 +215,17 @@ const navigateHref =
           )}
 
           {mustAnswer && details && (
-            <section class="mb-4 rounded-xl border border-warn-line bg-warn-soft p-4" data-testid="handover-question">
-              <p class="text-sm text-warn">
-                <strong>Organizator odwołał spotkanie.</strong> Czy mimo to chcesz w nim zostać i spotkać się z osobami,
-                które się zapisały?
+            <section class="rounded-[20px] bg-card p-4 text-ink" data-testid="handover-question">
+              <p class="display text-2xl">Organizator odwołał spotkanie</p>
+              <p class="mt-1 text-sm text-ink-2">
+                Czy mimo to chcesz w nim zostać i spotkać się z osobami, które się zapisały?
               </p>
-              <form method="POST" action={`/api/events/${details.id}/respond`} class="mt-3 flex flex-wrap gap-2">
+              <form method="POST" action={`/api/events/${details.id}/respond`} class="mt-3 flex gap-2">
                 <button
                   type="submit"
                   name="stay"
                   value="yes"
-                  class="rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-500"
+                  class="h-12 flex-1 rounded-full bg-brand text-sm font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
                 >
                   Zostaję
                 </button>
@@ -164,7 +233,7 @@ const navigateHref =
                   type="submit"
                   name="stay"
                   value="no"
-                  class="rounded-full border border-line-strong bg-card shadow-card px-4 py-2 text-sm transition-colors hover:bg-card-2"
+                  class="h-12 flex-1 rounded-full bg-card-2 text-sm font-bold text-ink transition-colors hover:bg-line"
                 >
                   Rezygnuję
                 </button>
@@ -172,168 +241,103 @@ const navigateHref =
             </section>
           )}
 
-          <h1 class="display text-3xl font-bold">{sportLabel(summary.sport)}</h1>
-          <p class="mt-1 text-date">{formatEventDate(summary.starts_at)}</p>
-
-          <dl class="mt-4 grid gap-3 text-sm">
-            <div>
-              <dt class="text-ink-3">Okolica</dt>
-              <dd>{summary.area}</dd>
-            </div>
-            {details && (
-              <>
-                <div>
-                  <dt class="text-ink-3">Dokładne miejsce</dt>
-                  <dd>{details.place}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-3">Organizator</dt>
-                  <dd>{organizerLeft ? "— (organizator zrezygnował)" : details.organizer_name}</dd>
-                </div>
-              </>
-            )}
-            <div>
-              <dt class="text-ink-3">Wolne miejsca</dt>
-              <dd data-testid="free-spots">
-                <strong>{free}</strong> z {teamSize(summary)}
-                {summary.organizer_plays && <span class="text-ink-3"> (łącznie z organizatorem)</span>}
-              </dd>
-            </div>
-            {summary.reserve_spots > 0 && (
-              <div>
-                <dt class="text-ink-3">Lista rezerwowa</dt>
-                <dd data-testid="reserve-summary">
-                  wolne: <strong>{reserveFree}</strong> z {summary.reserve_spots}
-                </dd>
-              </div>
-            )}
-            <div>
-              <dt class="text-ink-3">Dołączanie</dt>
-              <dd data-testid="join-mode">
-                {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
-              </dd>
-            </div>
-            {minimum && (
-              <div>
-                <dt class="text-ink-3">Minimum</dt>
-                <dd class:list={[minimumMet ? "text-ok" : "text-warn"]} data-testid="minimum">
-                  {minimum}
-                </dd>
-              </div>
-            )}
-            {details?.description && (
-              <div>
-                <dt class="text-ink-3">Opis</dt>
-                <dd class="whitespace-pre-line">{details.description}</dd>
-              </div>
-            )}
-          </dl>
+          <div class="flex flex-col gap-2">
+            <h1 class="display display-hero pl-1.5 text-[56px] leading-[0.86] text-page-ink">
+              {day.weekday}
+              <br />
+              {day.date} · {formatEventTime(summary.starts_at)}
+            </h1>
+            <p class="text-[15px] text-page-ink-2">
+              {summary.area}
+              {details && (
+                <>
+                  {" · "}
+                  <span class="font-bold text-page-ink">{details.place}</span>
+                  {" · "}
+                  {organizerLeft ? "organizator zrezygnował" : <>organizuje {details.organizer_name}</>}
+                </>
+              )}
+            </p>
+          </div>
 
           {details?.lat != null && details.lng != null && (
-            <section class="mt-4">
+            <div class="relative overflow-hidden rounded-[20px]">
               <EventMap lat={details.lat} lng={details.lng} label={details.place} client:visible />
               {navigateHref && (
                 <a
                   href={navigateHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="mt-2 inline-block text-sm text-link hover:underline"
+                  class="absolute right-3 bottom-3 z-[1000] grid h-10 place-items-center rounded-full bg-ink px-4 text-[13px] font-bold text-card"
                 >
-                  Nawiguj do miejsca spotkania ↗
+                  Nawiguj
                 </a>
               )}
-            </section>
+            </div>
           )}
 
-          {details && !isOrganizer && !mustAnswer && (
-            <section class="mt-6 rounded-xl border border-line bg-card-2 p-4">
-              {myStatus && myStatus !== "withdrawn" && (
-                <p class="mb-3 text-sm" data-testid="my-status">
-                  Twoje zgłoszenie: <strong>{STATUS_LABELS[myStatus]}</strong>
-                </p>
-              )}
-              {canJoin && (
-                <form method="POST" action={`/api/events/${details.id}/join`}>
-                  <button
-                    type="submit"
-                    class="w-full rounded-full bg-brand px-4 py-2 font-medium text-on-brand transition-colors hover:bg-brand-hover"
-                  >
-                    {details.requires_approval ? "Zgłoś się" : "Dołącz"}
-                  </button>
-                </form>
-              )}
-              {canWithdraw && (
-                <form method="POST" action={`/api/events/${details.id}/withdraw`}>
-                  <button
-                    type="submit"
-                    class="w-full rounded-full border border-line-strong bg-card shadow-card px-4 py-2 text-sm transition-colors hover:bg-card-2"
-                  >
-                    {myStatus === "accepted"
-                      ? "Zrezygnuj z udziału"
-                      : myStatus === "reserve"
-                        ? "Zrezygnuj z rezerwy"
-                        : "Wycofaj zgłoszenie"}
-                  </button>
-                </form>
-              )}
-              {withdrawLocked && (
-                <p class="text-sm text-ink-2">Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.</p>
-              )}
-              {!isOpen && !myStatus && <p class="text-sm text-ink-2">Zapisy na to spotkanie są zamknięte.</p>}
-            </section>
-          )}
-
-          {isOrganizer && details && isOpen && (
-            <section class="mt-6 flex flex-wrap items-center gap-3" data-testid="organizer-actions">
-              {canEditEvent(details.starts_at) ? (
-                <a
-                  href={`/events/${details.id}/edit`}
-                  class="rounded-full border border-line-strong bg-card shadow-card px-4 py-2 text-sm transition-colors hover:bg-card-2"
-                >
-                  Edytuj
-                </a>
-              ) : (
-                <span class="text-sm text-ink-2">Edycja jest możliwa najpóźniej 12 h przed spotkaniem.</span>
-              )}
-              <form
-                method="POST"
-                action={`/api/events/${details.id}/cancel`}
-                onsubmit="return confirm('Odwołać spotkanie? Jeśli są zaakceptowani uczestnicy, zdecydują, czy spotkają się bez Ciebie.')"
+          <div class="grid grid-cols-3 gap-2">
+            <div class="rounded-2xl bg-card p-3 text-ink" data-testid="free-spots">
+              <div class="display number-shadow text-[44px] leading-[0.85] text-page">{free}</div>
+              <div class="mt-1.5 text-xs font-bold text-ink-2 uppercase">
+                {" "}
+                {freeWord(free)} z {team}
+              </div>
+            </div>
+            <div class="rounded-2xl bg-page-2 p-3" data-testid="minimum" title={minimum ?? "Bez minimum"}>
+              <div class="display text-[44px] leading-[0.85]">{summary.min_people ?? "—"}</div>
+              <div
+                class:list={[
+                  "mt-1.5 text-xs font-bold uppercase",
+                  missing === 0 ? "text-page-ink-2" : missing === null ? "text-page-ink-2" : "text-bench",
+                ]}
               >
-                <button
-                  type="submit"
-                  class="rounded-full border border-bad-line bg-bad-soft px-4 py-2 text-sm text-bad transition-colors hover:bg-bad-soft"
-                >
-                  Odwołaj spotkanie
-                </button>
-              </form>
+                {missing === null ? "bez minimum" : missing === 0 ? "min. jest" : `min. · brak ${String(missing)}`}
+              </div>
+            </div>
+            <div class="rounded-2xl bg-page-2 p-3" data-testid="reserve-summary">
+              <div class="display text-[44px] leading-[0.85]">
+                {summary.reserve_spots > 0 ? `${String(summary.reserve_count)}/${String(summary.reserve_spots)}` : "—"}
+              </div>
+              <div class="mt-1.5 text-xs font-bold text-page-ink-2 uppercase">
+                {summary.reserve_spots > 0 ? `rezerwa · ${String(reserveFree)} wolne` : "bez rezerwy"}
+              </div>
+            </div>
+          </div>
+          <p class="-mt-2 text-[13px] text-page-ink-2" data-testid="join-mode">
+            Dołączanie: {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
+            {summary.organizer_plays && " · organizator gra w składzie"}
+          </p>
+
+          {details?.description && (
+            <section class="flex flex-col gap-1.5">
+              <h2 class="text-[13px] font-bold tracking-widest text-page-ink-2 uppercase">Od organizatora</h2>
+              <p class="text-[15px] leading-relaxed whitespace-pre-line">{details.description}</p>
             </section>
           )}
 
           {isOrganizer && details && isOpen && (details.requires_approval || details.pending.length > 0) && (
-            <section class="mt-6 rounded-xl border border-line bg-card-2 p-4">
-              <h2 class="mb-2 font-semibold">Zgłoszenia do rozpatrzenia</h2>
+            <section class="rounded-[20px] bg-card p-4 text-ink">
+              <h2 class="display mb-3 text-2xl">Zgłoszenia do rozpatrzenia</h2>
               {details.pending.length === 0 ? (
                 <p class="text-sm text-ink-3">Brak oczekujących zgłoszeń.</p>
               ) : (
                 <>
                   {details.free_spots === 0 && reserveFree > 0 && (
                     <p class="mb-2 text-sm text-warn">
-                      Skład jest pełny — zaakceptowane osoby trafią na listę rezerwową.
+                      Skład jest pełny — zaakceptowane osoby trafią na ławkę rezerwowych.
                     </p>
                   )}
                   {details.free_spots === 0 && reserveFree === 0 && (
-                    <p class="mb-2 text-sm text-warn">
-                      Skład i lista rezerwowa są pełne — możesz tylko odrzucać zgłoszenia.
-                    </p>
+                    <p class="mb-2 text-sm text-warn">Skład i ławka są pełne — możesz tylko odrzucać zgłoszenia.</p>
                   )}
                   <ul class="grid gap-2">
                     {details.pending.map((p) => (
                       <li
-                        class="flex flex-wrap items-center justify-between gap-2 text-sm"
+                        class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-card-2 px-3 py-2 text-sm"
                         data-testid="pending-request"
                       >
-                        <span>{p.display_name}</span>
+                        <span class="font-bold">{p.display_name}</span>
                         <form
                           method="POST"
                           action={`/api/participations/${p.participation_id}/decide`}
@@ -345,7 +349,7 @@ const navigateHref =
                             name="decision"
                             value="accept"
                             disabled={details.free_spots === 0 && reserveFree === 0}
-                            class="rounded-full bg-green-600 px-3 py-1 text-white transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-40"
+                            class="h-9 rounded-full bg-brand px-4 font-bold text-on-brand transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Akceptuj
                           </button>
@@ -353,7 +357,7 @@ const navigateHref =
                             type="submit"
                             name="decision"
                             value="reject"
-                            class="rounded-full border border-line-strong bg-card shadow-card px-3 py-1 transition-colors hover:bg-card-2"
+                            class="h-9 rounded-full bg-card px-4 font-semibold text-ink transition-colors hover:bg-line"
                           >
                             Odrzuć
                           </button>
@@ -375,6 +379,7 @@ const navigateHref =
               reserves={details.reserves}
               handover={details.handover_at !== null}
               removeFor={isOrganizer && isOpen ? details.id : undefined}
+              viewerId={user?.id}
             />
           )}
           {!details && publicEvent && (
@@ -393,15 +398,132 @@ const navigateHref =
           )}
 
           {!user && (
-            <p class="mt-6 text-sm text-ink-2">
-              Aby zobaczyć dokładne miejsce, organizatora i uczestników oraz się zgłosić,{" "}
-              <a href="/auth/signin" class="text-link hover:underline">
-                zaloguj się
+            <p class="text-sm text-page-ink-2">
+              Dokładne miejsce, organizator i nicki zawodników są widoczne po{" "}
+              <a href="/auth/signin" class="font-semibold text-page-link hover:underline">
+                zalogowaniu
               </a>
+              .
             </p>
           )}
-        </article>
+        </>
       )}
     </div>
   </div>
+
+  {summary && showBar && (
+    <div class="fixed inset-x-0 bottom-0 z-40 bg-page-deep">
+      <div class="sleeve" aria-hidden="true">
+        <span />
+        <span />
+      </div>
+      <div class="mx-auto flex max-w-xl flex-wrap items-center gap-2.5 px-4 pt-3.5 pb-5">
+        {!user && (
+          <a
+            href="/auth/signin"
+            class="grid h-14 flex-1 place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+          >
+            Zaloguj się, aby dołączyć
+          </a>
+        )}
+
+        {isOrganizer && details && isOpen && (
+          <div class="flex w-full gap-2.5" data-testid="organizer-actions">
+            {canEditEvent(details.starts_at) ? (
+              <a
+                href={`/events/${details.id}/edit`}
+                class="grid h-14 flex-1 place-items-center rounded-full bg-card text-[15px] font-bold text-ink"
+              >
+                Edytuj
+              </a>
+            ) : (
+              <span class="flex-1 self-center text-xs text-page-ink-2">
+                Edycja możliwa najpóźniej 12 h przed spotkaniem.
+              </span>
+            )}
+            <form
+              method="POST"
+              action={`/api/events/${details.id}/cancel`}
+              class="flex flex-[1.4]"
+              onsubmit="return confirm('Odwołać spotkanie? Jeśli są zaakceptowani uczestnicy, zdecydują, czy spotkają się bez Ciebie.')"
+            >
+              <button type="submit" class="h-14 flex-1 rounded-full bg-[#3a2420] text-[15px] font-bold text-[#ffb4a6]">
+                Odwołaj spotkanie
+              </button>
+            </form>
+          </div>
+        )}
+
+        {details && !isOrganizer && (
+          <>
+            {myStatus && myStatus !== "withdrawn" && (
+              <span
+                class="flex min-h-14 flex-1 items-center gap-2 rounded-full bg-page-2 px-4 py-2 text-sm leading-tight text-page-ink"
+                data-testid="my-status"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#FF7A1A"
+                  stroke-width="2.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12l5 5 9-10"></path>
+                </svg>
+                <span>
+                  <span class="sr-only">Twoje zgłoszenie: </span>
+                  <strong class="first-letter:uppercase">{STATUS_LABELS[myStatus]}</strong>
+                  {myStatus === "accepted" && myNumber && <> · nr {myNumber}</>}
+                </span>
+              </span>
+            )}
+            {canJoin && (
+              <form method="POST" action={`/api/events/${details.id}/join`} class="flex flex-1">
+                <button
+                  type="submit"
+                  class="h-14 flex-1 rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
+                >
+                  {joinLabel}
+                </button>
+              </form>
+            )}
+            {canWithdraw && (
+              <form method="POST" action={`/api/events/${details.id}/withdraw`}>
+                <button type="submit" class="h-14 rounded-full bg-card px-5 text-[15px] font-bold text-ink">
+                  {myStatus === "accepted"
+                    ? "Zrezygnuj"
+                    : myStatus === "reserve"
+                      ? "Zejdź z ławki"
+                      : "Wycofaj zgłoszenie"}
+                </button>
+              </form>
+            )}
+            {withdrawLocked && (
+              <p class="w-full text-xs text-page-ink-2">Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.</p>
+            )}
+            {!isOpen && !myStatus && <p class="w-full text-sm text-page-ink-2">Zapisy na to spotkanie są zamknięte.</p>}
+          </>
+        )}
+      </div>
+    </div>
+  )}
 </Layout>
+
+<script is:inline>
+  document.querySelector("[data-share]")?.addEventListener("click", async () => {
+    const data = { title: document.title, url: location.href };
+    try {
+      if (navigator.share) await navigator.share(data);
+      else {
+        await navigator.clipboard.writeText(location.href);
+        alert("Link skopiowany do schowka.");
+      }
+    } catch {
+      // Anulowane udostępnianie — nic nie robimy.
+    }
+  });
+</script>
