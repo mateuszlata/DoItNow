@@ -1,21 +1,26 @@
 ---
 // Znak i napis Metando (projekt z Claude Design): „M” na pomarańczowym kafelku i pochylony napis,
-// w którym co jakiś czas zapalają się słowa MEET (wsuwa się drugie „E”), AND i DO — „meet and do”.
+// który co jakiś czas pokazuje, skąd nazwa: MEET · AND · DO. Domyślnie napis rozjeżdża się na trzy słowa;
+// wariant „jeb” (trzy uderzenia) do porównania przez `?logo=jeb` w adresie.
 interface Props {
   /** `bar` — pasek aplikacji, `hero` — duże logo z podpisem (logowanie, rejestracja). */
   size?: "bar" | "hero";
 }
 
 const { size = "bar" } = Astro.props;
-// Litery napisu i ich słowo w animacji; drugie „E” wsuwa się, tworząc MEET.
+const variant = Astro.url.searchParams.get("logo") === "jeb" ? "logo-jeb" : "logo-split";
+// Litery napisu i ich rola w animacji: drugie „E” tworzy MEET, drugie „D” — DO, odstępy rozdzielają słowa.
 const LETTERS = [
   ["M", "met"],
   ["E", "met"],
   ["E", "e2"],
   ["T", "met"],
+  ["", "gap"],
   ["A", "and"],
   ["N", "and"],
   ["D", "d"],
+  ["", "gap"],
+  ["D", "d2"],
   ["O", "do"],
 ] as const;
 const px = size === "hero" ? 64 : 32;
@@ -28,7 +33,13 @@ const colors =
 ---
 
 <span class:list={["inline-flex items-center", size === "hero" ? "flex-col gap-3" : "gap-2.5"]}>
-  <svg width={px} height={px} viewBox="0 0 64 64" aria-hidden="true" class:list={[size === "hero" && "logo-mark-hit"]}>
+  <svg
+    width={px}
+    height={px}
+    viewBox="0 0 64 64"
+    aria-hidden="true"
+    class:list={[size === "hero" && ["logo-mark-hit", variant]]}
+  >
     <rect width="64" height="64" rx="14" fill="#FF7A1A"></rect>
     <path
       d="M14 46l5-26 13 13 13-13 5 26"
@@ -43,7 +54,8 @@ const colors =
     <span
       class:list={[
         "display logo-word inline-block [transform:skewX(-10deg)]",
-        size === "hero" ? "text-6xl" : "text-[30px]",
+        variant,
+        size === "hero" ? "text-5xl" : "text-[30px]",
       ]}
       style={colors}
     >
@@ -54,9 +66,9 @@ const colors =
         ))}
       </span>
     </span>
-    {size === "hero" && (
+    {size === "hero" && variant === "logo-jeb" && (
       <span
-        class="logo-word flex gap-2 text-xs font-bold tracking-[0.22em] uppercase"
+        class="logo-word logo-jeb flex gap-2 text-xs font-bold tracking-[0.22em] uppercase"
         style="--logo-base: var(--ink-3); --logo-lit: var(--brand); --logo-shadow-base: none; --logo-shadow-lit: none"
         aria-hidden="true"
       >

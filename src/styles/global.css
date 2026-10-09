@@ -268,38 +268,52 @@
 }
 
 /*
- * Animacja napisu logo — „jeb, jeb, jeb”: długa cisza, potem trzy szybkie uderzenia
- * MEET (wskakuje drugie „E”), AND, DO, każde ok. 0,5 s, bez płynnego przenikania.
- * Cykl 14 s; ujemne opóźnienie sprawia, że pierwsza seria pada ok. 2,5 s po wejściu na stronę.
- * „D” jest wspólne dla AND i DO, więc uderza dwa razy. Kolory i cień ustawia wariant logo.
+ * Animacje napisu logo, cykl 14 s; ujemne opóźnienie sprawia, że pierwsza seria pada ok. 2,5 s po wejściu.
+ * `logo-split` (domyślna): METANDO rozjeżdża się na MEET · AND · DO (wsuwają się drugie „E” i drugie „D”),
+ *   AND świeci na pomarańczowo, po chwili napis zjeżdża z powrotem.
+ * `logo-jeb`: trzy szybkie uderzenia MEET, AND, DO („D” wspólne dla AND i DO uderza dwa razy).
+ * Kolory i cień ustawia wariant logo. Tylko osobne właściwości animacji — skrócone `animation`
+ * bez nazwy minifikator zamienia na `none`.
  */
+.logo-word {
+  white-space: nowrap;
+}
 .logo-word .l {
   display: inline-block;
   transform-origin: 50% 100%;
   color: var(--logo-base);
   text-shadow: var(--logo-shadow-base);
-  /* Osobne właściwości: skrócone `animation` bez nazwy minifikator zamienia na `none`. */
   animation-duration: 14s;
   animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.4);
   animation-delay: -8.7s;
   animation-iteration-count: infinite;
 }
-.logo-word .l-met {
-  animation-name: logo-met;
-}
-.logo-word .l-e2 {
+/* Litery i odstępy, które pojawiają się tylko w trakcie animacji. */
+.logo-word .l-e2,
+.logo-word .l-d2,
+.logo-word .l-gap {
   overflow: hidden;
   vertical-align: bottom;
   max-width: 0;
+}
+.logo-word .l-gap {
+  width: 0.34em;
+}
+
+/* Wariant „jeb, jeb, jeb”. */
+.logo-jeb .l-met {
+  animation-name: logo-met;
+}
+.logo-jeb .l-e2 {
   animation-name: logo-met, logo-e2;
 }
-.logo-word .l-and {
+.logo-jeb .l-and {
   animation-name: logo-and;
 }
-.logo-word .l-d {
+.logo-jeb .l-d {
   animation-name: logo-d;
 }
-.logo-word .l-do {
+.logo-jeb .l-do {
   animation-name: logo-do;
 }
 
@@ -403,14 +417,71 @@
   }
 }
 
-/* Znak „M” na ekranie logowania uderza razem z każdym słowem (ten sam cykl i opóźnienie). */
+/* Wariant „rozjazd”: METANDO → MEET · AND · DO → METANDO. */
+.logo-split .l-e2,
+.logo-split .l-d2 {
+  animation-name: logo-split-letter;
+}
+.logo-split .l-gap {
+  animation-name: logo-split-gap;
+}
+.logo-split .l-and,
+.logo-split .l-d {
+  animation-name: logo-split-and;
+}
+
+@keyframes logo-split-letter {
+  0%,
+  79.9%,
+  94%,
+  100% {
+    max-width: 0;
+  }
+  82%,
+  92% {
+    max-width: 0.62em;
+  }
+}
+@keyframes logo-split-gap {
+  0%,
+  79.9%,
+  94%,
+  100% {
+    max-width: 0;
+  }
+  82%,
+  92% {
+    max-width: 0.34em;
+  }
+}
+@keyframes logo-split-and {
+  0%,
+  80.5%,
+  93.5%,
+  100% {
+    color: var(--logo-base);
+    text-shadow: var(--logo-shadow-base);
+  }
+  82%,
+  92% {
+    color: var(--logo-lit);
+    text-shadow: var(--logo-shadow-lit);
+  }
+}
+
+/* Znak „M” na ekranie logowania uderza razem z napisem (ten sam cykl i opóźnienie). */
 .logo-mark-hit {
   transform-origin: 50% 100%;
-  animation-name: logo-mark;
   animation-duration: 14s;
   animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.4);
   animation-delay: -8.7s;
   animation-iteration-count: infinite;
+}
+.logo-mark-hit.logo-jeb {
+  animation-name: logo-mark;
+}
+.logo-mark-hit.logo-split {
+  animation-name: logo-mark-split;
 }
 
 @keyframes logo-mark {
@@ -431,6 +502,23 @@
   87.9%,
   89.4%,
   91.9% {
+    transform: none;
+  }
+}
+@keyframes logo-mark-split {
+  0%,
+  79.9%,
+  92%,
+  100% {
+    transform: none;
+  }
+  80%,
+  92.1% {
+    transform: translateY(-10%) rotate(-8deg) scale(1.18);
+  }
+  81.6%,
+  91.9%,
+  93.7% {
     transform: none;
   }
 }
