@@ -39,6 +39,15 @@ const navItem = "flex min-w-16 flex-col items-center gap-1 text-xs font-bold tra
       title="Moje spotkania"
     >
       <span class="truncate">{displayName ?? "Moje konto"}</span>
+      {pending > 0 && (
+        <span
+          class="ml-2 grid h-6 min-w-6 shrink-0 place-items-center rounded-full bg-brand px-1.5 text-xs font-extrabold text-on-brand"
+          data-testid="pending-badge"
+          title="Zgłoszenia czekające na Twoją decyzję"
+        >
+          {pending}
+        </span>
+      )}
     </a>
   ) : (
     <a href="/auth/signin" class="flex h-11 items-center rounded-full bg-card px-5 text-sm font-bold text-ink">
@@ -123,7 +132,6 @@ const navItem = "flex min-w-16 flex-col items-center gap-1 text-xs font-bold tra
         {pending > 0 && (
           <span
             class="absolute -top-1.5 right-2 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-extrabold text-on-brand"
-            data-testid="pending-badge"
             title="Zgłoszenia czekające na Twoją decyzję"
           >
             {pending}
