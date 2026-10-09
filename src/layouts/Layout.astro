@@ -2,14 +2,15 @@
 import "../styles/global.css";
 import Banner from "@/components/Banner.astro";
 import { missingConfigs } from "@/lib/config-status";
-import { readTheme } from "@/lib/theme";
+import { readTheme, themeInfo } from "@/lib/theme";
 
 interface Props {
   title?: string;
 }
 
-const { title = "Ktoś/Coś" } = Astro.props;
+const { title = "Metando" } = Astro.props;
 const theme = readTheme(Astro.cookies);
+const { fonts, color } = themeInfo(theme);
 ---
 
 <!doctype html>
@@ -19,14 +20,14 @@ const theme = readTheme(Astro.cookies);
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="theme-color" content={theme === "b" ? "#0b0b0f" : theme === "c" ? "#1e293b" : "#f7f6f2"} />
-    <meta name="description" content="Ktoś/Coś — znajdź ludzi do wspólnego sportu w Twoim mieście." />
+    <meta name="theme-color" content={color} />
+    <meta
+      name="description"
+      content="Metando — spotkaj się i zrób coś razem: znajdź ludzi do wspólnego sportu w Twoim mieście."
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <link href={`https://fonts.googleapis.com/css2?${fonts}&display=swap`} rel="stylesheet" />
     <title>{title}</title>
   </head>
   <body>

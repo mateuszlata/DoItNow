@@ -27,9 +27,9 @@ const totalPending = organized
 const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
 ---
 
-<Layout title="Moje spotkania · Ktoś/Coś">
+<Layout title="Moje spotkania · Metando">
   <div class="bg-app min-h-screen p-4">
-    <div class="mx-auto max-w-3xl text-ink">
+    <div class="mx-auto max-w-3xl">
       <Topbar title="Moje spotkania" />
 
       {totalPending > 0 && (
@@ -39,11 +39,11 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
       )}
 
       <section class="mb-8">
-        <h2 class="mb-2 text-lg font-semibold">Organizuję</h2>
+        <h2 class="display mb-3 text-2xl font-bold">Organizuję</h2>
         {organized.length === 0 ? (
-          <p class="text-sm text-ink-3">
+          <p class="text-sm text-page-ink-2">
             Nie masz jeszcze ogłoszeń.{" "}
-            <a href="/events/new" class="text-link hover:underline">
+            <a href="/events/new" class="text-page-link hover:underline">
               Dodaj pierwsze
             </a>
           </p>
@@ -79,11 +79,11 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
       </section>
 
       <section>
-        <h2 class="mb-2 text-lg font-semibold">Moje zgłoszenia</h2>
+        <h2 class="display mb-3 text-2xl font-bold">Moje zgłoszenia</h2>
         {joined.length === 0 ? (
-          <p class="text-sm text-ink-3">
+          <p class="text-sm text-page-ink-2">
             Nie zgłosiłeś się jeszcze na żadne spotkanie.{" "}
-            <a href="/events" class="text-link hover:underline">
+            <a href="/events" class="text-page-link hover:underline">
               Przeglądaj ogłoszenia
             </a>
           </p>

@@ -1,17 +1,18 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import Logo from "@/components/Logo.astro";
 import SignUpForm from "@/components/auth/SignUpForm";
 
 const error = Astro.url.searchParams.get("error");
 ---
 
-<Layout title="Rejestracja · Ktoś/Coś">
+<Layout title="Rejestracja · Metando">
   <div class="bg-app flex min-h-screen items-center justify-center p-4">
     <div class="w-full max-w-sm rounded-3xl border border-line bg-card shadow-card p-8 text-ink backdrop-blur-xl">
-      <a href="/events" class="mb-4 block">
-        <img src="/logo-full.webp" alt="Ktoś/Coś" width="480" height="417" class="logo-full mx-auto h-auto w-40" />
+      <a href="/events" class="mb-6 flex justify-center" aria-label="Metando — ogłoszenia">
+        <Logo size="hero" />
       </a>
-      <h1 class="mb-6 text-brand-gradient text-center text-2xl font-bold">Załóż konto</h1>
+      <h1 class="display mb-6 text-ink text-center text-2xl font-bold">Załóż konto</h1>
       <SignUpForm serverError={error} client:load />
       <p class="mt-4 text-center text-sm text-ink-3">
         Masz już konto?{""}

@@ -38,15 +38,15 @@ if (Astro.request.method === "POST" && editable && supabase) {
 }
 ---
 
-<Layout title="Edytuj ogłoszenie · Ktoś/Coś">
+<Layout title="Edytuj ogłoszenie · Metando">
   <div class="bg-app min-h-screen p-4">
     <div class="mx-auto max-w-xl">
       <Topbar />
-      <a href={`/events/${id}`} class="mb-3 inline-block text-sm text-link hover:underline">
+      <a href={`/events/${id}`} class="mb-3 inline-block text-sm font-semibold text-page-link hover:underline">
         ← Wróć do ogłoszenia
       </a>
       <div class="rounded-3xl border border-line bg-card shadow-card p-6 text-ink backdrop-blur-xl">
-        <h1 class="mb-4 text-2xl font-bold">Edytuj ogłoszenie</h1>
+        <h1 class="display mb-4 text-3xl font-bold">Edytuj ogłoszenie</h1>
         {editable ? (
           <>
             {details.participants.length > 0 && (

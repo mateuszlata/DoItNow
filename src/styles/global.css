@@ -110,119 +110,201 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-}
-
 /*
- * Motywy do testów (przełącznik w pasku, cookie `theme`):
- * a — miękkie bloki (karta w kolorze sportu), b — ciemny sportowy, c — granatowy nagłówek marki.
- * Komponenty używają tylko tych zmiennych (klasy bg-page, text-ink, bg-brand…), nigdy surowych kolorów.
+ * Motywy Metando z Claude Design (przełącznik w pasku, cookie `theme`):
+ * a — Nocny Orlik, b — Podwórko, c — Kort, d — Szatnia, d2 — Szatnia ’96 (domyślny).
+ * Komponenty używają tylko tych zmiennych (bg-card, text-ink, bg-brand…), nigdy surowych kolorów.
+ * `ink*` i `link` to tekst na kartach, `page-ink*` i `page-link` — tekst leżący wprost na tle strony.
  */
 :root,
-[data-theme="c"] {
-  --page: #f4f4f5;
-  --card: #ffffff;
-  --card-2: #f1f5f9;
-  --ink: #0f172a;
-  --ink-2: #334155;
-  --ink-3: #64748b;
-  --line: #e2e8f0;
-  --line-strong: #cbd5e1;
-  --brand: #ea580c;
-  --brand-hover: #c2410c;
-  --on-brand: #ffffff;
-  --link: #c2410c;
-  --date: #0369a1;
-  --header: #1e293b;
-  --on-header: #ffffff;
-  --on-header-2: #cbd5e1;
-  --header-link: #fdba74;
-  --track: #e2e8f0;
-  --fill: linear-gradient(90deg, #f97316, #10b981);
-  --card-sport-mix: 0%;
-  --tile-mix: 22%;
-  --card-shadow: 0 6px 20px rgb(15 23 42 / 0.08);
-  --ok: #166534;
-  --ok-soft: #dcfce7;
-  --ok-line: #86efac;
-  --warn: #92400e;
-  --warn-soft: #fef3c7;
-  --warn-line: #fcd34d;
-  --bad: #991b1b;
-  --bad-soft: #fee2e2;
-  --bad-line: #fca5a5;
-  --free: #9a3412;
-  --free-soft: #ffedd5;
-  --free-line: #fdba74;
-  color-scheme: light;
-}
-
-[data-theme="a"] {
-  --page: #f7f6f2;
-  --card: #ffffff;
-  --card-2: #efede6;
-  --ink: #111111;
-  --ink-2: #3f3f46;
-  --ink-3: #6b6b73;
-  --line: #e7e5de;
-  --line-strong: #d4d1c7;
-  --brand: #111111;
-  --brand-hover: #2a2a2a;
-  --on-brand: #ffffff;
-  --link: #c2410c;
-  --date: #1d4ed8;
-  --header: transparent;
-  --on-header: #111111;
-  --on-header-2: #3f3f46;
-  --header-link: #111111;
-  --track: rgb(255 255 255 / 0.7);
-  --fill: #111111;
-  --card-sport-mix: 38%;
-  --tile-mix: 0%;
+[data-theme="d2"],
+[data-theme="d"] {
+  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-head: "Big Shoulders Display", "Work Sans", sans-serif;
+  --page: #0f3b2e;
+  --page-ink: #f3ead3;
+  --page-ink-2: #b9cfc3;
+  --page-link: #ff9a4d;
+  --card: #f3ead3;
+  --card-2: #e8dcbf;
+  --ink: #13261f;
+  --ink-2: #3e5249;
+  --ink-3: #5b6b62;
+  --line: #dccfb0;
+  --line-strong: #c9b98f;
+  --brand: #ff7a1a;
+  --brand-hover: #ff8f3d;
+  --on-brand: #13261f;
+  --link: #a84a00;
+  --date: #0f6b4e;
+  --header: #0a2e23;
+  --on-header: #f3ead3;
+  --on-header-2: #b9cfc3;
+  --header-link: #ff9a4d;
+  --chip: #164a3a;
+  --on-chip: #f3ead3;
+  --track: #e8dcbf;
+  --fill: #ff7a1a;
+  --tile-mix: 26%;
   --card-shadow: none;
-}
-
-[data-theme="b"] {
-  --page: #0b0b0f;
-  --card: #16161d;
-  --card-2: #1f1f28;
-  --ink: #fafafa;
-  --ink-2: #d4d4d8;
-  --ink-3: #a1a1aa;
-  --line: #26262f;
-  --line-strong: #3f3f46;
-  --brand: #ff6b2c;
-  --brand-hover: #ff8a50;
-  --on-brand: #0b0b0f;
-  --link: #ff8a50;
-  --date: #7dd3fc;
-  --header: transparent;
-  --on-header: #fafafa;
-  --on-header-2: #a1a1aa;
-  --header-link: #ff8a50;
-  --track: #26262f;
-  --fill: #4ade80;
-  --card-sport-mix: 0%;
-  --tile-mix: 28%;
-  --card-shadow: none;
-  --ok: #86efac;
-  --ok-soft: #12301c;
-  --ok-line: #166534;
-  --warn: #fcd34d;
-  --warn-soft: #3a2a0a;
-  --warn-line: #92400e;
-  --bad: #fca5a5;
-  --bad-soft: #3b1212;
-  --bad-line: #991b1b;
-  --free: #fdba74;
-  --free-soft: #3a1e0a;
-  --free-line: #c2410c;
+  --ok: #1f5fad;
+  --ok-soft: #dce6f5;
+  --ok-line: #9db7e0;
+  --warn: #9a5200;
+  --warn-soft: #f5e2c4;
+  --warn-line: #ddb27a;
+  --bad: #b0281c;
+  --bad-soft: #f6d9d3;
+  --bad-line: #e3a196;
+  --free: #0f6b4e;
+  --free-soft: #d5ebdf;
+  --free-line: #8cc4a8;
   color-scheme: dark;
 }
 
+[data-theme="d"] {
+  --header: #164a3a;
+}
+
+[data-theme="a"] {
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-head: "Archivo", "Manrope", sans-serif;
+  --page: #0e1110;
+  --page-ink: #f2f5f0;
+  --page-ink-2: #b4bcb6;
+  --page-link: #c8f135;
+  --card: #181c1b;
+  --card-2: #222826;
+  --ink: #f2f5f0;
+  --ink-2: #b4bcb6;
+  --ink-3: #8a938d;
+  --line: #2c3330;
+  --line-strong: #3d4642;
+  --brand: #c8f135;
+  --brand-hover: #e2ff7a;
+  --on-brand: #0e1110;
+  --link: #c8f135;
+  --date: #c8f135;
+  --header: #181c1b;
+  --on-header: #f2f5f0;
+  --on-header-2: #b4bcb6;
+  --header-link: #c8f135;
+  --chip: #222826;
+  --on-chip: #f2f5f0;
+  --track: #2c3330;
+  --fill: #c8f135;
+  --tile-mix: 26%;
+  --card-shadow: none;
+  --ok: #4fd1c5;
+  --ok-soft: rgb(79 209 197 / 0.14);
+  --ok-line: rgb(79 209 197 / 0.45);
+  --warn: #ffb547;
+  --warn-soft: rgb(255 181 71 / 0.14);
+  --warn-line: rgb(255 181 71 / 0.45);
+  --bad: #ff6b5e;
+  --bad-soft: rgb(255 107 94 / 0.14);
+  --bad-line: rgb(255 107 94 / 0.45);
+  --free: #c8f135;
+  --free-soft: rgb(200 241 53 / 0.1);
+  --free-line: rgb(200 241 53 / 0.45);
+  color-scheme: dark;
+}
+
+[data-theme="b"] {
+  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-head: "Bricolage Grotesque", "DM Sans", sans-serif;
+  --page: #f6ebdd;
+  --page-ink: #2a1a12;
+  --page-ink-2: #5c4335;
+  --page-link: #b2340f;
+  --card: #fffbf5;
+  --card-2: #efdfcb;
+  --ink: #2a1a12;
+  --ink-2: #5c4335;
+  --ink-3: #7a5f4f;
+  --line: #e6d3bc;
+  --line-strong: #d9c2a6;
+  --brand: #cc3d18;
+  --brand-hover: #b2340f;
+  --on-brand: #ffffff;
+  --link: #b2340f;
+  --date: #1d6fd1;
+  --header: transparent;
+  --on-header: #2a1a12;
+  --on-header-2: #5c4335;
+  --header-link: #b2340f;
+  --chip: #fffbf5;
+  --on-chip: #2a1a12;
+  --track: #efdfcb;
+  --fill: #cc3d18;
+  --tile-mix: 22%;
+  --card-shadow: 0 3px 0 #e6d3bc;
+  --ok: #2f7a4a;
+  --ok-soft: #dcebdd;
+  --ok-line: #9cc7a6;
+  --warn: #a35a00;
+  --warn-soft: #f5e2c4;
+  --warn-line: #e0b677;
+  --bad: #8e1b1b;
+  --bad-soft: #f7dcd6;
+  --bad-line: #e8a99b;
+  --free: #1d6fd1;
+  --free-soft: #dce7f7;
+  --free-line: #9dbceb;
+  color-scheme: light;
+}
+
+[data-theme="c"] {
+  --font-body: "Onest", ui-sans-serif, system-ui, sans-serif;
+  --font-head: "Unbounded", "Onest", sans-serif;
+  --page: #e9ecff;
+  --page-ink: #0b0f2e;
+  --page-ink-2: #3b4170;
+  --page-link: #2f3dff;
+  --card: #ffffff;
+  --card-2: #dfe4ff;
+  --ink: #0b0f2e;
+  --ink-2: #3b4170;
+  --ink-3: #565c8c;
+  --line: #cdd3f5;
+  --line-strong: #b3bbee;
+  --brand: #2f3dff;
+  --brand-hover: #1a24b8;
+  --on-brand: #ffffff;
+  --link: #2f3dff;
+  --date: #2f3dff;
+  --header: #2f3dff;
+  --on-header: #ffffff;
+  --on-header-2: #dde1ff;
+  --header-link: #ffffff;
+  --chip: #ffffff;
+  --on-chip: #0b0f2e;
+  --track: #dfe4ff;
+  --fill: #2f3dff;
+  --tile-mix: 18%;
+  --card-shadow: none;
+  --ok: #0e7a50;
+  --ok-soft: #d7f2e6;
+  --ok-line: #8fd3b5;
+  --warn: #b25400;
+  --warn-soft: #ffebd6;
+  --warn-line: #f5be85;
+  --bad: #c4122f;
+  --bad-soft: #ffe3e7;
+  --bad-line: #f4a3b0;
+  --free: #2f3dff;
+  --free-soft: #dfe4ff;
+  --free-line: #a9b2ff;
+  color-scheme: light;
+}
+
 @theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-head);
   --color-page: var(--page);
+  --color-page-ink: var(--page-ink);
+  --color-page-ink-2: var(--page-ink-2);
+  --color-page-link: var(--page-link);
   --color-card: var(--card);
   --color-card-2: var(--card-2);
   --color-ink: var(--ink);
@@ -239,6 +321,8 @@
   --color-on-header: var(--on-header);
   --color-on-header-2: var(--on-header-2);
   --color-header-link: var(--header-link);
+  --color-chip: var(--chip);
+  --color-on-chip: var(--on-chip);
   --color-track: var(--track);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
@@ -256,21 +340,23 @@
 
 @utility bg-app {
   background-color: var(--page);
+  color: var(--page-ink);
 }
 
-/* Karta ogłoszenia: w motywie a zabarwiona kolorem sportu (`--sport` ustawia SportCard). */
+/* Szatnia ’96: delikatne pionowe paski na tle, jak na koszulce. */
+[data-theme="d2"] .bg-app {
+  background-image: repeating-linear-gradient(90deg, rgb(243 234 211 / 0.04) 0 2px, transparent 2px 28px);
+}
+
+/* Karta ogłoszenia (`--sport` ustawia SportCard). */
 @utility bg-card-sport {
-  background-color: color-mix(in srgb, var(--sport, #94a3b8) var(--card-sport-mix), var(--card));
+  background-color: var(--card);
   box-shadow: var(--card-shadow);
 }
 
-/* Kafelek z ikoną sportu. */
+/* Kafelek z ikoną sportu w kolorze sportu. */
 @utility bg-sport-tile {
-  background-color: color-mix(
-    in srgb,
-    var(--sport, #94a3b8) calc(var(--tile-mix) + var(--card-sport-mix)),
-    var(--card)
-  );
+  background-color: color-mix(in srgb, var(--sport, #94a3b8) var(--tile-mix), var(--card));
 }
 
 @utility shadow-card {
@@ -282,18 +368,41 @@
   background: var(--fill);
 }
 
-/* Pełne logo ma granatowy napis: w ciemnym motywie stoi na jasnej plakietce. */
-[data-theme="b"] .logo-full {
-  background-color: #ffffff;
-  border-radius: 1.5rem;
-  padding: 0.75rem;
+/* Nagłówki i logo: krój i charakter kierunku. */
+.display {
+  font-family: var(--font-head);
+  letter-spacing: -0.02em;
+}
+[data-theme="a"] .display {
+  font-stretch: 118%;
+  font-weight: 850;
+}
+[data-theme="c"] .display {
+  letter-spacing: -0.04em;
+}
+[data-theme="d"] .display,
+[data-theme="d2"] .display {
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 0.95;
+}
+[data-theme="d2"] .display {
+  display: inline-block;
+  transform: skewX(-10deg);
+  transform-origin: left;
+}
+/* Pomarańczowy cień tylko w dużych nagłówkach (≥ 28 px), nigdy w treści. */
+[data-theme="d2"] .display-shadow {
+  text-shadow: 3px 3px 0 #ff7a1a;
 }
 
-/* Napis w kolorach logo. */
-@utility text-brand-gradient {
-  background-image: linear-gradient(90deg, #f97316, #10b981, #0284c7);
-  background-clip: text;
-  color: transparent;
+/* Paski pod nagłówkiem tylko w Szatni ’96. */
+.theme-stripes {
+  display: none;
+}
+[data-theme="d2"] .theme-stripes {
+  display: flex;
 }
 
 @layer base {

@@ -1,0 +1,93 @@
+---
+// Znak i napis Metando w wersji aktywnego motywu (projekty z Claude Design).
+import { readTheme } from "@/lib/theme";
+
+interface Props {
+  /** `bar` — pasek aplikacji, `hero` — duże logo z hasłem (logowanie, rejestracja). */
+  size?: "bar" | "hero";
+}
+
+const { size = "bar" } = Astro.props;
+const theme = readTheme(Astro.cookies);
+const px = size === "hero" ? 64 : 32;
+---
+
+<span class:list={["inline-flex items-center", size === "hero" ? "flex-col gap-3" : "gap-2"]}>
+  {theme === "a" && (
+    <svg width={px} height={px} viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="16" fill="#C8F135" />
+      <path
+        d="M14 46V30a8 8 0 0 1 16 0v16M30 30a8 8 0 0 1 16 0v16"
+        fill="none"
+        stroke="#0E1110"
+        stroke-width="9"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+      <circle cx="50" cy="15" r="7" fill="#0E1110" />
+    </svg>
+  )}
+  {theme === "b" && (
+    <svg width={px} height={px} viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="20" fill="#CC3D18" />
+      <circle cx="22" cy="25" r="8.5" fill="#FFF4E6" />
+      <circle cx="42" cy="25" r="8.5" fill="#FFF4E6" />
+      <path
+        d="M16 40c4 7 10 10 16 10s12-3 16-10"
+        fill="none"
+        stroke="#FFF4E6"
+        stroke-width="8"
+        stroke-linecap="round"
+      />
+    </svg>
+  )}
+  {theme === "c" && (
+    <svg width={px} height={px} viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="18" fill={size === "hero" ? "#2F3DFF" : "#FFFFFF"} />
+      <path d="M32 54s-17-13-17-26a17 17 0 0 1 34 0c0 13-17 26-17 26z" fill={size === "hero" ? "#FFFFFF" : "#2F3DFF"} />
+      <path
+        d="M32 20v16M24 28h16"
+        stroke={size === "hero" ? "#2F3DFF" : "#FFFFFF"}
+        stroke-width="7"
+        stroke-linecap="round"
+      />
+    </svg>
+  )}
+  {theme === "d" && (
+    <svg width={px} height={px} viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="32" fill="#FF7A1A" />
+      <path d="M17 45V20l15 15 15-15v25" fill="none" stroke="#0F3B2E" stroke-width="9" stroke-linejoin="round" />
+    </svg>
+  )}
+  {theme === "d2" && (
+    <svg width={px} height={px} viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="14" fill="#FF7A1A" />
+      <path
+        d="M14 46l5-26 13 13 13-13 5 26"
+        fill="none"
+        stroke="#0F3B2E"
+        stroke-width="10"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
+    </svg>
+  )}
+  <span class:list={["flex flex-col", size === "hero" ? "items-center gap-1" : ""]}>
+    <span
+      class:list={[
+        "display leading-none font-extrabold",
+        size === "hero" ? "display-shadow text-5xl" : "text-2xl",
+        theme === "d2" && size === "bar" && "[text-shadow:2px_2px_0_#ff7a1a]",
+      ]}
+    >
+      {theme === "a" ? (
+        <>
+          metan<span class="text-brand">do</span>
+        </>
+      ) : (
+        "metando"
+      )}
+    </span>
+    {size === "hero" && <span class="text-sm text-ink-2">spotkaj się i zrób coś razem</span>}
+  </span>
+</span>

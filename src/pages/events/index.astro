@@ -57,7 +57,7 @@ const inputClass =
   "rounded-full border border-line-strong bg-card px-4 py-2 text-sm text-ink focus:ring-2 focus:ring-brand focus:outline-none";
 ---
 
-<Layout title="Ogłoszenia · Ktoś/Coś">
+<Layout title="Ogłoszenia · Metando">
   <div class="bg-app min-h-screen p-4">
     <div class="mx-auto max-w-3xl">
       <Topbar title="W co dziś gramy?" />
@@ -68,14 +68,18 @@ const inputClass =
         </p>
       )}
 
-      <nav class="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1" aria-label="Sport" data-testid="sport-chips">
+      <nav
+        class="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
+        aria-label="Sport"
+        data-testid="sport-chips"
+      >
         {[{ id: "", label: "Wszystkie" }, ...SPORTS].map((s) => (
           <a
             href={filterHref(s.id, day)}
             aria-current={s.id === sport ? "page" : undefined}
             class:list={[
               "shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors",
-              s.id === sport ? "bg-ink text-page" : "bg-card text-ink-2 shadow-card hover:text-ink",
+              s.id === sport ? "bg-brand text-on-brand" : "bg-chip text-on-chip shadow-card hover:opacity-80",
             ]}
           >
             {s.label}
@@ -96,7 +100,7 @@ const inputClass =
           Pokaż dzień
         </button>
         {(sport || day) && (
-          <a href="/events" class="px-2 py-2 text-sm font-semibold text-link hover:underline">
+          <a href="/events" class="px-2 py-2 text-sm font-semibold text-page-link hover:underline">
             Wyczyść
           </a>
         )}
@@ -111,15 +115,17 @@ const inputClass =
       </form>
 
       {!user && (
-        <p class="mb-4 text-sm text-ink-3">
+        <p class="mb-4 text-sm text-page-ink-2">
           Aby zobaczyć dokładne miejsce i szczegóły spotkań,{" "}
-          <a href="/auth/signin" class="text-link hover:underline">
+          <a href="/auth/signin" class="font-semibold text-page-link hover:underline">
             zaloguj się
           </a>
         </p>
       )}
 
-      {loadError && <p class="text-bad">Nie udało się wczytać ogłoszeń. Spróbuj odświeżyć stronę.</p>}
+      {loadError && (
+        <p class="rounded-2xl bg-bad-soft p-4 text-bad">Nie udało się wczytać ogłoszeń. Spróbuj odświeżyć stronę.</p>
+      )}
 
       {!loadError && events.length === 0 && (
         <p class="rounded-xl border border-line bg-card-2 p-6 text-center text-ink-2">
@@ -130,7 +136,7 @@ const inputClass =
       <ul class="grid gap-3">
         {events.map((event) => (
           <SportCard sport={event.sport}>
-            <h2 class="text-lg font-extrabold tracking-tight">
+            <h2 class="display text-xl font-extrabold">
               <a href={`/events/${event.id}`} class="after:absolute after:inset-0 hover:underline">
                 {sportLabel(event.sport)}
               </a>
@@ -141,7 +147,7 @@ const inputClass =
               {event.place && <span class="text-ink-3"> · {event.place}</span>}
             </p>
             <div class="mt-3 flex items-baseline gap-1.5" data-testid="card-free-spots">
-              <span class="text-2xl font-extrabold">{freeSpots(event)}</span>
+              <span class="display text-3xl font-extrabold">{freeSpots(event)}</span>
               <span class="text-sm text-ink-2">wolnych z {teamSize(event)}</span>
             </div>
             <div class="mt-1.5 h-2 overflow-hidden rounded-full bg-track" aria-hidden="true">

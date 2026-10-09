@@ -105,11 +105,11 @@ const navigateHref =
     : null;
 ---
 
-<Layout title={summary ? `${sportLabel(summary.sport)} · Ktoś/Coś` : "Nie znaleziono · Ktoś/Coś"}>
+<Layout title={summary ? `${sportLabel(summary.sport)} · Metando` : "Nie znaleziono · Metando"}>
   <div class="bg-app min-h-screen p-4">
     <div class="mx-auto max-w-xl">
       <Topbar />
-      <a href="/events" class="mb-3 inline-block text-sm text-link hover:underline">
+      <a href="/events" class="mb-3 inline-block text-sm text-page-link font-semibold hover:underline">
         ← Wszystkie ogłoszenia
       </a>
 
@@ -172,7 +172,7 @@ const navigateHref =
             </section>
           )}
 
-          <h1 class="text-2xl font-bold">{sportLabel(summary.sport)}</h1>
+          <h1 class="display text-3xl font-bold">{sportLabel(summary.sport)}</h1>
           <p class="mt-1 text-date">{formatEventDate(summary.starts_at)}</p>
 
           <dl class="mt-4 grid gap-3 text-sm">

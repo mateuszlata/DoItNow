@@ -5,10 +5,10 @@ import Layout from "@/layouts/Layout.astro";
 const { user } = Astro.locals;
 ---
 
-<Layout title="Twoje konto · Ktoś/Coś">
+<Layout title="Twoje konto · Metando">
   <div class="bg-app flex min-h-screen items-center justify-center p-4">
     <div class="rounded-3xl border border-line bg-card shadow-card p-8 text-center text-ink backdrop-blur-xl">
-      <h1 class="mb-4 text-brand-gradient text-3xl font-bold">Twoje konto</h1>
+      <h1 class="mb-4 display text-ink text-3xl font-bold">Twoje konto</h1>
       <p class="text-ink-2">
         Zalogowano jako <span class="font-semibold text-ink">{user?.email}</span>
       </p>

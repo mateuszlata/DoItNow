@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase";
 import { getDisplayName } from "@/lib/services/profiles";
 import { countPendingRequests } from "@/lib/services/events";
+import Logo from "@/components/Logo.astro";
 import { THEMES, THEME_COOKIE, readTheme } from "@/lib/theme";
 
 interface Props {
@@ -26,11 +27,8 @@ const link = "text-header-link font-semibold transition-opacity hover:opacity-80
 
 <header class="bg-header text-on-header -mx-4 -mt-4 mb-5 rounded-b-[2rem] px-5 pt-4 pb-5 sm:mx-0 sm:mt-0 sm:rounded-[2rem]">
   <div class="flex items-center justify-between gap-3">
-    <a href="/events" class="flex items-center gap-2 text-lg font-extrabold tracking-tight">
-      <img src="/logo-mark.webp" alt="" width="32" height="32" class="size-8" />
-      <span>
-        Ktoś<span class="text-orange-500">/</span>Coś
-      </span>
+    <a href="/events" aria-label="Metando — ogłoszenia">
+      <Logo />
     </a>
     <div class="flex items-center gap-1" role="group" aria-label="Motyw" data-testid="theme-switcher">
       {THEMES.map((t) => (
@@ -40,8 +38,8 @@ const link = "text-header-link font-semibold transition-opacity hover:opacity-80
           title={t.label}
           aria-pressed={t.id === theme ? "true" : "false"}
           class:list={[
-            "size-7 rounded-full text-xs font-bold uppercase transition-colors",
-            t.id === theme ? "bg-brand text-on-brand" : "bg-card-2 text-ink-2",
+            "h-7 min-w-7 rounded-full px-1.5 text-xs font-bold uppercase transition-colors",
+            t.id === theme ? "bg-brand text-on-brand ring-2 ring-on-header" : "bg-card-2 text-ink-2",
           ]}
         >
           {t.id}
@@ -90,8 +88,13 @@ const link = "text-header-link font-semibold transition-opacity hover:opacity-80
     )}
   </nav>
 
-  {title && <h1 class="mt-4 text-3xl leading-tight font-extrabold tracking-tight">{title}</h1>}
+  {title && <h1 class="display display-shadow mt-4 text-4xl leading-tight font-extrabold">{title}</h1>}
 </header>
+<div class="theme-stripes -mx-4 -mt-5 mb-5 flex-col gap-[3px] sm:mx-0" aria-hidden="true">
+  <span class="h-1 bg-[#f3ead3]"></span>
+  <span class="h-1.5 bg-[#ff7a1a]"></span>
+  <span class="h-1 bg-[#f3ead3]"></span>
+</div>
 
 <script is:inline define:vars={{ cookieName: THEME_COOKIE }}>
   document.querySelectorAll("[data-theme-choice]").forEach((button) => {
