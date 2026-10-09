@@ -1,0 +1,142 @@
+---
+// Formularz obiektu zarządcy: nazwa, okolica, adres z pinezką, sporty, cena za godzinę i godziny otwarcia.
+import MapPicker from "@/components/map/MapPicker";
+import SportIcon from "@/components/SportIcon.astro";
+import { SPORTS } from "@/lib/sports";
+import { WEEKDAYS, type VenueFieldErrors, type VenueFormValues } from "@/lib/services/venues";
+
+interface Props {
+  values: VenueFormValues;
+  errors: VenueFieldErrors;
+  submitLabel: string;
+}
+
+const { values, errors, submitLabel } = Astro.props;
+const inputClass =
+  "mt-1 w-full rounded-lg border bg-card px-3 py-2 text-ink placeholder-ink-3 focus:ring-2 focus:outline-none";
+const borderClass = (name: keyof VenueFieldErrors) =>
+  errors[name] ? "border-bad-line focus:ring-red-400" : "border-line-strong focus:ring-brand";
+---
+
+{errors.form && <p class="mb-4 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{errors.form}</p>}
+
+<form method="POST" class="grid gap-4" novalidate>
+  <label class="text-sm text-ink-2">
+    Nazwa obiektu
+    <input
+      type="text"
+      name="name"
+      required
+      maxlength="100"
+      placeholder="np. Orlik przy SP nr 12"
+      value={values.name}
+      class:list={[inputClass, borderClass("name")]}
+    />
+    {errors.name && <span class="mt-1 block text-xs text-bad">{errors.name}</span>}
+  </label>
+
+  <div class="text-sm text-ink-2">
+    Adres i miejsce na mapie
+    <div class="mt-1">
+      <MapPicker initialLat={values.lat} initialLng={values.lng} fillField="place" client:visible />
+    </div>
+    {errors.lat && <span class="mt-1 block text-xs text-bad">{errors.lat}</span>}
+  </div>
+
+  <label class="text-sm text-ink-2">
+    Adres
+    <input
+      type="text"
+      name="place"
+      required
+      maxlength="200"
+      placeholder="np. Dolna 5, Warszawa"
+      value={values.address}
+      class:list={[inputClass, borderClass("address")]}
+    />
+    {errors.address && <span class="mt-1 block text-xs text-bad">{errors.address}</span>}
+  </label>
+
+  <label class="text-sm text-ink-2">
+    Okolica / dzielnica
+    <input
+      type="text"
+      name="area"
+      required
+      maxlength="80"
+      placeholder="np. Mokotów"
+      value={values.area}
+      class:list={[inputClass, borderClass("area")]}
+    />
+    {errors.area && <span class="mt-1 block text-xs text-bad">{errors.area}</span>}
+  </label>
+
+  <fieldset class="text-sm text-ink-2">
+    <legend>Sporty na obiekcie</legend>
+    <div class="mt-2 flex flex-wrap gap-2">
+      {SPORTS.map((s) => (
+        <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line-strong bg-card px-3 py-1.5 text-ink has-[:checked]:border-brand has-[:checked]:bg-brand has-[:checked]:text-on-brand">
+          <input type="checkbox" name="sports" value={s.id} checked={values.sports.includes(s.id)} class="sr-only" />
+          <SportIcon sport={s.id} size={16} />
+          {s.label}
+        </label>
+      ))}
+    </div>
+    {errors.sports && <span class="mt-1 block text-xs text-bad">{errors.sports}</span>}
+  </fieldset>
+
+  <label class="text-sm text-ink-2">
+    Cena za godzinę (zł)
+    <input
+      type="text"
+      inputmode="decimal"
+      name="price"
+      required
+      placeholder="np. 120"
+      value={values.price}
+      class:list={[inputClass, borderClass("price")]}
+    />
+    <span class="mt-1 block text-xs text-ink-3">Koszt spotkania dzieli się równo na miejsca w składzie.</span>
+    {errors.price && <span class="mt-1 block text-xs text-bad">{errors.price}</span>}
+  </label>
+
+  <fieldset class="text-sm text-ink-2">
+    <legend>Godziny otwarcia</legend>
+    <div class="mt-2 grid gap-2">
+      {WEEKDAYS.map(({ day, label }) => {
+        const h = values.hours[day];
+        return (
+          <div class="flex flex-wrap items-center gap-2 rounded-2xl bg-card-2 px-3 py-2">
+            <label class="flex w-32 items-center gap-2 font-semibold text-ink">
+              <input type="checkbox" name={`open-${String(day)}`} checked={h.open} class="size-4 accent-brand" />
+              {label}
+            </label>
+            <input
+              type="time"
+              name={`opens-${String(day)}`}
+              value={h.opens}
+              aria-label={`${label}: otwarcie`}
+              class="rounded-lg border border-line-strong bg-card px-2 py-1 text-ink"
+            />
+            <span aria-hidden="true">–</span>
+            <input
+              type="time"
+              name={`closes-${String(day)}`}
+              value={h.closes === "24:00" ? "23:59" : h.closes}
+              aria-label={`${label}: zamknięcie`}
+              class="rounded-lg border border-line-strong bg-card px-2 py-1 text-ink"
+            />
+          </div>
+        );
+      })}
+    </div>
+    {errors.hours && <span class="mt-1 block text-xs text-bad">{errors.hours}</span>}
+  </fieldset>
+
+  <button
+    type="submit"
+    class="h-12 rounded-full bg-brand px-4 font-bold text-on-brand transition-colors hover:bg-brand-hover"
+  >
+    {submitLabel}
+  </button>
+</form>

@@ -1,0 +1,47 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import VenueForm from "@/components/venues/VenueForm.astro";
+import { createClient } from "@/lib/supabase";
+import {
+  EMPTY_VENUE_FORM,
+  createVenue,
+  readVenueForm,
+  type VenueFieldErrors,
+  type VenueFormValues,
+} from "@/lib/services/venues";
+
+// Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
+const user = Astro.locals.user;
+
+let values: VenueFormValues = EMPTY_VENUE_FORM;
+let errors: VenueFieldErrors = {};
+
+if (Astro.request.method === "POST" && user) {
+  values = await readVenueForm(Astro.request);
+  const supabase = createClient(Astro.request.headers, Astro.cookies);
+  if (!supabase) {
+    errors = { form: "Brak konfiguracji bazy danych." };
+  } else {
+    const result = await createVenue(supabase, user.id, values);
+    if (result.ok) return Astro.redirect("/venues?ok=created");
+    errors = result.errors;
+    Astro.response.status = 400;
+  }
+}
+---
+
+<Layout title="Dodaj obiekt · Metando">
+  <div class="bg-app min-h-screen p-4 pb-32">
+    <div class="mx-auto max-w-xl">
+      <Topbar />
+      <a href="/venues" class="mb-3 inline-block text-sm font-semibold text-page-link hover:underline">
+        ← Moje obiekty
+      </a>
+      <div class="rounded-3xl border border-line bg-card p-6 text-ink">
+        <h1 class="display mb-4 text-3xl font-bold">Dodaj obiekt</h1>
+        <VenueForm values={values} errors={errors} submitLabel="Zapisz obiekt" />
+      </div>
+    </div>
+  </div>
+</Layout>

@@ -10,7 +10,8 @@ import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/li
 import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
 import { freeReserve, freeWord, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
 import { sportLabel } from "@/lib/sports";
-import { eventDayParts, formatEventTime } from "@/lib/time";
+import { eventDayParts, formatEventTime, formatTimeRange } from "@/lib/time";
+import { formatPLN, shareCents } from "@/lib/money";
 import type { EventDetails, PublicEvent } from "@/types";
 
 const { user } = Astro.locals;
@@ -44,6 +45,8 @@ const summary = details
       reserve_count: details.reserves.length,
       min_people: details.min_people,
       requires_approval: details.requires_approval,
+      duration_minutes: details.duration_minutes,
+      cost_cents: details.cost_cents,
     }
   : publicEvent;
 
@@ -304,6 +307,18 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               </div>
             </div>
           </div>
+          <p class="-mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-page-ink" data-testid="time-and-cost">
+            <span>
+              <strong>{formatTimeRange(summary.starts_at, summary.duration_minutes)}</strong>
+              <span class="text-page-ink-2"> · {summary.duration_minutes} min</span>
+            </span>
+            {summary.cost_cents != null && (
+              <span>
+                <strong class="text-brand">{formatPLN(shareCents(summary.cost_cents, team))} na osobę</strong>
+                <span class="text-page-ink-2"> · obiekt {formatPLN(summary.cost_cents)}</span>
+              </span>
+            )}
+          </p>
           <p class="-mt-2 text-[13px] text-page-ink-2" data-testid="join-mode">
             Dołączanie: {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
             {summary.organizer_plays && " · organizator gra w składzie"}

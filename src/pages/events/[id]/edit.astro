@@ -11,6 +11,7 @@ import {
   type EventFormValues,
   type FieldErrors,
 } from "@/lib/services/events";
+import { listVenues } from "@/lib/services/venues";
 
 const user = Astro.locals.user;
 if (!user) return Astro.redirect("/auth/signin");
@@ -26,6 +27,7 @@ const editable = details.status === "active" && canEditEvent(details.starts_at);
 
 let values: EventFormValues = eventToForm(details);
 let errors: FieldErrors = {};
+const venues = supabase ? await listVenues(supabase) : [];
 
 if (Astro.request.method === "POST" && editable && supabase) {
   values = await readEventForm(Astro.request);
@@ -55,7 +57,7 @@ if (Astro.request.method === "POST" && editable && supabase) {
                 Ty, jeśli grasz).
               </p>
             )}
-            <EventForm values={values} errors={errors} submitLabel="Zapisz zmiany" />
+            <EventForm values={values} errors={errors} venues={venues} submitLabel="Zapisz zmiany" />
           </>
         ) : (
           <p class="text-sm text-ink-2">

@@ -1,0 +1,49 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import VenueForm from "@/components/venues/VenueForm.astro";
+import { createClient } from "@/lib/supabase";
+import {
+  getVenue,
+  readVenueForm,
+  updateVenue,
+  venueToForm,
+  type VenueFieldErrors,
+  type VenueFormValues,
+} from "@/lib/services/venues";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/auth/signin");
+
+const id = Astro.params.id ?? "";
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+const venue = supabase ? await getVenue(supabase, id) : null;
+// Edytować może tylko zarządca obiektu.
+if (venue?.manager_id !== user.id) return Astro.redirect("/venues");
+
+let values: VenueFormValues = venueToForm(venue);
+let errors: VenueFieldErrors = {};
+
+if (Astro.request.method === "POST" && supabase) {
+  values = await readVenueForm(Astro.request);
+  const result = await updateVenue(supabase, id, values);
+  if (result.ok) return Astro.redirect("/venues?ok=updated");
+  errors = result.errors;
+  Astro.response.status = 400;
+}
+---
+
+<Layout title="Edytuj obiekt · Metando">
+  <div class="bg-app min-h-screen p-4 pb-32">
+    <div class="mx-auto max-w-xl">
+      <Topbar />
+      <a href="/venues" class="mb-3 inline-block text-sm font-semibold text-page-link hover:underline">
+        ← Moje obiekty
+      </a>
+      <div class="rounded-3xl border border-line bg-card p-6 text-ink">
+        <h1 class="display mb-4 text-3xl font-bold">Edytuj obiekt</h1>
+        <VenueForm values={values} errors={errors} submitLabel="Zapisz zmiany" />
+      </div>
+    </div>
+  </div>
+</Layout>

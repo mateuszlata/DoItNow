@@ -8,6 +8,8 @@ interface Props {
   /** Wartości z formularza (puste, gdy brak pinezki). */
   initialLat: string;
   initialLng: string;
+  /** Pole formularza, w które wpisuje się wybrany adres, gdy jest puste. */
+  fillField?: string;
 }
 
 function parse(value: string): number | null {
@@ -21,7 +23,7 @@ function parse(value: string): number | null {
  * w mapę stawia pinezkę, którą można przeciągnąć lub usunąć. Współrzędne trafiają do ukrytych pól
  * `lat` i `lng` formularza; wybrany adres wpisuje się w puste pole „Dokładne miejsce”.
  */
-export default function MapPicker({ initialLat, initialLng }: Props) {
+export default function MapPicker({ initialLat, initialLng, fillField = "place" }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const marker = useRef<Leaflet.Marker | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
@@ -122,7 +124,7 @@ export default function MapPicker({ initialLat, initialLng }: Props) {
     setSuggestions([]);
     // Puste pole „Dokładne miejsce” wypełniamy wybranym adresem.
     const form = container.current?.closest("form");
-    const placeField = form?.elements.namedItem("place");
+    const placeField = form?.elements.namedItem(fillField);
     if (placeField instanceof HTMLInputElement && placeField.value.trim() === "") {
       placeField.value = [suggestion.title, suggestion.subtitle.split(", ")[0]].filter(Boolean).join(", ");
     }

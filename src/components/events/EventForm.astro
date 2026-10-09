@@ -1,19 +1,28 @@
 ---
-// Formularz ogłoszenia wspólny dla dodawania (FR-003) i edycji (FR-004).
+// Formularz ogłoszenia wspólny dla dodawania (FR-003) i edycji (FR-004). Spotkanie może odbyć się
+// na obiekcie zarządcy — wtedy miejsce i pinezka pochodzą z obiektu, a koszt z jego cennika.
 import type { EventFormValues, FieldErrors } from "@/lib/services/events";
+import { formatHours } from "@/lib/services/venues";
+import { formatPLN } from "@/lib/money";
 import { SPORTS } from "@/lib/sports";
 import { nowLocalDateTime } from "@/lib/time";
+import type { VenueWithHours } from "@/types";
 import MapPicker from "@/components/map/MapPicker";
 
 interface Props {
   values: EventFormValues;
   errors: FieldErrors;
   submitLabel: string;
+  /** Obiekty do wyboru (puste — bez wyboru obiektu). */
+  venues?: VenueWithHours[];
 }
 
-const { values, errors, submitLabel } = Astro.props;
+const { values, errors, submitLabel, venues = [] } = Astro.props;
 
 const minStartsAt = nowLocalDateTime();
+const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240, 300, 360];
+const durationLabel = (m: number) => (m < 60 ? `${String(m)} min` : `${String(m / 60).replace(".", ",")} h`);
+const ownPlace = values.venueId === "";
 const inputClass =
   "mt-1 w-full rounded-lg border bg-card px-3 py-2 text-ink placeholder-ink-3 focus:ring-2 focus:outline-none";
 const borderClass = (name: keyof FieldErrors) =>
@@ -22,7 +31,7 @@ const borderClass = (name: keyof FieldErrors) =>
 
 {errors.form && <p class="mb-4 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{errors.form}</p>}
 
-<form method="POST" class="grid gap-4" novalidate>
+<form method="POST" class="grid gap-4" novalidate data-event-form>
   <label class="text-sm text-ink-2">
     Sport
     <select name="sport" required class:list={[inputClass, borderClass("sport")]}>
@@ -36,48 +45,97 @@ const borderClass = (name: keyof FieldErrors) =>
     {errors.sport && <span class="mt-1 block text-xs text-bad">{errors.sport}</span>}
   </label>
 
-  <label class="text-sm text-ink-2">
-    Data i godzina
-    <input
-      type="datetime-local"
-      name="startsAt"
-      required
-      min={minStartsAt}
-      value={values.startsAt}
-      class:list={[inputClass, borderClass("startsAt")]}
-    />
-    {errors.startsAt && <span class="mt-1 block text-xs text-bad">{errors.startsAt}</span>}
-  </label>
+  <div class="grid grid-cols-[1fr_auto] gap-3">
+    <label class="text-sm text-ink-2">
+      Data i godzina
+      <input
+        type="datetime-local"
+        name="startsAt"
+        required
+        min={minStartsAt}
+        value={values.startsAt}
+        class:list={[inputClass, borderClass("startsAt")]}
+      />
+    </label>
+    <label class="text-sm text-ink-2">
+      Czas trwania
+      <select name="durationMinutes" class:list={[inputClass, borderClass("durationMinutes")]}>
+        {DURATIONS.map((m) => (
+          <option value={String(m)} selected={String(m) === (values.durationMinutes || "90")}>
+            {durationLabel(m)}
+          </option>
+        ))}
+      </select>
+    </label>
+  </div>
+  {errors.startsAt && <span class="-mt-3 block text-xs text-bad">{errors.startsAt}</span>}
+  {errors.durationMinutes && <span class="-mt-3 block text-xs text-bad">{errors.durationMinutes}</span>}
 
-  <label class="text-sm text-ink-2">
-    Okolica / dzielnica
-    <input
-      type="text"
-      name="area"
-      required
-      maxlength="80"
-      placeholder="np. Mokotów"
-      value={values.area}
-      class:list={[inputClass, borderClass("area")]}
-    />
-    <span class="mt-1 block text-xs text-ink-3">Widoczna dla wszystkich, także niezalogowanych.</span>
-    {errors.area && <span class="mt-1 block text-xs text-bad">{errors.area}</span>}
-  </label>
+  {venues.length > 0 && (
+    <label class="text-sm text-ink-2">
+      Obiekt (opcjonalnie)
+      <select name="venueId" class:list={[inputClass, borderClass("venueId")]} data-venue-select>
+        <option value="">Bez obiektu — wpiszę miejsce sam</option>
+        {venues.map((v) => (
+          <option
+            value={v.id}
+            selected={v.id === values.venueId}
+            data-price={String(v.price_per_hour_cents)}
+            data-hours={formatHours(v.hours)}
+            data-sports={v.sports.join(",")}
+          >
+            {v.name} · {v.area} · {formatPLN(v.price_per_hour_cents)}/h
+          </option>
+        ))}
+      </select>
+      <span class="mt-1 block text-xs text-ink-3" data-venue-hours />
+      {errors.venueId && <span class="mt-1 block text-xs text-bad">{errors.venueId}</span>}
+    </label>
+  )}
 
-  <label class="text-sm text-ink-2">
-    Dokładne miejsce
-    <input
-      type="text"
-      name="place"
-      required
-      maxlength="200"
-      placeholder="np. Orlik przy ul. Dolnej 5"
-      value={values.place}
-      class:list={[inputClass, borderClass("place")]}
-    />
-    <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
-    {errors.place && <span class="mt-1 block text-xs text-bad">{errors.place}</span>}
-  </label>
+  <p class="rounded-2xl bg-card-2 px-4 py-3 text-sm text-ink" data-cost hidden>
+    Koszt obiektu: <strong data-cost-total></strong> · na osobę <strong data-cost-share></strong>
+    <span class="block text-xs text-ink-3">Koszt dzieli się równo na wszystkie miejsca w składzie.</span>
+  </p>
+
+  <div class="grid gap-4" data-own-place hidden={!ownPlace}>
+    <label class="text-sm text-ink-2">
+      Okolica / dzielnica
+      <input
+        type="text"
+        name="area"
+        maxlength="80"
+        placeholder="np. Mokotów"
+        value={values.area}
+        class:list={[inputClass, borderClass("area")]}
+      />
+      <span class="mt-1 block text-xs text-ink-3">Widoczna dla wszystkich, także niezalogowanych.</span>
+      {errors.area && <span class="mt-1 block text-xs text-bad">{errors.area}</span>}
+    </label>
+
+    <label class="text-sm text-ink-2">
+      Dokładne miejsce
+      <input
+        type="text"
+        name="place"
+        maxlength="200"
+        placeholder="np. Orlik przy ul. Dolnej 5"
+        value={values.place}
+        class:list={[inputClass, borderClass("place")]}
+      />
+      <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
+      {errors.place && <span class="mt-1 block text-xs text-bad">{errors.place}</span>}
+    </label>
+
+    <div class="text-sm text-ink-2">
+      Miejsce na mapie (opcjonalnie)
+      <div class="mt-1">
+        <MapPicker initialLat={values.lat} initialLng={values.lng} client:visible />
+      </div>
+      <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
+      {errors.lat && <span class="mt-1 block text-xs text-bad">{errors.lat}</span>}
+    </div>
+  </div>
 
   <label class="text-sm text-ink-2">
     Ile osób łącznie w składzie?
@@ -153,15 +211,6 @@ const borderClass = (name: keyof FieldErrors) =>
     </label>
   </div>
 
-  <div class="text-sm text-ink-2">
-    Miejsce na mapie (opcjonalnie)
-    <div class="mt-1">
-      <MapPicker initialLat={values.lat} initialLng={values.lng} client:visible />
-    </div>
-    <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
-    {errors.lat && <span class="mt-1 block text-xs text-bad">{errors.lat}</span>}
-  </div>
-
   <label class="text-sm text-ink-2">
     Opis (opcjonalnie)
     <textarea
@@ -176,8 +225,41 @@ const borderClass = (name: keyof FieldErrors) =>
 
   <button
     type="submit"
-    class="rounded-full bg-brand px-4 py-2 font-medium text-on-brand transition-colors hover:bg-brand-hover"
+    class="h-12 rounded-full bg-brand px-4 font-bold text-on-brand transition-colors hover:bg-brand-hover"
   >
     {submitLabel}
   </button>
 </form>
+
+<script is:inline>
+  // Wybór obiektu: chowa własne miejsce, pokazuje godziny otwarcia i podgląd kosztu na osobę.
+  (() => {
+    const form = document.querySelector("[data-event-form]");
+    const select = form?.querySelector("[data-venue-select]");
+    if (!form || !select) return;
+    const ownPlace = form.querySelector("[data-own-place]");
+    const hours = form.querySelector("[data-venue-hours]");
+    const cost = form.querySelector("[data-cost]");
+    const pln = (cents) =>
+      new Intl.NumberFormat("pl-PL", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }).format(
+        cents / 100,
+      ) + " zł";
+    const update = () => {
+      const option = select.selectedOptions[0];
+      const chosen = Boolean(select.value);
+      ownPlace.hidden = chosen;
+      hours.textContent = chosen ? "Otwarte: " + option.dataset.hours : "";
+      const price = Number(option?.dataset.price ?? 0);
+      const minutes = Number(form.elements.durationMinutes.value);
+      const team = Number(form.elements.total.value);
+      cost.hidden = !chosen;
+      if (!chosen) return;
+      const total = Math.round((price * minutes) / 60);
+      cost.querySelector("[data-cost-total]").textContent = pln(total);
+      cost.querySelector("[data-cost-share]").textContent = team > 0 ? pln(Math.ceil(total / team)) : "—";
+    };
+    form.addEventListener("input", update);
+    form.addEventListener("change", update);
+    update();
+  })();
+</script>

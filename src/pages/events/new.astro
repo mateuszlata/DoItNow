@@ -5,12 +5,17 @@ import EventForm from "@/components/events/EventForm.astro";
 import { EMPTY_EVENT_FORM, readEventForm } from "@/lib/event-form";
 import { createClient } from "@/lib/supabase";
 import { createEvent, type EventFormValues, type FieldErrors } from "@/lib/services/events";
+import { listVenues } from "@/lib/services/venues";
+import type { VenueWithHours } from "@/types";
 
 // Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
 const user = Astro.locals.user;
 
 let values: EventFormValues = EMPTY_EVENT_FORM;
 let errors: FieldErrors = {};
+
+const venueClient = createClient(Astro.request.headers, Astro.cookies);
+const venues: VenueWithHours[] = venueClient ? await listVenues(venueClient) : [];
 
 if (Astro.request.method === "POST" && user) {
   values = await readEventForm(Astro.request);
@@ -34,7 +39,7 @@ if (Astro.request.method === "POST" && user) {
       <Topbar />
       <div class="rounded-3xl border border-line bg-card shadow-card p-6 text-ink backdrop-blur-xl">
         <h1 class="display mb-4 text-3xl font-bold">Dodaj ogłoszenie</h1>
-        <EventForm values={values} errors={errors} submitLabel="Opublikuj ogłoszenie" />
+        <EventForm values={values} errors={errors} venues={venues} submitLabel="Opublikuj ogłoszenie" />
       </div>
     </div>
   </div>

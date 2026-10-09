@@ -117,7 +117,20 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
         )}
       </section>
 
-      <form method="POST" action="/api/auth/signout" class="mt-10 text-center">
+      <a
+        href="/venues"
+        class="mt-10 flex items-center justify-between gap-3 rounded-[20px] bg-page-2 px-5 py-4 transition-colors hover:bg-page-deep"
+      >
+        <span>
+          <span class="display block text-2xl">Moje obiekty</span>
+          <span class="text-sm text-page-ink-2">Masz boisko lub halę? Dodaj cennik i godziny otwarcia.</span>
+        </span>
+        <span class="text-2xl text-brand" aria-hidden="true">
+          →
+        </span>
+      </a>
+
+      <form method="POST" action="/api/auth/signout" class="mt-6 text-center">
         <button
           type="submit"
           class="h-11 rounded-full bg-page-2 px-6 text-sm font-bold text-page-ink transition-colors hover:bg-page-deep"

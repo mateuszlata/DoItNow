@@ -113,3 +113,9 @@ export function eventDayParts(iso: string, timeZone = APP_TIME_ZONE): { weekday:
   const dayMonth = new Intl.DateTimeFormat("pl-PL", { timeZone, day: "2-digit", month: "2-digit" }).format(date);
   return { weekday, date: dayMonth };
 }
+
+/** Godziny spotkania, np. „18:00–19:30”. */
+export function formatTimeRange(startsAt: string, durationMinutes: number, timeZone = APP_TIME_ZONE): string {
+  const end = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
+  return `${formatEventTime(startsAt, timeZone)}–${formatEventTime(end, timeZone)}`;
+}

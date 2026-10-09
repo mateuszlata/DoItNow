@@ -28,6 +28,12 @@ export interface EventRecord {
   min_people: number | null;
   /** Kiedy pierwotny organizator odwołał spotkanie z uczestnikami. */
   handover_at: string | null;
+  /** Czas trwania w minutach i wyliczony koniec spotkania. */
+  duration_minutes: number;
+  ends_at: string;
+  /** Obiekt, na którym odbywa się spotkanie (opcjonalny), i koszt całego spotkania w groszach. */
+  venue_id: string | null;
+  cost_cents: number | null;
 }
 
 /** Ograniczony widok ogłoszenia dla gości (FR-001), z liczbą zajętych miejsc. */
@@ -42,6 +48,8 @@ export type PublicEvent = Pick<
   | "reserve_spots"
   | "min_people"
   | "requires_approval"
+  | "duration_minutes"
+  | "cost_cents"
 > & {
   accepted_count: number;
   reserve_count: number;
@@ -97,3 +105,27 @@ export interface MyEventItem extends EventRecord {
   pending_count: number;
   my_status: ParticipationStatus | null;
 }
+
+/** Obiekt (orlik, hala, korty) prowadzony przez zarządcę terenu. */
+export interface Venue {
+  id: string;
+  manager_id: string;
+  name: string;
+  area: string;
+  address: string;
+  lat: number;
+  lng: number;
+  sports: SportId[];
+  /** Cena za godzinę w groszach. */
+  price_per_hour_cents: number;
+  created_at: string;
+}
+
+/** Godziny otwarcia w danym dniu tygodnia (1 = poniedziałek … 7 = niedziela), czas lokalny „HH:MM:SS”. */
+export interface VenueHours {
+  weekday: number;
+  opens: string;
+  closes: string;
+}
+
+export type VenueWithHours = Venue & { hours: VenueHours[] };

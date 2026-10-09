@@ -88,6 +88,10 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 - FR-014: Organizator może ustawić długość listy rezerwowej. Gdy skład jest pełny, akceptacja zgłoszenia dopisuje osobę do rezerwy; gdy w składzie zwolni się miejsce, pierwsza osoba z rezerwy (najdłużej czekająca) wskakuje automatycznie. Rezerwę można opuścić do startu. Priority: nice-to-have
 - FR-015: Gdy organizator odwołuje spotkanie z zaakceptowanymi uczestnikami, spotkanie nie znika: jego miejsce się zwalnia (może je zająć rezerwa), a zaakceptowani dostają w aplikacji pytanie „Zostaję / Rezygnuję” (do startu). Pierwsza osoba, która zostaje, przejmuje organizację; gdy wszyscy zrezygnują, spotkanie jest odwołane. Bez zaakceptowanych uczestników odwołanie działa jak dotąd. Priority: nice-to-have
 - FR-016: Organizator może do startu usunąć uczestnika ze składu, rezerwy lub oczekujących; zwolnione miejsce zajmuje pierwsza osoba z rezerwy, a usunięta osoba nie może ponownie dołączyć do tego spotkania. Priority: must-have
+- FR-017: Ogłoszenie ma czas trwania (domyślnie 90 minut); lista i szczegóły pokazują godziny od–do. Priority: must-have
+- FR-018: Zarządca terenu (każdy zalogowany, który doda obiekt) prowadzi w „Moich obiektach” obiekty z nazwą, adresem i pinezką, sportami, ceną za godzinę i godzinami otwarcia w tygodniu. Priority: nice-to-have
+- FR-019: Organizator może wybrać obiekt w ogłoszeniu: miejsce i pinezka pochodzą z obiektu, termin musi mieścić się w godzinach otwarcia i nie może nachodzić na inne nieodwołane spotkanie na tym obiekcie, sport musi być w ofercie obiektu. Koszt spotkania = cena za godzinę × czas trwania, dzielony równo na miejsca w składzie i pokazywany na osobę. Priority: nice-to-have
+  > Zmiana 2026-10-09 (feedback z testów): panel zarządcy terenu z opłatami, etap 1 z 3. Etap 2 — kalendarz zarządcy i akceptacja terminów; etap 3 — płatności online w trybie testowym (Stripe) i rozliczenia.
 
 ### Mapa
 

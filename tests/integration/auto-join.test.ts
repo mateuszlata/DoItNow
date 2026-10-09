@@ -21,6 +21,8 @@ async function createOpenEvent(total: number, reserveSpots = 0, requiresApproval
     area: "Test AJ",
     place: "Boisko testowe",
     startsAt: toLocalDateTime(new Date(Date.now() + 72 * HOUR)),
+    durationMinutes: "90",
+    venueId: "",
     total: String(total),
     organizerPlays: "on",
     requiresApproval: requiresApproval ? "on" : "",

@@ -6,7 +6,8 @@ import SportIcon from "@/components/SportIcon.astro";
 import { createClient } from "@/lib/supabase";
 import { EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN, listUpcomingEvents } from "@/lib/services/events";
 import { SPORTS, sportLabel } from "@/lib/sports";
-import { WHEN_OPTIONS, formatEventDate, formatEventTime } from "@/lib/time";
+import { WHEN_OPTIONS, formatEventDate, formatTimeRange } from "@/lib/time";
+import { formatPLN, shareCents } from "@/lib/money";
 import type { EventListItem } from "@/types";
 import EventMap from "@/components/map/EventMap";
 import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, takenSpots, teamSize } from "@/lib/capacity";
@@ -201,7 +202,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                     {sportLabel(event.sport)}
                   </a>
                 </h2>
-                <span class="display text-2xl">{formatEventTime(event.starts_at)}</span>
+                <span class="display text-2xl">{formatTimeRange(event.starts_at, event.duration_minutes)}</span>
               </div>
 
               <div class="flex flex-col gap-3 p-3.5">
@@ -264,6 +265,12 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                     {minimumLabel(event) && (
                       <span class:list={["font-bold", missing === 0 ? "text-ok" : "text-warn"]}>
                         {missing === 0 ? "Minimum osiągnięte" : minimumLabel(event)}
+                      </span>
+                    )}
+                    {event.cost_cents != null && (
+                      <span class="font-bold text-ink" data-testid="card-cost">
+                        {formatPLN(shareCents(event.cost_cents, teamSize(event)))} / os.
+                        <span class="font-normal text-ink-3"> · obiekt {formatPLN(event.cost_cents)}</span>
                       </span>
                     )}
                     <span class="text-ink-3">

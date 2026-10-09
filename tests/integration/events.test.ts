@@ -24,6 +24,8 @@ function editForm(overrides: Partial<EventFormValues> = {}): EventFormValues {
     area: "Wola",
     place: "Hala po zmianie",
     startsAt: toLocalDateTime(new Date(Date.now() + 96 * HOUR)),
+    durationMinutes: "90",
+    venueId: "",
     // 5 osób w składzie, w tym grający organizator -> 4 miejsca do obsadzenia
     total: "5",
     organizerPlays: "on",
@@ -97,6 +99,8 @@ describe("edycja ogłoszenia (FR-004)", () => {
       p_reserve_spots: 0,
       p_min_people: null,
       p_requires_approval: false,
+      p_duration_minutes: 90,
+      p_venue_id: null,
     });
     expect(error?.message).toBe("STARTS_IN_PAST");
   });
@@ -135,6 +139,8 @@ describe("skład i pinezka", () => {
       p_reserve_spots: 0,
       p_min_people: null,
       p_requires_approval: false,
+      p_duration_minutes: 90,
+      p_venue_id: null,
     });
     expect(error?.message).toBe("INVALID_DATA");
   });

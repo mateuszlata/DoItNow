@@ -1,0 +1,85 @@
+---
+// Panel zarządcy terenu: obiekty użytkownika z cennikiem i godzinami otwarcia.
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import SportIcon from "@/components/SportIcon.astro";
+import { createClient } from "@/lib/supabase";
+import { formatHours, listMyVenues } from "@/lib/services/venues";
+import { formatPLN } from "@/lib/money";
+import { sportLabel } from "@/lib/sports";
+import type { VenueWithHours } from "@/types";
+
+// Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
+const user = Astro.locals.user;
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+let venues: VenueWithHours[] = [];
+if (supabase && user) venues = await listMyVenues(supabase, user.id);
+const saved = Astro.url.searchParams.get("ok");
+---
+
+<Layout title="Moje obiekty · Metando">
+  <div class="bg-app min-h-screen p-4 pb-32">
+    <div class="mx-auto max-w-3xl">
+      <Topbar title="Moje obiekty" />
+
+      <p class="mb-4 text-sm text-page-ink-2">
+        Masz boisko, halę albo korty? Dodaj obiekt z cennikiem i godzinami otwarcia — organizatorzy wybiorą go w
+        ogłoszeniu, a koszt podzieli się na skład.
+      </p>
+
+      {saved && (
+        <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-4 py-2 text-sm font-semibold text-ok">
+          {saved === "created" ? "Obiekt został dodany." : "Zmiany zostały zapisane."}
+        </p>
+      )}
+
+      <a
+        href="/venues/new"
+        class="mb-5 inline-grid h-12 place-items-center rounded-full bg-brand px-6 text-sm font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
+      >
+        + Dodaj obiekt
+      </a>
+
+      {venues.length === 0 ? (
+        <div class="rounded-[20px] bg-page-2 p-6 text-center">
+          <p class="display text-3xl">Brak obiektów</p>
+          <p class="mt-2 text-sm text-page-ink-2">Dodaj pierwszy obiekt, żeby organizatorzy mogli go wybierać.</p>
+        </div>
+      ) : (
+        <ul class="grid gap-4">
+          {venues.map((v) => (
+            <li class="overflow-hidden rounded-[20px] bg-card text-ink" data-testid="venue">
+              <div class="flex items-center justify-between gap-3 bg-brand px-3.5 py-2.5">
+                <h2 class="display text-[26px] leading-none">{v.name}</h2>
+                <span class="display text-2xl">{formatPLN(v.price_per_hour_cents)}/h</span>
+              </div>
+              <div class="flex flex-col gap-2 p-3.5 text-sm">
+                <span class="text-ink-2">
+                  {v.area} · {v.address}
+                </span>
+                <span class="flex flex-wrap gap-1.5">
+                  {v.sports.map((s) => (
+                    <span class="inline-flex items-center gap-1 rounded-full bg-card-2 px-2.5 py-1 text-xs font-semibold">
+                      <SportIcon sport={s} size={14} />
+                      {sportLabel(s)}
+                    </span>
+                  ))}
+                </span>
+                <span class="text-ink-2">
+                  <strong class="text-ink">Otwarte:</strong> {formatHours(v.hours) || "brak godzin"}
+                </span>
+                <a href={`/venues/${v.id}/edit`} class="self-start font-semibold text-link hover:underline">
+                  Edytuj obiekt
+                </a>
+              </div>
+              <div class="sleeve sleeve-dark pb-[3px]" aria-hidden="true">
+                <span />
+                <span />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </div>
+</Layout>

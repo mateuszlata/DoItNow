@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
 import { canWithdrawAccepted } from "@/lib/services/participations";
+import { getVenue } from "@/lib/services/venues";
 import type {
   EventDetails,
   EventListItem,
@@ -33,6 +34,20 @@ export const createEventSchema = z.object({
     .min(2, "Podaj dokładne miejsce (min. 2 znaki).")
     .max(200, "Miejsce może mieć maks. 200 znaków."),
   startsAt: z.string().min(1, "Podaj datę i godzinę."),
+  // Czas trwania w minutach (lista wyboru w formularzu).
+  durationMinutes: z.preprocess(
+    (v) => (v === "" || v === undefined ? 90 : v),
+    z.coerce
+      .number({ error: "Wybierz czas trwania." })
+      .int("Wybierz czas trwania.")
+      .min(15, "Spotkanie musi trwać co najmniej 15 minut.")
+      .max(720, "Spotkanie może trwać maks. 12 godzin."),
+  ),
+  // Obiekt zarządcy (puste = spotkanie poza obiektem).
+  venueId: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.uuid({ error: "Wybierz obiekt z listy." }).nullable(),
+  ),
   // Liczba osób w całym składzie, łącznie z organizatorem, jeśli bierze udział.
   total: z.coerce
     .number({ error: "Podaj liczbę osób." })
@@ -78,6 +93,8 @@ export interface ParsedEvent {
   area: string;
   place: string;
   startsAt: Date;
+  durationMinutes: number;
+  venueId: string | null;
   /** Miejsca do obsadzenia: skład minus organizator, jeśli gra. */
   spots: number;
   organizerPlays: boolean;
@@ -132,6 +149,8 @@ export function parseEventForm(
       area: data.area,
       place: data.place,
       startsAt,
+      durationMinutes: data.durationMinutes,
+      venueId: data.venueId,
       spots,
       organizerPlays: data.organizerPlays,
       requiresApproval: data.requiresApproval,
@@ -145,6 +164,37 @@ export function parseEventForm(
   };
 }
 
+/** Komunikaty reguł obiektu zgłaszanych przez bazę (supabase/migrations/*_venues_and_duration.sql). */
+const VENUE_ERRORS: Record<string, FieldErrors> = {
+  VENUE_CLOSED: { startsAt: "Obiekt jest wtedy zamknięty — wybierz termin w godzinach otwarcia." },
+  VENUE_BUSY: { startsAt: "Obiekt jest w tym czasie zajęty przez inne spotkanie." },
+  VENUE_SPORT: { venueId: "Ten obiekt nie oferuje wybranego sportu." },
+  VENUE_NOT_FOUND: { venueId: "Nie znaleziono obiektu." },
+};
+
+function venueError(error: { code?: string; message: string }): FieldErrors | undefined {
+  if (error.code === "23P01") return VENUE_ERRORS.VENUE_BUSY;
+  return VENUE_ERRORS[error.message];
+}
+
+/** Przy wybranym obiekcie miejsce, okolica i pinezka pochodzą z obiektu. */
+async function withVenue(
+  supabase: SupabaseClient,
+  input: EventFormValues,
+): Promise<{ ok: true; values: EventFormValues } | { ok: false; errors: FieldErrors }> {
+  if (!input.venueId) return { ok: true, values: input };
+  const venue = await getVenue(supabase, input.venueId);
+  if (!venue) return { ok: false, errors: { venueId: "Nie znaleziono obiektu." } };
+  const values: EventFormValues = {
+    ...input,
+    place: `${venue.name}, ${venue.address}`.slice(0, 200),
+    area: venue.area,
+    lat: String(venue.lat),
+    lng: String(venue.lng),
+  };
+  return { ok: true, values };
+}
+
 /** Tworzy ogłoszenie zalogowanego użytkownika (FR-003). */
 export async function createEvent(
   supabase: SupabaseClient,
@@ -152,7 +202,9 @@ export async function createEvent(
   input: EventFormValues,
   now: Date = new Date(),
 ): Promise<CreateEventResult> {
-  const parsed = parseEventForm(input, now);
+  const prepared = await withVenue(supabase, input);
+  if (!prepared.ok) return prepared;
+  const parsed = parseEventForm(prepared.values, now);
   if (!parsed.ok) return parsed;
   const data = parsed.data;
 
@@ -172,12 +224,17 @@ export async function createEvent(
       reserve_spots: data.reserveSpots,
       min_people: data.minPeople,
       requires_approval: data.requiresApproval,
+      duration_minutes: data.durationMinutes,
+      venue_id: data.venueId,
     })
     .select()
     .single<EventRecord>();
 
   if (error) {
-    return { ok: false, errors: { form: "Nie udało się zapisać ogłoszenia. Spróbuj ponownie." } };
+    return {
+      ok: false,
+      errors: venueError(error) ?? { form: "Nie udało się zapisać ogłoszenia. Spróbuj ponownie." },
+    };
   }
   return { ok: true, event };
 }
@@ -204,7 +261,9 @@ export async function updateEvent(
   input: EventFormValues,
   now: Date = new Date(),
 ): Promise<CreateEventResult> {
-  const parsed = parseEventForm(input, now);
+  const prepared = await withVenue(supabase, input);
+  if (!prepared.ok) return prepared;
+  const parsed = parseEventForm(prepared.values, now);
   if (!parsed.ok) return parsed;
   const data = parsed.data;
 
@@ -222,12 +281,13 @@ export async function updateEvent(
     p_reserve_spots: data.reserveSpots,
     p_min_people: data.minPeople,
     p_requires_approval: data.requiresApproval,
+    p_duration_minutes: data.durationMinutes,
+    p_venue_id: data.venueId,
   });
   if (response.error) {
-    return {
-      ok: false,
-      errors: UPDATE_ERRORS[response.error.message] ?? { form: "Nie udało się zapisać zmian. Spróbuj ponownie." },
-    };
+    const code = response.error.message;
+    const known = Object.hasOwn(UPDATE_ERRORS, code) ? UPDATE_ERRORS[code] : venueError(response.error);
+    return { ok: false, errors: known ?? { form: "Nie udało się zapisać zmian. Spróbuj ponownie." } };
   }
   return { ok: true, event: response.data as unknown as EventRecord };
 }
@@ -264,9 +324,10 @@ export async function listUpcomingEvents(
 ): Promise<{ events: EventListItem[]; hasMore: boolean }> {
   const now = options.now ?? new Date();
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
-  const columns = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval";
+  // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
+  const columns: string = options.authenticated
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents";
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
@@ -308,7 +369,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   const { data, error } = await supabase
     .from("events_public")
     .select(
-      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval",
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents",
     )
     .eq("id", id)
     .maybeSingle<PublicEvent>();
