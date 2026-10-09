@@ -403,8 +403,41 @@
   }
 }
 
+/* Znak „M” na ekranie logowania uderza razem z każdym słowem (ten sam cykl i opóźnienie). */
+.logo-mark-hit {
+  transform-origin: 50% 100%;
+  animation-name: logo-mark;
+  animation-duration: 14s;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  animation-delay: -8.7s;
+  animation-iteration-count: infinite;
+}
+
+@keyframes logo-mark {
+  0%,
+  79.9%,
+  92%,
+  100% {
+    transform: none;
+  }
+  80%,
+  84%,
+  88% {
+    transform: translateY(-10%) rotate(-8deg) scale(1.18);
+  }
+  81.4%,
+  83.9%,
+  85.4%,
+  87.9%,
+  89.4%,
+  91.9% {
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .logo-word .l {
+  .logo-word .l,
+  .logo-mark-hit {
     animation: none;
   }
 }
