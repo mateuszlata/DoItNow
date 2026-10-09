@@ -261,7 +261,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           </div>
 
           {details?.lat != null && details.lng != null && (
-            <div class="relative overflow-hidden rounded-[20px]">
+            <div class="relative isolate overflow-hidden rounded-[20px]">
               <EventMap lat={details.lat} lng={details.lng} label={details.place} client:visible />
               {navigateHref && (
                 <a

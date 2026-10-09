@@ -213,6 +213,21 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                   </span>
                 </div>
 
+                {event.lat != null && event.lng != null && (
+                  <div class="relative isolate overflow-hidden rounded-2xl">
+                    <EventMap
+                      lat={event.lat}
+                      lng={event.lng}
+                      label={event.place ?? event.area}
+                      preview
+                      client:visible
+                    />
+                    <a href={`/events/${event.id}`} class="absolute inset-0 z-[450]" aria-hidden="true" tabindex="-1">
+                      <span class="sr-only">Szczegóły ogłoszenia</span>
+                    </a>
+                  </div>
+                )}
+
                 <div class="flex items-end justify-between gap-3" data-testid="card-free-spots">
                   <div class="flex items-baseline gap-1.5">
                     <span
@@ -272,17 +287,6 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                 </div>
 
                 {event.description && <p class="line-clamp-2 text-sm text-ink-2">{event.description}</p>}
-
-                {event.lat != null && event.lng != null && (
-                  <details>
-                    <summary class="cursor-pointer text-sm font-semibold text-link hover:underline">
-                      Pokaż na mapie
-                    </summary>
-                    <div class="mt-2 overflow-hidden rounded-2xl">
-                      <EventMap lat={event.lat} lng={event.lng} label={event.place ?? event.area} client:visible />
-                    </div>
-                  </details>
-                )}
               </div>
 
               <div class="sleeve sleeve-dark pb-[3px]" aria-hidden="true">
