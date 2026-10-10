@@ -36,26 +36,20 @@ const borderClass = (name: keyof VenueFieldErrors) =>
   </label>
 
   <div class="text-sm text-ink-2">
-    Adres i miejsce na mapie
-    <div class="mt-1">
-      <MapPicker initialLat={values.lat} initialLng={values.lng} fillField="place" client:visible />
-    </div>
+    <MapPicker
+      initialLat={values.lat}
+      initialLng={values.lng}
+      inputName="place"
+      initialQuery={values.address}
+      label="Adres obiektu"
+      error={errors.address}
+      client:load
+    />
+    <span class="mt-1 block text-xs text-ink-3">
+      Wpisz nazwę albo adres i wybierz podpowiedź — pinezka stanie sama. Brak na liście? Wpisz adres i kliknij w mapę.
+    </span>
     {errors.lat && <span class="mt-1 block text-xs text-bad">{errors.lat}</span>}
   </div>
-
-  <label class="text-sm text-ink-2">
-    Adres
-    <input
-      type="text"
-      name="place"
-      required
-      maxlength="200"
-      placeholder="np. Dolna 5, Warszawa"
-      value={values.address}
-      class:list={[inputClass, borderClass("address")]}
-    />
-    {errors.address && <span class="mt-1 block text-xs text-bad">{errors.address}</span>}
-  </label>
 
   <label class="text-sm text-ink-2">
     Okolica / dzielnica

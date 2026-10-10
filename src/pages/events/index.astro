@@ -329,6 +329,22 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
           </a>
         </div>
       )}
+
+      <a
+        href="/venues/new"
+        data-testid="add-venue-entry"
+        class="mt-6 flex items-center justify-between gap-4 rounded-[20px] bg-page-2 p-5 text-page-ink transition-colors hover:bg-page-deep"
+      >
+        <span class="flex flex-col gap-1">
+          <span class="display text-2xl leading-none">Masz boisko, halę albo korty?</span>
+          <span class="text-sm text-page-ink-2">
+            Dodaj obiekt z cennikiem i godzinami otwarcia — gracze zarezerwują u Ciebie termin.
+          </span>
+        </span>
+        <span class="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-extrabold tracking-wide text-on-brand uppercase">
+          Dodaj obiekt
+        </span>
+      </a>
     </div>
   </div>
 </Layout>

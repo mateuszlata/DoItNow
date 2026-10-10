@@ -49,6 +49,16 @@ function inThreeDaysAt18(): string {
   return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T18:00`;
 }
 
+// Pole „Dokładne miejsce” to wyszukiwarka adresów w wyspie React — wpisujemy dopiero po hydratacji
+// (gotowa mapa), a Escape zamyka podpowiedzi, żeby nie zasłaniały reszty formularza.
+async function fillPlace(page: Page, text: string) {
+  await expect(page.getByTestId("map-picker").locator(".leaflet-container").first()).toBeAttached();
+  const field = page.getByLabel("Dokładne miejsce");
+  await field.fill(text);
+  await field.press("Escape");
+  await expect(field).toHaveValue(text);
+}
+
 test("US-01: participant requests to join, organizer accepts, both see the participant", async ({ browser }) => {
   const organizerNick = `Org${runId}`;
   const participantNick = `Ucz${runId}`;
@@ -60,7 +70,7 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await organizer.getByLabel("Sport").selectOption({ label: "Koszykówka" });
   await organizer.getByLabel("Data i godzina").fill(inThreeDaysAt18());
   await organizer.getByLabel("Okolica / dzielnica").fill(area);
-  await organizer.getByLabel("Dokładne miejsce").fill("Hala sportowa E2E");
+  await fillPlace(organizer, "Hala sportowa E2E");
   // Skład 3 osób z grającym organizatorem (domyślnie zaznaczone) -> 2 miejsca do obsadzenia.
   await organizer.getByLabel("Ile osób łącznie w składzie?").fill("3");
   await expect(organizer.getByLabel("Biorę udział w spotkaniu")).toBeChecked();
@@ -127,7 +137,7 @@ test("joining without approval is instant and the organizer can remove a partici
   await organizer.getByLabel("Sport").selectOption({ label: "Siatkówka" });
   await organizer.getByLabel("Data i godzina").fill(inThreeDaysAt18());
   await organizer.getByLabel("Okolica / dzielnica").fill(area);
-  await organizer.getByLabel("Dokładne miejsce").fill("Plaża E2E");
+  await fillPlace(organizer, "Plaża E2E");
   await organizer.getByLabel("Ile osób łącznie w składzie?").fill("4");
   await expect(organizer.getByLabel("Wymagaj mojej akceptacji")).not.toBeChecked();
   await organizer.getByRole("button", { name: "Opublikuj ogłoszenie" }).click();

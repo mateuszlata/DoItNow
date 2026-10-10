@@ -95,9 +95,17 @@ const borderClass = (name: keyof FieldErrors) =>
         ))}
       </select>
       <span class="mt-1 block text-xs text-ink-3" data-venue-hours />
+      <span class="mt-1 block text-xs text-ink-3" data-venue-count />
       {errors.venueId && <span class="mt-1 block text-xs text-bad">{errors.venueId}</span>}
     </label>
   )}
+  <p class="-mt-2 text-xs text-ink-3">
+    Zarządzasz obiektem?{" "}
+    <a href="/venues/new" class="font-bold text-ink-2 underline">
+      Dodaj go do Metando
+    </a>
+    .
+  </p>
 
   <p class="rounded-2xl bg-card-2 px-4 py-3 text-sm text-ink" data-cost hidden>
     Koszt obiektu: <strong data-cost-total></strong> · na osobę <strong data-cost-share></strong>
@@ -119,26 +127,19 @@ const borderClass = (name: keyof FieldErrors) =>
       {errors.area && <span class="mt-1 block text-xs text-bad">{errors.area}</span>}
     </label>
 
-    <label class="text-sm text-ink-2">
-      Dokładne miejsce
-      <input
-        type="text"
-        name="place"
-        maxlength="200"
-        placeholder="np. Orlik przy ul. Dolnej 5"
-        value={values.place}
-        class:list={[inputClass, borderClass("place")]}
-      />
-      <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
-      {errors.place && <span class="mt-1 block text-xs text-bad">{errors.place}</span>}
-    </label>
-
     <div class="text-sm text-ink-2">
-      Miejsce na mapie (opcjonalnie)
-      <div class="mt-1">
-        <MapPicker initialLat={values.lat} initialLng={values.lng} client:visible />
-      </div>
-      <span class="mt-1 block text-xs text-ink-3">Widoczne tylko dla zalogowanych.</span>
+      <MapPicker
+        initialLat={values.lat}
+        initialLng={values.lng}
+        inputName="place"
+        initialQuery={values.place}
+        label="Dokładne miejsce"
+        error={errors.place}
+        client:load
+      />
+      <span class="mt-1 block text-xs text-ink-3">
+        Wybierz podpowiedź albo opisz miejsce własnymi słowami i kliknij w mapę. Widoczne tylko dla zalogowanych.
+      </span>
       {errors.lat && <span class="mt-1 block text-xs text-bad">{errors.lat}</span>}
     </div>
   </div>
@@ -258,7 +259,30 @@ const borderClass = (name: keyof FieldErrors) =>
       new Intl.NumberFormat("pl-PL", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 }).format(
         cents / 100,
       ) + " zł";
+    const count = form.querySelector("[data-venue-count]");
+    let lastSport = null;
+    // Pokazuje tylko obiekty, które mają w ofercie wybrany sport.
+    const filterBySport = () => {
+      const sport = form.elements.sport.value;
+      if (sport === lastSport) return;
+      lastSport = sport;
+      let matching = 0;
+      for (const option of select.options) {
+        if (!option.value) continue;
+        const fits = !sport || option.dataset.sports.split(",").includes(sport);
+        option.hidden = !fits;
+        option.disabled = !fits;
+        if (fits) matching++;
+      }
+      if (select.selectedOptions[0]?.disabled) select.value = "";
+      count.textContent = !sport
+        ? ""
+        : matching === 0
+          ? "Brak obiektów z tym sportem — wpisz miejsce poniżej."
+          : "Obiekty z tym sportem: " + matching + ".";
+    };
     const update = () => {
+      filterBySport();
       const option = select.selectedOptions[0];
       const chosen = Boolean(select.value);
       ownPlace.hidden = chosen;

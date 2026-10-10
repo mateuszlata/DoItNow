@@ -20,8 +20,19 @@ interface Props {
   /** Wartości z formularza (puste, gdy brak pinezki). */
   initialLat: string;
   initialLng: string;
-  /** Pole formularza, w które wpisuje się wybrany adres, gdy jest puste. */
+  /** Pole formularza, w które wpisuje się wybrany adres, gdy jest puste (gdy wyszukiwarka nie jest polem). */
   fillField?: string;
+  /**
+   * Wyszukiwarka jest zarazem polem formularza o tej nazwie (jedno pole adresu zamiast dwóch):
+   * wartością jest wybrana podpowiedź albo wpisany opis miejsca.
+   */
+  inputName?: string;
+  /** Początkowa wartość pola (np. przy edycji). */
+  initialQuery?: string;
+  /** Widoczna etykieta pola (gdy wyszukiwarka jest polem formularza). */
+  label?: string;
+  /** Komunikat błędu walidacji pola. */
+  error?: string;
 }
 
 function parse(value: string): number | null {
@@ -36,19 +47,27 @@ function parse(value: string): number | null {
  * Współrzędne trafiają do ukrytych pól `lat` i `lng`, identyfikator miejsca Google do `googlePlaceId`,
  * a wybrany adres wpisuje się w puste pole „Dokładne miejsce”.
  */
-export default function MapPicker({ initialLat, initialLng, fillField = "place" }: Props) {
+export default function MapPicker({
+  initialLat,
+  initialLng,
+  fillField = "place",
+  inputName,
+  initialQuery = "",
+  label,
+  error,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const marker = useRef<Leaflet.Marker | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const placeRef = useRef<((lat: number, lng: number) => void) | null>(null);
   // Tekst wybranej podpowiedzi — po wyborze nie szukamy go ponownie.
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(initialQuery || null);
   const initial = parse(initialLat) !== null && parse(initialLng) !== null;
   const [point, setPoint] = useState<{ lat: number; lng: number } | null>(
     initial ? { lat: Number(initialLat), lng: Number(initialLng) } : null,
   );
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<PlaceHit[]>([]);
   const [source, setSource] = useState<PlaceSearchResult["source"]>("google");
   const [googlePlaceId, setGooglePlaceId] = useState("");
@@ -167,14 +186,14 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
     }
     placeRef.current?.(point.lat, point.lng);
     mapRef.current?.setView([point.lat, point.lng], 17);
-    const label = [suggestion.title, suggestion.subtitle].filter(Boolean).join(", ");
-    setChosen(label);
-    setQuery(label);
+    const chosenText = [suggestion.title, suggestion.subtitle].filter(Boolean).join(", ").slice(0, 200);
+    setChosen(chosenText);
+    setQuery(chosenText);
     setOpen(false);
     setSuggestions([]);
     // Puste pole „Dokładne miejsce” wypełniamy wybranym adresem.
     const form = container.current?.closest("form");
-    const placeField = form?.elements.namedItem(fillField);
+    const placeField = inputName ? null : form?.elements.namedItem(fillField);
     if (placeField instanceof HTMLInputElement && placeField.value.trim() === "") {
       placeField.value = [suggestion.title, address.split(", ")[0]].filter(Boolean).join(", ").slice(0, 200);
     }
@@ -209,12 +228,15 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
   return (
     <div>
       <div className="relative mb-2">
-        <label htmlFor="place-search" className="sr-only">
-          Szukaj adresu lub miejsca
+        <label htmlFor="place-search" className={label ? "text-ink-2 mb-1 block text-sm" : "sr-only"}>
+          {label ?? "Szukaj adresu lub miejsca"}
         </label>
         <input
           id="place-search"
-          type="search"
+          type="text"
+          enterKeyHint="search"
+          name={inputName}
+          maxLength={200}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -236,11 +258,11 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
           aria-controls="place-suggestions"
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? `place-option-${String(active)}` : undefined}
-          className="border-line-strong bg-card text-ink placeholder:text-ink-3 focus:ring-brand w-full rounded-full border py-2 pr-4 pl-10 text-sm focus:ring-2 focus:outline-none"
+          className={`bg-card text-ink placeholder:text-ink-3 w-full rounded-full border py-2 pr-4 pl-10 text-sm focus:ring-2 focus:outline-none ${error ? "border-bad-line focus:ring-red-400" : "border-line-strong focus:ring-brand"}`}
           data-testid="place-search"
         />
         <svg
-          className="text-ink-3 pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2"
+          className={`text-ink-3 pointer-events-none absolute left-3.5 -translate-y-1/2 ${label ? "top-[calc(50%+0.75rem)]" : "top-1/2"}`}
           width="18"
           height="18"
           viewBox="0 0 24 24"
@@ -282,6 +304,7 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
           </ul>
         )}
         {pickError && <p className="text-bad mt-1 px-4 text-xs">{pickError}</p>}
+        {error && <p className="text-bad mt-1 px-4 text-xs">{error}</p>}
         {open && !searching && query.trim().length >= 3 && shown.length === 0 && (
           <p className="text-ink-3 mt-1 px-4 text-xs">Brak podpowiedzi — zaznacz miejsce kliknięciem w mapę.</p>
         )}
