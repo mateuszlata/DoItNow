@@ -6,6 +6,8 @@ import EventMap from "@/components/map/EventMap";
 import SportIcon from "@/components/SportIcon.astro";
 import VenueStatus from "@/components/events/VenueStatus.astro";
 import Countdown from "@/components/events/Countdown.astro";
+import EventChat from "@/components/chat/EventChat";
+import { isChatOpen, listMessages } from "@/lib/services/chat";
 import { jerseyNumber } from "@/lib/jerseys";
 import { createClient } from "@/lib/supabase";
 import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/lib/services/events";
@@ -14,7 +16,7 @@ import { freeReserve, freeWord, minimumLabel, missingToMinimum, teamSize } from 
 import { sportLabel } from "@/lib/sports";
 import { eventDayParts, formatEventTime, formatTimeRange } from "@/lib/time";
 import { formatPLN, shareCents } from "@/lib/money";
-import type { EventDetails, PublicEvent } from "@/types";
+import type { ChatMessage, EventDetails, PublicEvent } from "@/types";
 
 const { user } = Astro.locals;
 const id = Astro.params.id ?? "";
@@ -97,6 +99,15 @@ const canWithdraw =
   (myStatus === "pending" ||
     myStatus === "reserve" ||
     (myStatus === "accepted" && (details.handover_at !== null || canWithdrawAccepted(details.starts_at))));
+// Czat: organizator oraz osoby w składzie i na rezerwie (reguła is_event_member w bazie).
+const isChatMember = details !== null && (isOrganizer || myStatus === "accepted" || myStatus === "reserve");
+let chat: { messages: ChatMessage[]; syncedAt: string } | null = null;
+if (isChatMember && supabase && details) {
+  const syncedAt = new Date(Date.now() - 5000).toISOString();
+  const result = await listMessages(supabase, details.id);
+  if (result.ok) chat = { messages: result.data, syncedAt };
+}
+
 const withdrawLocked = isOpen && myStatus === "accepted" && !canWithdraw && !mustAnswer;
 
 const free = details
@@ -430,6 +441,20 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               removeFor={isOrganizer && isOpen ? details.id : undefined}
               viewerId={user?.id}
             />
+          )}
+          {chat && details && user && (
+            <EventChat
+              eventId={details.id}
+              currentUserId={user.id}
+              isOrganizer={isOrganizer}
+              open={isChatOpen(details)}
+              initialMessages={chat.messages}
+              initialSyncedAt={chat.syncedAt}
+              client:visible
+            />
+          )}
+          {details && !isChatMember && myStatus === "pending" && (
+            <p class="text-sm text-page-ink-2">Czat spotkania zobaczysz po akceptacji zgłoszenia.</p>
           )}
           {!details && publicEvent && (
             <SlotGrid

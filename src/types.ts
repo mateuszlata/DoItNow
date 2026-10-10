@@ -139,3 +139,25 @@ export interface VenueHours {
 }
 
 export type VenueWithHours = Venue & { hours: VenueHours[] };
+
+/** Wiadomość w czacie wydarzenia; treść ukrytej wiadomości nie jest wydawana (body = null). */
+export interface ChatMessage {
+  id: string;
+  author_id: string;
+  author_name: string;
+  body: string | null;
+  created_at: string;
+  hidden: boolean;
+}
+
+/** Otwarte zgłoszenie wiadomości do moderacji (strona administratora). */
+export interface MessageReport {
+  message_id: string;
+  event_id: string;
+  author_name: string;
+  body: string;
+  created_at: string;
+  report_count: number;
+  reasons: string[];
+  last_reported_at: string;
+}

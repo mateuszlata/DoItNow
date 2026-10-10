@@ -14,6 +14,7 @@ Produkcja: https://doitnow.doitnow-app.workers.dev
 - **Obiekty zarządców**: cennik za godzinę, godziny otwarcia, koszt spotkania dzielony na osobę, pilnowanie godzin otwarcia i kolizji terminów, **kalendarz rezerwacji** z potwierdzaniem i odrzucaniem terminów.
 - **Wyszukiwarka adresów** z podpowiedziami Google Places (przez serwer, w darmowej puli z budżetem kroczącym) i zapasowo OpenStreetMap.
 - **Usuwanie konta** przez użytkownika (RODO).
+- **Czat w wydarzeniu** dla organizatora, składu i rezerwy: usuwanie własnych wiadomości, ukrywanie przez organizatora, zgłaszanie do moderacji (`/admin/reports` dla kont z tabeli `admins`), limit 10 wiadomości na minutę.
 - **Regulamin i polityka prywatności** (`/regulamin`, `/prywatnosc`) z akceptacją przy rejestracji; zaakceptowana wersja trafia do metadanych konta. Dane operatora w `src/lib/legal.ts`.
 - **Ochrona rejestracji przed botami** (Cloudflare Turnstile, token sprawdzany na serwerze).
 

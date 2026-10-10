@@ -161,6 +161,24 @@ test("joining without approval is instant and the organizer can remove a partici
   await expect(participant.getByTestId("participants")).toContainText(participantNick);
   await expect(participant.getByTestId("free-spots")).toContainText(/2\s*wolne z 4/);
 
+  // Czat: uczestnik pisze, organizator widzi wiadomość i odpowiada; po usunięciu ze składu czat znika.
+  const chat = participant.getByTestId("event-chat");
+  await expect(participant.locator("astro-island:not([ssr])").filter({ has: chat })).toBeAttached();
+  await chat.getByLabel("Wiadomość").fill("Biorę piłkę, do zobaczenia!");
+  await chat.getByRole("button", { name: "Wyślij wiadomość" }).click();
+  await expect(chat.getByTestId("chat-message")).toHaveText(["Biorę piłkę, do zobaczenia!"]);
+
+  await organizer.reload();
+  const organizerChat = organizer.getByTestId("event-chat");
+  await expect(organizerChat.getByTestId("chat-message")).toHaveText(["Biorę piłkę, do zobaczenia!"]);
+  await expect(organizer.locator("astro-island:not([ssr])").filter({ has: organizerChat })).toBeAttached();
+  await organizerChat.getByLabel("Wiadomość").fill("Super, ja mam znaczniki");
+  await organizerChat.getByLabel("Wiadomość").press("Enter");
+  await expect(organizerChat.getByTestId("chat-message")).toHaveText([
+    "Biorę piłkę, do zobaczenia!",
+    "Super, ja mam znaczniki",
+  ]);
+
   // Organizator usuwa uczestnika; ten nie może dołączyć ponownie.
   await organizer.reload();
   organizer.once("dialog", (dialog) => void dialog.accept());
@@ -171,4 +189,5 @@ test("joining without approval is instant and the organizer can remove a partici
   await participant.reload();
   await expect(participant.getByTestId("my-status")).toContainText("usunięte przez organizatora");
   await expect(participant.getByRole("button", { name: "Dołącz" })).toHaveCount(0);
+  await expect(participant.getByTestId("event-chat")).toHaveCount(0);
 });
