@@ -172,6 +172,7 @@ describe("widoczność (FR-001, FR-006)", () => {
       "sport",
       "spots",
       "starts_at",
+      "venue_status",
     ]);
   });
 

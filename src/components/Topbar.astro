@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase";
 import { getDisplayName } from "@/lib/services/profiles";
 import { countPendingRequests } from "@/lib/services/events";
+import { countPendingBookings } from "@/lib/services/venues";
 import Logo from "@/components/Logo.astro";
 
 interface Props {
@@ -21,7 +22,9 @@ let pending = 0;
 if (user) {
   const supabase = createClient(Astro.request.headers, Astro.cookies);
   displayName = supabase ? await getDisplayName(supabase, user.id) : null;
-  pending = supabase ? await countPendingRequests(supabase, user.id) : 0;
+  pending = supabase
+    ? (await countPendingRequests(supabase, user.id)) + (await countPendingBookings(supabase, user.id))
+    : 0;
 }
 
 const titleLines = title?.split("|") ?? [];

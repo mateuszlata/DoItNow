@@ -2,7 +2,7 @@ import { z } from "astro/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { parsePriceToCents } from "@/lib/money";
-import type { Venue, VenueHours, VenueWithHours } from "@/types";
+import type { Venue, VenueBookingStatus, VenueHours, VenueWithHours } from "@/types";
 
 /** Dni tygodnia w kolejności formularza (1 = poniedziałek). */
 export const WEEKDAYS = [
@@ -285,4 +285,97 @@ export function formatHours(hours: VenueHours[]): string {
   return groups
     .map((g) => `${g.from === g.to ? short(g.from) : `${short(g.from)}–${short(g.to)}`} ${g.text}`)
     .join(" · ");
+}
+
+/** Spotkanie na obiekcie zarządcy w kalendarzu rezerwacji. */
+export interface VenueBooking {
+  id: string;
+  venue_id: string;
+  sport: string;
+  starts_at: string;
+  ends_at: string;
+  duration_minutes: number;
+  spots: number;
+  organizer_plays: boolean;
+  cost_cents: number | null;
+  status: string;
+  venue_status: VenueBookingStatus;
+  venue_note: string | null;
+  organizer: { display_name: string } | null;
+}
+
+/** Nieodwołane spotkania na obiekcie od teraz, od najbliższego. */
+export async function listVenueBookings(supabase: SupabaseClient, venueId: string): Promise<VenueBooking[]> {
+  const { data, error } = await supabase
+    .from("events")
+    .select(
+      "id, venue_id, sport, starts_at, ends_at, duration_minutes, spots, organizer_plays, cost_cents, status, venue_status, venue_note, organizer:profiles!events_organizer_profile_fkey(display_name)",
+    )
+    .eq("venue_id", venueId)
+    .neq("status", "cancelled")
+    .gt("ends_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(200);
+  if (error) throw new Error(`Nie udało się pobrać rezerwacji: ${error.message}`);
+  return data as unknown as VenueBooking[];
+}
+
+/** Liczba terminów czekających na decyzję zarządcy na wszystkich jego obiektach. */
+export async function countPendingBookings(supabase: SupabaseClient, managerId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("events")
+    .select("id, venue:venues!inner(manager_id)", { count: "exact", head: true })
+    .eq("venue.manager_id", managerId)
+    .eq("venue_status", "pending")
+    .eq("status", "active")
+    .gt("starts_at", new Date().toISOString());
+  return error ? 0 : (count ?? 0);
+}
+
+/** Komunikaty decyzji zarządcy zgłaszane przez bazę (decide_venue_booking). */
+export const BOOKING_ERRORS: Record<string, string> = {
+  NOT_VENUE_MANAGER: "Tylko zarządca obiektu może potwierdzać terminy.",
+  EVENT_CANCELLED: "To spotkanie zostało odwołane.",
+  EVENT_STARTED: "To spotkanie już się rozpoczęło.",
+  BOOKING_ALREADY_DECIDED: "Ten termin został już rozpatrzony.",
+  EVENT_NOT_FOUND: "Nie znaleziono spotkania.",
+};
+
+/** Potwierdza albo odrzuca termin spotkania na obiekcie (z opcjonalnym powodem). */
+export async function decideVenueBooking(
+  supabase: SupabaseClient,
+  eventId: string,
+  approve: boolean,
+  note = "",
+): Promise<{ ok: true } | { ok: false; code: string }> {
+  const response = await supabase.rpc("decide_venue_booking", {
+    p_event_id: eventId,
+    p_approve: approve,
+    p_note: note,
+  });
+  if (response.error) {
+    const code = response.error.message;
+    return { ok: false, code: Object.hasOwn(BOOKING_ERRORS, code) ? code : "UNKNOWN" };
+  }
+  return { ok: true };
+}
+
+/** Liczba terminów czekających na decyzję zarządcy, osobno dla każdego obiektu. */
+export async function pendingBookingsByVenue(
+  supabase: SupabaseClient,
+  venueIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (venueIds.length === 0) return counts;
+  const { data } = await supabase
+    .from("events")
+    .select("venue_id")
+    .in("venue_id", venueIds)
+    .eq("venue_status", "pending")
+    .eq("status", "active")
+    .gt("starts_at", new Date().toISOString());
+  for (const row of (data ?? []) as { venue_id: string }[]) {
+    counts.set(row.venue_id, (counts.get(row.venue_id) ?? 0) + 1);
+  }
+  return counts;
 }

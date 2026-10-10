@@ -1,0 +1,160 @@
+---
+// Kalendarz rezerwacji obiektu: nadchodzące spotkania dzień po dniu, z potwierdzaniem i odrzucaniem terminów.
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import SportIcon from "@/components/SportIcon.astro";
+import { createClient } from "@/lib/supabase";
+import { BOOKING_ERRORS, getVenue, listVenueBookings, type VenueBooking } from "@/lib/services/venues";
+import { formatPLN } from "@/lib/money";
+import { sportLabel } from "@/lib/sports";
+import { formatTimeRange, toLocalDateTime } from "@/lib/time";
+import { teamSize } from "@/lib/capacity";
+
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/auth/signin");
+
+const id = Astro.params.id ?? "";
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+const venue = supabase ? await getVenue(supabase, id) : null;
+// Kalendarz widzi tylko zarządca obiektu.
+if (venue?.manager_id !== user.id || !supabase) return Astro.redirect("/venues");
+
+const bookings = await listVenueBookings(supabase, id);
+
+// Grupowanie po dniu w czasie polskim.
+const byDay = new Map<string, VenueBooking[]>();
+for (const b of bookings) {
+  const day = toLocalDateTime(b.starts_at).slice(0, 10);
+  byDay.set(day, [...(byDay.get(day) ?? []), b]);
+}
+const dayLabel = (day: string) =>
+  new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(
+    new Date(`${day}T12:00:00Z`),
+  );
+
+const pending = bookings.filter((b) => b.venue_status === "pending").length;
+const ok = Astro.url.searchParams.get("ok");
+const errorCode = Astro.url.searchParams.get("error");
+const errorMessage = errorCode ? (BOOKING_ERRORS[errorCode] ?? "Coś poszło nie tak. Spróbuj ponownie.") : null;
+
+const STATUS = {
+  pending: { label: "czeka na Twoją decyzję", class: "bg-warn-soft text-warn" },
+  approved: { label: "potwierdzony", class: "bg-ok-soft text-ok" },
+  rejected: { label: "odrzucony", class: "bg-bad-soft text-bad" },
+} as const;
+---
+
+<Layout title={`Kalendarz · ${venue.name} · Metando`}>
+  <div class="bg-app min-h-screen p-4 pb-32">
+    <div class="mx-auto max-w-3xl">
+      <Topbar title={`Kalendarz|${venue.name}`} />
+      <a href="/venues" class="mb-3 inline-block text-sm font-semibold text-page-link hover:underline">
+        ← Moje obiekty
+      </a>
+
+      {ok && (
+        <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-4 py-2 text-sm font-semibold text-ok">
+          {ok === "approve" ? "Termin potwierdzony." : "Termin odrzucony — organizator zobaczy powód."}
+        </p>
+      )}
+      {errorMessage && (
+        <p class="mb-4 rounded-2xl border border-bad-line bg-bad-soft px-4 py-2 text-sm font-semibold text-bad">
+          {errorMessage}
+        </p>
+      )}
+
+      <p class="mb-5 text-sm text-page-ink-2" data-testid="pending-bookings">
+        {pending > 0 ? `Terminy czekające na decyzję: ${String(pending)}.` : "Wszystkie terminy są rozpatrzone."}{" "}
+        Odrzucony termin od razu zwalnia obiekt dla innych.
+      </p>
+
+      {bookings.length === 0 && (
+        <div class="rounded-[20px] bg-page-2 p-6 text-center">
+          <p class="display text-3xl">Pusty kalendarz</p>
+          <p class="mt-2 text-sm text-page-ink-2">
+            Gdy organizator wybierze Twój obiekt w ogłoszeniu, termin pojawi się tutaj.
+          </p>
+        </div>
+      )}
+
+      <div class="grid gap-6">
+        {[...byDay.entries()].map(([day, items]) => (
+          <section>
+            <h2 class="display mb-2 text-2xl text-page-ink first-letter:uppercase">{dayLabel(day)}</h2>
+            <ul class="grid gap-3">
+              {items.map((b) => (
+                <li class="overflow-hidden rounded-[20px] bg-card text-ink" data-testid="booking">
+                  <div class="flex flex-wrap items-center justify-between gap-2 px-4 pt-3">
+                    <span class="display text-2xl">{formatTimeRange(b.starts_at, b.duration_minutes)}</span>
+                    <span class:list={["rounded-full px-3 py-1 text-xs font-bold", STATUS[b.venue_status].class]}>
+                      {STATUS[b.venue_status].label}
+                    </span>
+                  </div>
+                  <div class="flex flex-col gap-1 px-4 pt-2 pb-3 text-sm">
+                    <a href={`/events/${b.id}`} class="inline-flex items-center gap-2 font-bold hover:underline">
+                      <SportIcon sport={b.sport} size={18} />
+                      {sportLabel(b.sport)} · {teamSize(b)} os.
+                    </a>
+                    <span class="text-ink-2">
+                      organizuje {b.organizer?.display_name ?? "Użytkownik"}
+                      {b.cost_cents != null && <> · {formatPLN(b.cost_cents)}</>}
+                      {b.status === "organizer_left" && " · organizator zrezygnował"}
+                    </span>
+                    {b.venue_note && <span class="text-ink-3">Powód: {b.venue_note}</span>}
+                  </div>
+                  {b.venue_status !== "rejected" && (
+                    <div class="flex flex-wrap items-start gap-2 border-t border-line px-4 py-3">
+                      {b.venue_status === "pending" && (
+                        <form method="POST" action={`/api/venues/bookings/${b.id}/decide`}>
+                          <input type="hidden" name="venueId" value={venue.id} />
+                          <button
+                            type="submit"
+                            name="decision"
+                            value="approve"
+                            class="h-10 rounded-full bg-brand px-5 text-sm font-extrabold text-on-brand uppercase transition-colors hover:bg-brand-hover"
+                          >
+                            Potwierdź
+                          </button>
+                        </form>
+                      )}
+                      <details class="min-w-0 flex-1">
+                        <summary class="grid h-10 cursor-pointer list-none place-items-center rounded-full bg-card-2 px-5 text-sm font-bold">
+                          {b.venue_status === "approved" ? "Odwołaj potwierdzenie" : "Odrzuć"}
+                        </summary>
+                        <form
+                          method="POST"
+                          action={`/api/venues/bookings/${b.id}/decide`}
+                          class="mt-2 flex flex-col gap-2"
+                        >
+                          <input type="hidden" name="venueId" value={venue.id} />
+                          <label class="text-xs text-ink-2">
+                            Powód (organizator go zobaczy)
+                            <input
+                              type="text"
+                              name="note"
+                              maxlength="300"
+                              placeholder="np. obiekt zajęty przez szkołę"
+                              class="mt-1 w-full rounded-lg border border-line-strong bg-card px-3 py-2 text-sm text-ink"
+                            />
+                          </label>
+                          <button
+                            type="submit"
+                            name="decision"
+                            value="reject"
+                            class="h-10 rounded-full bg-[#3a2420] px-5 text-sm font-bold text-[#ffb4a6]"
+                          >
+                            Odrzuć termin
+                          </button>
+                        </form>
+                      </details>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
+    </div>
+  </div>
+</Layout>

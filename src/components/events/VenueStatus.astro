@@ -1,0 +1,31 @@
+---
+// Status rezerwacji obiektu przy spotkaniu: czeka na zarządcę, potwierdzony albo odrzucony.
+import type { VenueBookingStatus } from "@/types";
+
+interface Props {
+  status: VenueBookingStatus | null | undefined;
+  /** Na kartach krótko, w szczegółach z pełnym opisem. */
+  compact?: boolean;
+}
+
+const { status, compact = false } = Astro.props;
+const TEXT = {
+  pending: compact ? "czeka na obiekt" : "Obiekt jeszcze nie potwierdził terminu",
+  approved: compact ? "obiekt potwierdził" : "Obiekt potwierdził termin",
+  rejected: compact ? "obiekt odrzucił termin" : "Obiekt odrzucił ten termin",
+} as const;
+const TONE = {
+  pending: "bg-warn-soft text-warn",
+  approved: "bg-ok-soft text-ok",
+  rejected: "bg-bad-soft text-bad",
+} as const;
+---
+
+{status && (
+  <span
+    class:list={["inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold", TONE[status]]}
+    data-testid="venue-status"
+  >
+    {status === "approved" ? "✓" : status === "rejected" ? "✕" : "…"} {TEXT[status]}
+  </span>
+)}

@@ -34,7 +34,14 @@ export interface EventRecord {
   /** Obiekt, na którym odbywa się spotkanie (opcjonalny), i koszt całego spotkania w groszach. */
   venue_id: string | null;
   cost_cents: number | null;
+  /** Decyzja zarządcy obiektu o terminie (null, gdy spotkanie nie jest na obiekcie). */
+  venue_status: VenueBookingStatus | null;
+  venue_decided_at: string | null;
+  /** Uzasadnienie zarządcy, np. powód odrzucenia. */
+  venue_note: string | null;
 }
+
+export type VenueBookingStatus = "pending" | "approved" | "rejected";
 
 /** Ograniczony widok ogłoszenia dla gości (FR-001), z liczbą zajętych miejsc. */
 export type PublicEvent = Pick<
@@ -50,6 +57,7 @@ export type PublicEvent = Pick<
   | "requires_approval"
   | "duration_minutes"
   | "cost_cents"
+  | "venue_status"
 > & {
   accepted_count: number;
   reserve_count: number;

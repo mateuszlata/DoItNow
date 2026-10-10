@@ -10,6 +10,7 @@ import { WHEN_OPTIONS, formatEventDate, formatTimeRange } from "@/lib/time";
 import { formatPLN, shareCents } from "@/lib/money";
 import type { EventListItem } from "@/types";
 import EventMap from "@/components/map/EventMap";
+import VenueStatus from "@/components/events/VenueStatus.astro";
 import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, takenSpots, teamSize } from "@/lib/capacity";
 
 const { user } = Astro.locals;
@@ -267,6 +268,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                         {missing === 0 ? "Minimum osiągnięte" : minimumLabel(event)}
                       </span>
                     )}
+                    <VenueStatus status={event.venue_status} compact />
                     {event.cost_cents != null && (
                       <span class="font-bold text-ink" data-testid="card-cost">
                         {formatPLN(shareCents(event.cost_cents, teamSize(event)))} / os.

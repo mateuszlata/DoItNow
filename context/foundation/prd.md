@@ -92,6 +92,7 @@ Dorosły mieszkaniec jednego miasta, który chce uprawiać konkretną aktywnoś�
 - FR-018: Zarządca terenu (każdy zalogowany, który doda obiekt) prowadzi w „Moich obiektach” obiekty z nazwą, adresem i pinezką, sportami, ceną za godzinę i godzinami otwarcia w tygodniu. Priority: nice-to-have
 - FR-019: Organizator może wybrać obiekt w ogłoszeniu: miejsce i pinezka pochodzą z obiektu, termin musi mieścić się w godzinach otwarcia i nie może nachodzić na inne nieodwołane spotkanie na tym obiekcie, sport musi być w ofercie obiektu. Koszt spotkania = cena za godzinę × czas trwania, dzielony równo na miejsca w składzie i pokazywany na osobę. Priority: nice-to-have
   > Zmiana 2026-10-09 (feedback z testów): panel zarządcy terenu z opłatami, etap 1 z 3. Etap 2 — kalendarz zarządcy i akceptacja terminów; etap 3 — płatności online w trybie testowym (Stripe) i rozliczenia.
+- FR-020: Zarządca obiektu widzi w kalendarzu rezerwacji nadchodzące spotkania na swoich obiektach i potwierdza albo odrzuca termin (z powodem widocznym dla organizatora). Nowy albo zmieniony (termin, czas trwania, sport, obiekt) termin czeka na decyzję; odrzucony termin zwalnia obiekt dla innych; potwierdzenie można odwołać do startu. Status rezerwacji widać na karcie i w szczegółach, a liczba terminów czekających na decyzję trafia do znaczka przy nicku zarządcy. Priority: nice-to-have
 
 ### Mapa
 

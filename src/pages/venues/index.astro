@@ -4,7 +4,7 @@ import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
 import SportIcon from "@/components/SportIcon.astro";
 import { createClient } from "@/lib/supabase";
-import { formatHours, listMyVenues } from "@/lib/services/venues";
+import { formatHours, listMyVenues, pendingBookingsByVenue } from "@/lib/services/venues";
 import { formatPLN } from "@/lib/money";
 import { sportLabel } from "@/lib/sports";
 import type { VenueWithHours } from "@/types";
@@ -13,7 +13,14 @@ import type { VenueWithHours } from "@/types";
 const user = Astro.locals.user;
 const supabase = createClient(Astro.request.headers, Astro.cookies);
 let venues: VenueWithHours[] = [];
-if (supabase && user) venues = await listMyVenues(supabase, user.id);
+let pendingByVenue = new Map<string, number>();
+if (supabase && user) {
+  venues = await listMyVenues(supabase, user.id);
+  pendingByVenue = await pendingBookingsByVenue(
+    supabase,
+    venues.map((v) => v.id),
+  );
+}
 const saved = Astro.url.searchParams.get("ok");
 ---
 
@@ -68,9 +75,23 @@ const saved = Astro.url.searchParams.get("ok");
                 <span class="text-ink-2">
                   <strong class="text-ink">Otwarte:</strong> {formatHours(v.hours) || "brak godzin"}
                 </span>
-                <a href={`/venues/${v.id}/edit`} class="self-start font-semibold text-link hover:underline">
-                  Edytuj obiekt
-                </a>
+                <div class="mt-1 flex flex-wrap items-center gap-3">
+                  <a
+                    href={`/venues/${v.id}/calendar`}
+                    class="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 font-bold text-card"
+                    data-testid="venue-calendar"
+                  >
+                    Kalendarz rezerwacji
+                    {(pendingByVenue.get(v.id) ?? 0) > 0 && (
+                      <span class="grid h-6 min-w-6 place-items-center rounded-full bg-brand px-1.5 text-xs font-extrabold text-on-brand">
+                        {pendingByVenue.get(v.id)}
+                      </span>
+                    )}
+                  </a>
+                  <a href={`/venues/${v.id}/edit`} class="font-semibold text-link hover:underline">
+                    Edytuj obiekt
+                  </a>
+                </div>
               </div>
               <div class="sleeve sleeve-dark pb-[3px]" aria-hidden="true">
                 <span />

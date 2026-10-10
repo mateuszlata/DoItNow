@@ -4,6 +4,7 @@ import Topbar from "@/components/Topbar.astro";
 import SlotGrid from "@/components/events/SlotGrid.astro";
 import EventMap from "@/components/map/EventMap";
 import SportIcon from "@/components/SportIcon.astro";
+import VenueStatus from "@/components/events/VenueStatus.astro";
 import { jerseyNumber } from "@/lib/jerseys";
 import { createClient } from "@/lib/supabase";
 import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/lib/services/events";
@@ -47,6 +48,7 @@ const summary = details
       requires_approval: details.requires_approval,
       duration_minutes: details.duration_minutes,
       cost_cents: details.cost_cents,
+      venue_status: details.venue_status,
     }
   : publicEvent;
 
@@ -319,6 +321,19 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               </span>
             )}
           </p>
+          {summary.venue_status && (
+            <div class="-mt-2 flex flex-col gap-1">
+              <VenueStatus status={summary.venue_status} />
+              {details?.venue_status === "rejected" && details.venue_note && (
+                <span class="text-sm text-page-ink-2">Powód: {details.venue_note}</span>
+              )}
+              {details?.venue_status === "rejected" && isOrganizer && (
+                <span class="text-sm text-page-ink-2">
+                  Zmień termin albo obiekt w „Edytuj” — nowy termin trafi do zarządcy do potwierdzenia.
+                </span>
+              )}
+            </div>
+          )}
           <p class="-mt-2 text-[13px] text-page-ink-2" data-testid="join-mode">
             Dołączanie: {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
             {summary.organizer_plays && " · organizator gra w składzie"}
