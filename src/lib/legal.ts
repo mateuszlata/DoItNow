@@ -5,7 +5,7 @@ export const LEGAL_VERSION = "2026-10-10";
 
 export const OPERATOR = {
   name: "Mateusz Łata",
-  address: "ul. Leśmiana 2 m. 44, Częstochowa",
+  address: "ul. Leśmiana 2 m. 44, 42-207 Częstochowa",
   // Skrzynka działa przez przekierowanie Cloudflare Email Routing (po przeniesieniu domeny).
   email: "kontakt@metando.pl",
 };
