@@ -38,7 +38,7 @@ async function request(path, { method = "GET", form } = {}) {
 const steps = [
   ["home redirects to events", () => request("/"), { status: 302, location: "/events" }],
   ["events list renders for guest", () => request("/events"), { status: 200 }],
-  ["dashboard redirects anonymous user", () => request("/dashboard"), { status: 302, location: "/auth/signin" }],
+  ["my events redirect anonymous user", () => request("/my"), { status: 302, location: "/auth/signin" }],
   ["new event form redirects anonymous user", () => request("/events/new"), { status: 302, location: "/auth/signin" }],
   [
     "signup creates account",
@@ -56,9 +56,9 @@ const steps = [
     () => request("/api/auth/signin", { method: "POST", form: { email, password } }),
     { status: 302, location: "/" },
   ],
-  ["dashboard renders for signed-in user", () => request("/dashboard"), { status: 200 }],
+  ["my events render for signed-in user", () => request("/my"), { status: 200 }],
   ["signout clears session", () => request("/api/auth/signout", { method: "POST" }), { status: 302, location: "/" }],
-  ["dashboard redirects after signout", () => request("/dashboard"), { status: 302, location: "/auth/signin" }],
+  ["my events redirect after signout", () => request("/my"), { status: 302, location: "/auth/signin" }],
 ];
 
 let failed = 0;

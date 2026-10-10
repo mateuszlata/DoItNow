@@ -133,3 +133,7 @@ Granica czasowa wynosi 12 h przed wydarzeniem i jest wspólna: po niej autor nie
 5. **Czy blokować nakładające się zgłoszenia jednego użytkownika?** (pytanie z pierwotnego opisu pomysłu, nierozstrzygnięte) — Owner: user. Przed implementacją FR-007.
 6. **Kto będzie pierwszymi użytkownikami?** (pytanie z pierwotnego opisu pomysłu; skala ustalona jako „Ty i garstka osób”, persona: jedno miasto) — Owner: user. Przed testem kryterium Secondary.
 7. **Kryteria akceptacji US-01** (np. co widzi użytkownik przy odrzuceniu, przy braku wolnych miejsc, po upływie granicy 12 h) — nieuchwycone w notatkach. — Owner: user.
+
+### Pomysł do zweryfikowania: tokeny Metando i kaucja za obecność (2026-10-10)
+
+Użytkownik doładowuje konto w Metando (np. 30–50 zł przez BLIK) i płaci tokenami wyłącznie za usługi samego Metando — nigdy za obiekt (wtedy byłaby to usługa płatnicza wymagająca licencji). Najmocniejszy wariant: kaucja za obecność — przy dołączeniu blokowany jest 1 token, który wraca po spotkaniu, a przepada przy niestawieniu się bez rezygnacji. Inne możliwe zastosowania: wyróżnienie ogłoszenia, spotkania cykliczne, pakiet premium. Do sprawdzenia przed budową: czy gracze i organizatorzy by z tego skorzystali (rozmowy z kilkunastoma osobami), VAT i paragony od doładowań, regulamin ważności tokenów i zwrot niewykorzystanych środków (UOKiK), rozliczanie przedpłat. Owner: user.

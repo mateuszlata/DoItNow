@@ -1,192 +1,65 @@
-# 10x Astro Starter
+# Metando — meet and do
 
-![](./public/template.png)
+Metando łączy dorosłych w jednym mieście, którzy chcą w danym terminie uprawiać sport albo inną aktywność, ale brakuje im ludzi. Organizator wystawia ogłoszenie („piłka nożna, sobota 18:00, Orlik na Mokotowie, brakuje 5 osób”), a inni dołączają jednym kliknięciem. Zarządcy obiektów (szkoły, hale, korty) dodają swoje obiekty z cennikiem i godzinami otwarcia oraz potwierdzają terminy w kalendarzu rezerwacji.
 
-A modern, opinionated starter template for building fast, accessible web applications.
+Produkcja: https://doitnow.doitnow-app.workers.dev
 
-## Tech Stack
+## Co potrafi
 
-- [Astro](https://astro.build/) v7 - Modern web framework with server-first rendering
-- [React](https://react.dev/) v19 - UI library for interactive components
-- [TypeScript](https://www.typescriptlang.org/) v6 - Type-safe JavaScript
-- [Tailwind CSS](https://tailwindcss.com/) v4 - Utility-first CSS framework
-- [Supabase](https://supabase.com/) - Authentication and backend-as-a-service
-- [Cloudflare Workers](https://workers.cloudflare.com/) - Edge deployment runtime
+- **Ogłoszenia** z terminem, czasem trwania, składem (z grającym organizatorem lub bez), minimum osób, ławką rezerwowych, mapą z pinezką i opisem.
+- **Dołączanie** od razu albo po akceptacji organizatora; organizator może usuwać uczestników. Rezerwa wskakuje automatycznie na zwolnione miejsce.
+- **Rezygnacja** do 12 h przed startem; **odwołanie z przekazaniem** — po rezygnacji organizatora uczestnicy decydują, czy grają dalej, a pierwsza osoba, która zostaje, przejmuje organizację.
+- **Skład jako koszulki z numerami** dopasowane do sportu (koszulka, polo, kolarska, numer startowy).
+- **Lista z filtrami** (sport, dziś / jutro / weekend, dzień) i mapą na każdej karcie.
+- **Obiekty zarządców**: cennik za godzinę, godziny otwarcia, koszt spotkania dzielony na osobę, pilnowanie godzin otwarcia i kolizji terminów, **kalendarz rezerwacji** z potwierdzaniem i odrzucaniem terminów.
+- **Wyszukiwarka adresów** z podpowiedziami Google Places (przez serwer, w darmowej puli z budżetem kroczącym) i zapasowo OpenStreetMap.
+- **Usuwanie konta** przez użytkownika (RODO).
 
-## Prerequisites
+Płatności w aplikacji są świadomie odłożone — koszt obiektu jest informacją, rozliczenia odbywają się poza Metando (zob. `context/foundation/prd.md`).
 
-- Node.js v22.14.0 (as specified in `.nvmrc`)
-- npm (comes with Node.js)
+## Stos
 
-## Getting Started
+Astro 7 (SSR) + React 19 (wyspy) + TypeScript + Tailwind 4 · Supabase (Postgres, RLS, logowanie) · Cloudflare Workers · Leaflet + OpenStreetMap · Google Places API (New) · Vitest + Playwright · GitHub Actions.
 
-1. Clone the repository:
+Reguły biznesowe (limity miejsc, rezerwa, granice 12 h, przekazanie organizacji, reguły obiektów, decyzje zarządców, budżet zapytań do Google) są egzekwowane w funkcjach i wyzwalaczach Postgresa w `supabase/migrations/`, a nie tylko w aplikacji.
 
-```bash
-git clone https://github.com/przeprogramowani/10x-astro-starter.git
-cd 10x-astro-starter
-```
+## Uruchomienie lokalne
 
-2. Install dependencies:
+Wymagania: Node.js 22.14 (`.nvmrc`), Docker (dla lokalnego Supabase).
 
 ```bash
 npm install
 ```
 
-3. Set up Supabase and configure environment variables — see [Supabase Configuration](#supabase-configuration) below.
-
-4. Create a `.dev.vars` file for local Cloudflare dev secrets:
-
 ```bash
-cp .env.example .dev.vars
+npx supabase start
 ```
 
-5. Run the development server:
+Skopiuj `.env.example` do `.env` i `.dev.vars`, wpisz `SUPABASE_URL` i klucz publishable z wyniku `npx supabase status`. Opcjonalnie `GOOGLE_MAPS_API_KEY` (bez niego wyszukiwarka adresów używa OpenStreetMap) i `ADMIN_EMAILS` (dostęp do statystyk `/admin/places`).
 
 ```bash
 npm run dev
 ```
 
-## Available Scripts
+## Testy
 
-- `npm run dev` - Start development server (Cloudflare workerd runtime)
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint with type-checked rules
-- `npm run lint:fix` - Auto-fix ESLint issues
-- `npm run format` - Run Prettier
-- `npm run smoke` - Smoke test the auth flow against a running server (`BASE_URL`, defaults to `http://localhost:4321`)
+| Polecenie                          | Co sprawdza                                                                                                                                |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm test`                         | testy jednostkowe i integracyjne na lokalnym Supabase (reguły w bazie, RLS, obiekty, rezerwacje, budżet Google, usuwanie konta)            |
+| `npm run test:e2e`                 | Playwright na buildzie produkcyjnym (`astro preview`, port 4322): zgłoszenie i akceptacja, dołączanie bez akceptacji i usuwanie uczestnika |
+| `npm run smoke`                    | szybki test logowania na działającym serwerze (`BASE_URL`)                                                                                 |
+| `npm run lint` / `npx astro check` | ESLint z regułami typów i sprawdzenie typów                                                                                                |
 
-## Project Structure
+CI (`.github/workflows/ci.yml`) uruchamia lint, typy, build, testy z lokalnym Supabase, smoke i e2e przy każdym pushu na `main`, a wdrożenie na Cloudflare — gdy w repozytorium są sekrety `CLOUDFLARE_API_TOKEN` i `CLOUDFLARE_ACCOUNT_ID`.
 
-```md
-.
-├── src/
-│ ├── layouts/ # Astro layouts
-│ ├── pages/ # Astro pages
-│ │ └── api/ # API endpoints
-│ ├── components/ # UI components (Astro & React)
-│ └── assets/ # Static assets
-├── public/ # Public assets
-├── wrangler.jsonc # Cloudflare Workers config
-```
+## Wdrożenie
 
-## Supabase Configuration
+1. Migracje bazy: `npx supabase db push` na projekt w chmurze (zawsze **przed** wdrożeniem kodu, który z nich korzysta).
+2. Sekrety Workera: `npx wrangler secret put SUPABASE_URL`, `SUPABASE_KEY`, opcjonalnie `GOOGLE_MAPS_API_KEY` i `ADMIN_EMAILS`.
+3. `npm run build && npx wrangler deploy`.
 
-This project uses [Supabase](https://supabase.com/) for authentication. Environment variables are declared via Astro's `astro:env` schema and are treated as **server-only secrets** — they are never exposed to the client.
+## Dokumentacja projektu
 
-### First-time setup (local, no cloud project needed)
-
-Requires [Docker](https://www.docker.com/) and ~7 GB RAM.
-
-1. Create your `.env` file:
-
-```bash
-cp .env.example .env
-```
-
-2. Initialize the local Supabase project (creates a `supabase/` config folder):
-
-```bash
-npx supabase init
-```
-
-3. Start the local stack (downloads Docker images on first run):
-
-```bash
-npx supabase start
-```
-
-4. Copy the credentials printed by the CLI into your `.env` and `.dev.vars`:
-
-```
-SUPABASE_URL=http://127.0.0.1:54321
-SUPABASE_KEY=<anon key from CLI output>
-```
-
-5. To stop the stack when done:
-
-```bash
-npx supabase stop
-```
-
-The local Studio UI is available at `http://localhost:54323`.
-
-No database tables or migrations are required — this project uses Supabase Auth's built-in `auth.users` table only.
-
-### Using a cloud Supabase project instead
-
-If you prefer to use a hosted Supabase project, add these variables to your `.env` and `.dev.vars` files:
-
-| Variable       | Description                                                |
-| -------------- | ---------------------------------------------------------- |
-| `SUPABASE_URL` | Project URL from Supabase dashboard → Settings → API       |
-| `SUPABASE_KEY` | `anon` public key from Supabase dashboard → Settings → API |
-
-```
-SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_KEY=<anon-key>
-```
-
-### Email confirmation in local development
-
-By default Supabase requires email confirmation before a user can sign in. To skip this during local development:
-
-1. Open the Supabase dashboard for your project
-2. Go to **Authentication → Email → Confirm email**
-3. Toggle it **off**
-
-Users can then sign in immediately after sign-up without clicking a confirmation link.
-
-### Auth routes
-
-| Route                 | Description                                                             |
-| --------------------- | ----------------------------------------------------------------------- |
-| `/auth/signin`        | Email/password sign-in form                                             |
-| `/auth/signup`        | Email/password sign-up form                                             |
-| `/auth/confirm-email` | Post-signup "check your inbox" page                                     |
-| `/dashboard`          | Example protected page (redirects to `/auth/signin` if unauthenticated) |
-
-Route protection is handled in `src/middleware.ts`. Add paths to the `PROTECTED_ROUTES` array there to require authentication.
-
-## Deployment
-
-This project deploys to [Cloudflare Workers](https://workers.cloudflare.com/).
-
-1. Build the project:
-
-```bash
-npm run build
-```
-
-2. Deploy with Wrangler:
-
-```bash
-npx wrangler deploy
-```
-
-Set `SUPABASE_URL` and `SUPABASE_KEY` as secrets in your Cloudflare dashboard or via `npx wrangler secret put`.
-
-## Smoke test
-
-`scripts/smoke.mjs` is a dependency-free Node script that walks the whole auth flow (sign-up, sign-in, protected page, sign-out) over HTTP. Run it against the dev server or the production preview after dependency upgrades:
-
-```bash
-npm run dev            # or: npm run build && npm run preview
-BASE_URL=http://localhost:4321 npm run smoke
-```
-
-It needs a reachable Supabase instance (local or cloud) with email confirmation disabled.
-
-> **Note:** this script exists primarily to guard the development of the starter itself — it is a fast sanity check that dependency upgrades did not break the build, the Cloudflare adapter or the Supabase auth flow. It is **not** a substitute for a real test suite. Once you build your own product on top of this starter, add proper tests (unit, integration, end-to-end) suited to your application.
-
-## CI
-
-GitHub Actions runs two jobs on every push and PR to `master`:
-
-- **ci** — lint, `astro check` and build. Configure `SUPABASE_URL` and `SUPABASE_KEY` as repository secrets for the build step.
-- **smoke** — starts a local Supabase via the Supabase CLI, builds, serves the production preview on the Cloudflare runtime and runs `npm run smoke` against it. No secrets required.
-
-## License
-
-MIT
+- `context/foundation/prd.md` — wymagania produktu (FR-001…FR-020), decyzje i otwarte pytania.
+- `context/foundation/tech-stack.md`, `context/foundation/infrastructure.md` — wybór stosu i platformy z rejestrem ryzyk.
+- `CLAUDE.md` — zasady pracy dla agentów AI w tym repozytorium.

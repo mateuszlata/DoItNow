@@ -34,7 +34,8 @@ export async function deleteUsers(url: string, serviceRoleKey: string, ids: stri
   const admin = adminClient(url, serviceRoleKey);
   for (const id of ids) {
     const { error } = await admin.auth.admin.deleteUser(id);
-    if (error) throw new Error(`deleteUser ${id} failed: ${error.message}`);
+    // Konto mogło już zostać usunięte przez sam test (usuwanie własnego konta).
+    if (error && error.status !== 404) throw new Error(`deleteUser ${id} failed: ${error.message}`);
   }
 }
 
