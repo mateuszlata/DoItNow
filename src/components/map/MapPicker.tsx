@@ -2,7 +2,19 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { DEFAULT_CENTER, TILE_ATTRIBUTION, TILE_URL, loadLeaflet, pinIcon } from "@/components/map/leaflet";
-import { searchPlaces, type PlaceSuggestion } from "@/lib/geocode";
+import type { PlaceHit, PlaceSearchResult } from "@/lib/services/places";
+
+interface DetailsResponse {
+  ok: boolean;
+  lat?: number;
+  lng?: number;
+  address?: string;
+}
+
+/** Nowa sesja podpowiedzi Google (podpowiedzi + wybór miejsca rozliczane razem). */
+function newSession(): string {
+  return crypto.randomUUID();
+}
 
 interface Props {
   /** Wartości z formularza (puste, gdy brak pinezki). */
@@ -19,9 +31,10 @@ function parse(value: string): number | null {
 }
 
 /**
- * Wybór miejsca spotkania: wyszukiwarka adresów z podpowiedziami (jak w mapach Google) albo kliknięcie
- * w mapę stawia pinezkę, którą można przeciągnąć lub usunąć. Współrzędne trafiają do ukrytych pól
- * `lat` i `lng` formularza; wybrany adres wpisuje się w puste pole „Dokładne miejsce”.
+ * Wybór miejsca spotkania: wyszukiwarka z podpowiedziami Google (przez nasz serwer, w ramach darmowej puli;
+ * zapasowo OpenStreetMap) albo kliknięcie w mapę stawia pinezkę, którą można przeciągnąć lub usunąć.
+ * Współrzędne trafiają do ukrytych pól `lat` i `lng`, identyfikator miejsca Google do `googlePlaceId`,
+ * a wybrany adres wpisuje się w puste pole „Dokładne miejsce”.
  */
 export default function MapPicker({ initialLat, initialLng, fillField = "place" }: Props) {
   const container = useRef<HTMLDivElement>(null);
@@ -36,7 +49,11 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
   );
 
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<PlaceHit[]>([]);
+  const [source, setSource] = useState<PlaceSearchResult["source"]>("google");
+  const [googlePlaceId, setGooglePlaceId] = useState("");
+  const [pickError, setPickError] = useState<string | null>(null);
+  const session = useRef(newSession());
   const [active, setActive] = useState(-1);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -60,6 +77,7 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
           marker.current.on("dragend", () => {
             const pos = marker.current?.getLatLng();
             if (pos) place(pos.lat, pos.lng);
+            setGooglePlaceId("");
           });
         }
         setPoint(rounded);
@@ -69,6 +87,7 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
       if (point) place(point.lat, point.lng);
       map.on("click", (e: Leaflet.LeafletMouseEvent) => {
         place(e.latlng.lat, e.latlng.lng);
+        setGooglePlaceId("");
       });
       destroy = () => {
         marker.current = null;
@@ -92,9 +111,17 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
     const timer = setTimeout(() => {
       const center = mapRef.current?.getCenter() ?? { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
       setSearching(true);
-      searchPlaces(query, center, controller.signal)
+      const params = new URLSearchParams({
+        q: query,
+        lat: center.lat.toFixed(4),
+        lng: center.lng.toFixed(4),
+        session: session.current,
+      });
+      fetch(`/api/places/search?${params.toString()}`, { signal: controller.signal })
+        .then((r) => (r.ok ? (r.json() as Promise<PlaceSearchResult>) : Promise.reject(new Error(String(r.status)))))
         .then((found) => {
-          setSuggestions(found);
+          setSuggestions(found.hits);
+          setSource(found.source);
           setActive(-1);
           setOpen(true);
         })
@@ -114,9 +141,32 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
   // Przy krótkim zapytaniu nie pokazujemy starych podpowiedzi.
   const shown = query.trim().length >= 3 && query !== chosen ? suggestions : [];
 
-  function choose(suggestion: PlaceSuggestion) {
-    placeRef.current?.(suggestion.lat, suggestion.lng);
-    mapRef.current?.setView([suggestion.lat, suggestion.lng], 17);
+  async function choose(suggestion: PlaceHit) {
+    setPickError(null);
+    let point =
+      suggestion.lat !== undefined && suggestion.lng !== undefined
+        ? { lat: suggestion.lat, lng: suggestion.lng }
+        : null;
+    let address = suggestion.subtitle;
+    if (!point) {
+      // Google podaje współrzędne dopiero w szczegółach miejsca (kończą sesję podpowiedzi).
+      const params = new URLSearchParams({ id: suggestion.id, session: session.current });
+      const details = await fetch(`/api/places/details?${params.toString()}`)
+        .then((r) => r.json() as Promise<DetailsResponse>)
+        .catch((): DetailsResponse => ({ ok: false }));
+      session.current = newSession();
+      if (!details.ok || details.lat === undefined || details.lng === undefined) {
+        setPickError("Nie udało się pobrać położenia — zaznacz miejsce kliknięciem w mapę.");
+        return;
+      }
+      point = { lat: details.lat, lng: details.lng };
+      address = details.address ?? address;
+      setGooglePlaceId(suggestion.id);
+    } else {
+      setGooglePlaceId("");
+    }
+    placeRef.current?.(point.lat, point.lng);
+    mapRef.current?.setView([point.lat, point.lng], 17);
     const label = [suggestion.title, suggestion.subtitle].filter(Boolean).join(", ");
     setChosen(label);
     setQuery(label);
@@ -126,7 +176,7 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
     const form = container.current?.closest("form");
     const placeField = form?.elements.namedItem(fillField);
     if (placeField instanceof HTMLInputElement && placeField.value.trim() === "") {
-      placeField.value = [suggestion.title, suggestion.subtitle.split(", ")[0]].filter(Boolean).join(", ");
+      placeField.value = [suggestion.title, address.split(", ")[0]].filter(Boolean).join(", ").slice(0, 200);
     }
   }
 
@@ -134,7 +184,7 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
     if (e.key === "Enter") {
       // Enter w wyszukiwarce nie wysyła formularza ogłoszenia.
       e.preventDefault();
-      if (open && shown.length > 0) choose(shown[active >= 0 ? active : 0]);
+      if (open && shown.length > 0) void choose(shown[active >= 0 ? active : 0]);
     } else if (e.key === "ArrowDown" && shown.length > 0) {
       e.preventDefault();
       setOpen(true);
@@ -151,6 +201,7 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
     marker.current?.remove();
     marker.current = null;
     setPoint(null);
+    setGooglePlaceId("");
   }
 
   const showList = open && shown.length > 0;
@@ -210,13 +261,13 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
           >
             {shown.map((s, i) => (
               <li
-                key={`${String(s.lat)},${String(s.lng)},${String(i)}`}
+                key={`${s.id},${String(i)}`}
                 id={`place-option-${String(i)}`}
                 role="option"
                 aria-selected={i === active}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  choose(s);
+                  void choose(s);
                 }}
                 className={`cursor-pointer px-4 py-2.5 text-sm ${i === active ? "bg-card-2" : "hover:bg-card-2"}`}
               >
@@ -224,8 +275,13 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
                 {s.subtitle && <span className="text-ink-3 block text-xs">{s.subtitle}</span>}
               </li>
             ))}
+            <li className="text-ink-3 border-line border-t px-4 py-2 text-[11px]" aria-hidden="true">
+              Nie ma na liście? Wpisz ulicę i numer albo kliknij w mapę.
+              <span className="float-right">{source === "google" ? "powered by Google" : "© OpenStreetMap"}</span>
+            </li>
           </ul>
         )}
+        {pickError && <p className="text-bad mt-1 px-4 text-xs">{pickError}</p>}
         {open && !searching && query.trim().length >= 3 && shown.length === 0 && (
           <p className="text-ink-3 mt-1 px-4 text-xs">Brak podpowiedzi — zaznacz miejsce kliknięciem w mapę.</p>
         )}
@@ -239,6 +295,7 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
       />
       <input type="hidden" name="lat" value={point ? String(point.lat) : ""} />
       <input type="hidden" name="lng" value={point ? String(point.lng) : ""} />
+      <input type="hidden" name="googlePlaceId" value={point ? googlePlaceId : ""} />
       <div className="text-ink-3 mt-1 flex items-center justify-between gap-2 text-xs">
         <span>
           {point
@@ -251,7 +308,9 @@ export default function MapPicker({ initialLat, initialLng, fillField = "place" 
           </button>
         )}
       </div>
-      <p className="text-ink-3 mt-0.5 text-[11px]">Podpowiedzi adresów: Photon (komoot), dane © OpenStreetMap.</p>
+      <p className="text-ink-3 mt-0.5 text-[11px]">
+        Podpowiedzi: Google Maps (zapasowo Photon i OpenStreetMap). Mapa © OpenStreetMap.
+      </p>
     </div>
   );
 }

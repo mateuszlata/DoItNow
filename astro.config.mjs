@@ -21,6 +21,10 @@ export default defineConfig({
     schema: {
       SUPABASE_URL: envField.string({ context: "server", access: "secret", optional: true }),
       SUPABASE_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      // Klucz Google Places (New), tylko po stronie serwera; bez niego wyszukiwarka używa OpenStreetMap.
+      GOOGLE_MAPS_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      // Adresy e-mail z dostępem do strony statystyk /admin/places (po przecinku).
+      ADMIN_EMAILS: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 });

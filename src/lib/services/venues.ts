@@ -22,6 +22,8 @@ export interface VenueFormValues {
   address: string;
   lat: string;
   lng: string;
+  /** Identyfikator miejsca Google, gdy pinezka pochodzi z podpowiedzi Google. */
+  googlePlaceId: string;
   sports: string[];
   price: string;
   hours: Record<number, { open: boolean; opens: string; closes: string }>;
@@ -37,6 +39,7 @@ export interface ParsedVenue {
   address: string;
   lat: number;
   lng: number;
+  googlePlaceId: string | null;
   sports: string[];
   pricePerHourCents: number;
   hours: VenueHours[];
@@ -57,6 +60,7 @@ export const EMPTY_VENUE_FORM: VenueFormValues = {
   address: "",
   lat: "",
   lng: "",
+  googlePlaceId: "",
   sports: [],
   price: "",
   hours: Object.fromEntries(
@@ -99,7 +103,14 @@ export function parseVenueForm(
   if (!parsed.success || Object.keys(errors).length > 0 || price === null) return { ok: false, errors };
   return {
     ok: true,
-    data: { ...parsed.data, lat, lng, pricePerHourCents: price, hours },
+    data: {
+      ...parsed.data,
+      lat,
+      lng,
+      googlePlaceId: /^[A-Za-z0-9_-]{10,300}$/.test(input.googlePlaceId) ? input.googlePlaceId : null,
+      pricePerHourCents: price,
+      hours,
+    },
   };
 }
 
@@ -116,6 +127,7 @@ export async function readVenueForm(request: Request): Promise<VenueFormValues> 
     address: field("place"),
     lat: field("lat"),
     lng: field("lng"),
+    googlePlaceId: field("googlePlaceId"),
     sports: form.getAll("sports").filter((v): v is string => typeof v === "string"),
     price: field("price"),
     hours: Object.fromEntries(
@@ -140,6 +152,7 @@ export function venueToForm(venue: VenueWithHours): VenueFormValues {
     address: venue.address,
     lat: String(venue.lat),
     lng: String(venue.lng),
+    googlePlaceId: venue.google_place_id ?? "",
     sports: venue.sports,
     price: String(venue.price_per_hour_cents / 100).replace(".", ","),
     hours: Object.fromEntries(
@@ -188,6 +201,7 @@ export async function createVenue(
       lat: d.lat,
       lng: d.lng,
       sports: d.sports,
+      google_place_id: d.googlePlaceId,
       price_per_hour_cents: d.pricePerHourCents,
     })
     .select()
@@ -217,6 +231,7 @@ export async function updateVenue(
       lat: d.lat,
       lng: d.lng,
       sports: d.sports,
+      google_place_id: d.googlePlaceId,
       price_per_hour_cents: d.pricePerHourCents,
     })
     .eq("id", venueId)

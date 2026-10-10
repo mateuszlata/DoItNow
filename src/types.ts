@@ -118,6 +118,8 @@ export interface Venue {
   sports: SportId[];
   /** Cena za godzinę w groszach. */
   price_per_hour_cents: number;
+  /** Identyfikator miejsca Google (do odświeżania współrzędnych zgodnie z regulaminem Google). */
+  google_place_id: string | null;
   created_at: string;
 }
 
