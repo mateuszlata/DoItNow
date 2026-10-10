@@ -17,7 +17,7 @@ const info = Astro.url.searchParams.get("info");
       {info && <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-3 py-2 text-sm text-ok">{info}</p>}
       <SignInForm serverError={error} client:load />
       <p class="mt-4 text-center text-sm text-ink-3">
-        Nie masz konta?{""}
+        Nie masz konta?{" "}
         <a href="/auth/signup" class="text-link hover:underline">
           Załóż konto
         </a>
