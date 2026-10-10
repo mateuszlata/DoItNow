@@ -50,9 +50,11 @@ function inThreeDaysAt18(): string {
 }
 
 // Pole „Dokładne miejsce” to wyszukiwarka adresów w wyspie React — wpisujemy dopiero po hydratacji
-// (gotowa mapa), a Escape zamyka podpowiedzi, żeby nie zasłaniały reszty formularza.
+// (Astro zdejmuje atrybut ssr z wyspy), a Escape zamyka podpowiedzi, żeby nie zasłaniały reszty formularza.
 async function fillPlace(page: Page, text: string) {
-  await expect(page.getByTestId("map-picker").locator(".leaflet-container").first()).toBeAttached();
+  await expect(
+    page.locator("astro-island:not([ssr])").filter({ has: page.getByTestId("place-search") }),
+  ).toBeAttached();
   const field = page.getByLabel("Dokładne miejsce");
   await field.fill(text);
   await field.press("Escape");
