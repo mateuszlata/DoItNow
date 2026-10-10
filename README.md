@@ -14,6 +14,7 @@ Produkcja: https://doitnow.doitnow-app.workers.dev
 - **Obiekty zarządców**: cennik za godzinę, godziny otwarcia, koszt spotkania dzielony na osobę, pilnowanie godzin otwarcia i kolizji terminów, **kalendarz rezerwacji** z potwierdzaniem i odrzucaniem terminów.
 - **Wyszukiwarka adresów** z podpowiedziami Google Places (przez serwer, w darmowej puli z budżetem kroczącym) i zapasowo OpenStreetMap.
 - **Usuwanie konta** przez użytkownika (RODO).
+- **Ochrona rejestracji przed botami** (Cloudflare Turnstile, token sprawdzany na serwerze).
 
 Płatności w aplikacji są świadomie odłożone — koszt obiektu jest informacją, rozliczenia odbywają się poza Metando (zob. `context/foundation/prd.md`).
 
@@ -35,7 +36,7 @@ npm install
 npx supabase start
 ```
 
-Skopiuj `.env.example` do `.env` i `.dev.vars`, wpisz `SUPABASE_URL` i klucz publishable z wyniku `npx supabase status`. Opcjonalnie `GOOGLE_MAPS_API_KEY` (bez niego wyszukiwarka adresów używa OpenStreetMap) i `ADMIN_EMAILS` (dostęp do statystyk `/admin/places`).
+Skopiuj `.env.example` do `.env` i `.dev.vars`, wpisz `SUPABASE_URL` i klucz publishable z wyniku `npx supabase status`. Opcjonalnie `GOOGLE_MAPS_API_KEY` (bez niego wyszukiwarka adresów używa OpenStreetMap) `ADMIN_EMAILS` (dostęp do statystyk `/admin/places`) oraz `TURNSTILE_SITE_KEY` i `TURNSTILE_SECRET_KEY` (ochrona rejestracji przed botami; bez nich formularz działa bez widgetu).
 
 ```bash
 npm run dev
@@ -55,7 +56,7 @@ CI (`.github/workflows/ci.yml`) uruchamia lint, typy, build, testy z lokalnym Su
 ## Wdrożenie
 
 1. Migracje bazy: `npx supabase db push` na projekt w chmurze (zawsze **przed** wdrożeniem kodu, który z nich korzysta).
-2. Sekrety Workera: `npx wrangler secret put SUPABASE_URL`, `SUPABASE_KEY`, opcjonalnie `GOOGLE_MAPS_API_KEY` i `ADMIN_EMAILS`.
+2. Sekrety Workera: `npx wrangler secret put SUPABASE_URL`, `SUPABASE_KEY`, opcjonalnie `GOOGLE_MAPS_API_KEY`, `ADMIN_EMAILS`, `TURNSTILE_SITE_KEY` i `TURNSTILE_SECRET_KEY`.
 3. `npm run build && npx wrangler deploy`.
 
 ## Dokumentacja projektu

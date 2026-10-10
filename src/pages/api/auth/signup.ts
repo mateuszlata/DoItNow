@@ -1,7 +1,9 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@/lib/supabase";
 import { displayNameSchema } from "@/lib/services/profiles";
+import { TURNSTILE_SECRET_KEY } from "astro:env/server";
 import { AUTH_NOT_CONFIGURED, authErrorMessage } from "@/lib/auth-errors";
+import { TURNSTILE_FAILED, TURNSTILE_FIELD, verifyTurnstile } from "@/lib/turnstile";
 
 export const POST: APIRoute = async (context) => {
   const form = await context.request.formData();
@@ -12,6 +14,16 @@ export const POST: APIRoute = async (context) => {
   if (!displayName.success) {
     const message = displayName.error.issues[0]?.message ?? "Nieprawidłowy nick.";
     return context.redirect(`/auth/signup?error=${encodeURIComponent(message)}`);
+  }
+
+  // Ochrona przed botami: token z widgetu Turnstile sprawdzany u Cloudflare.
+  const human = await verifyTurnstile(
+    TURNSTILE_SECRET_KEY,
+    form.get(TURNSTILE_FIELD),
+    context.request.headers.get("CF-Connecting-IP"),
+  );
+  if (!human) {
+    return context.redirect(`/auth/signup?error=${encodeURIComponent(TURNSTILE_FAILED)}`);
   }
 
   const supabase = createClient(context.request.headers, context.cookies);

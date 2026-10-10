@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 import { Mail, Lock, User, UserPlus } from "lucide-react";
 import { FormField } from "@/components/auth/FormField";
 import { PasswordToggle } from "@/components/auth/PasswordToggle";
@@ -11,9 +12,11 @@ const MAX_DISPLAY_NAME_LENGTH = 30;
 
 interface Props {
   serverError?: string | null;
+  /** Klucz witryny Cloudflare Turnstile; bez niego formularz działa bez widgetu. */
+  turnstileSiteKey?: string;
 }
 
-export default function SignUpForm({ serverError }: Props) {
+export default function SignUpForm({ serverError, turnstileSiteKey }: Props) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -151,6 +154,8 @@ export default function SignUpForm({ serverError }: Props) {
           />
         }
       />
+
+      {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} />}
 
       <ServerError message={serverError} />
 

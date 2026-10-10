@@ -60,7 +60,7 @@ GitHub Actions (`.github/workflows/ci.yml`) on every push and PR to `main`:
 
 - Node.js v22.14.0 (see `.nvmrc`)
 - Env vars: `SUPABASE_URL`, `SUPABASE_KEY` (copy `.env.example` to `.env` for Node, or `.dev.vars` for Cloudflare local dev)
-- Optional server secrets: `GOOGLE_MAPS_API_KEY` (Google Places API (New) for address search via `/api/places/*`; without it the search falls back to Photon/OpenStreetMap) and `ADMIN_EMAILS` (comma-separated, access to `/admin/places` usage stats). The Google key never reaches the browser; usage stays inside the free monthly pool through the rolling daily budget in `consume_places_quota`.
+- Optional server secrets: `GOOGLE_MAPS_API_KEY` (Google Places API (New) for address search via `/api/places/*`; without it the search falls back to Photon/OpenStreetMap) `ADMIN_EMAILS` (comma-separated, access to `/admin/places` usage stats), and `TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` (Cloudflare Turnstile on sign-up, verified server-side in `src/lib/turnstile.ts`; without them sign-up works without the widget, as in local dev and CI). The Google key never reaches the browser; usage stays inside the free monthly pool through the rolling daily budget in `consume_places_quota`.
 - Local Supabase: `npx supabase start` (requires Docker)
 - Cloudflare local dev: secrets go in `.dev.vars` (gitignored)
 - Deploy: `npx wrangler deploy` (requires Cloudflare account + `wrangler` auth)

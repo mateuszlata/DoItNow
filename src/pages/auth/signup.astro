@@ -2,6 +2,7 @@
 import Layout from "@/layouts/Layout.astro";
 import Logo from "@/components/Logo.astro";
 import SignUpForm from "@/components/auth/SignUpForm";
+import { TURNSTILE_SITE_KEY } from "astro:env/server";
 
 const error = Astro.url.searchParams.get("error");
 ---
@@ -13,7 +14,7 @@ const error = Astro.url.searchParams.get("error");
         <Logo size="hero" />
       </a>
       <h1 class="display mb-6 text-ink text-center text-2xl font-bold">Załóż konto</h1>
-      <SignUpForm serverError={error} client:load />
+      <SignUpForm serverError={error} turnstileSiteKey={TURNSTILE_SITE_KEY} client:load />
       <p class="mt-4 text-center text-sm text-ink-3">
         Masz już konto?{""}
         <a href="/auth/signin" class="text-link hover:underline">
