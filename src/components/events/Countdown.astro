@@ -1,0 +1,45 @@
+---
+// Licznik do startu spotkania („za 2 d 6 h 11 min”), odświeżany na żywo w przeglądarce.
+// Kolor zależy od stanu: zwykły, wkrótce (< 3 h), trwa, zakończone — style w global.css.
+import { formatCountdown } from "@/lib/countdown";
+
+interface Props {
+  startsAt: string;
+  durationMinutes: number;
+  /** Większy wariant do szczegółów ogłoszenia. */
+  large?: boolean;
+}
+
+const { startsAt, durationMinutes, large = false } = Astro.props;
+const start = new Date(startsAt).getTime();
+const end = start + durationMinutes * 60_000;
+const { text, state } = formatCountdown(start, end, Date.now());
+---
+
+<span
+  class:list={["countdown", large && "countdown-large"]}
+  data-countdown
+  data-start={String(start)}
+  data-end={String(end)}
+  data-state={state}
+  role="timer"
+  aria-live="off"
+>
+  {text}
+</span>
+
+<script>
+  import { formatCountdown } from "@/lib/countdown";
+
+  function tick() {
+    const now = Date.now();
+    document.querySelectorAll<HTMLElement>("[data-countdown]").forEach((el) => {
+      const { text, state } = formatCountdown(Number(el.dataset.start), Number(el.dataset.end), now);
+      if (el.textContent !== text) el.textContent = text;
+      if (el.dataset.state !== state) el.dataset.state = state;
+    });
+  }
+
+  tick();
+  setInterval(tick, 1000);
+</script>

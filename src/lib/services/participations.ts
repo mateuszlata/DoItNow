@@ -21,7 +21,7 @@ export const PARTICIPATION_ERRORS = {
   NOT_PARTICIPATING: "Nie masz aktywnego zgłoszenia na to spotkanie.",
   WITHDRAW_DEADLINE_PASSED: "Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.",
   NO_HANDOVER: "Organizator nie odwołał tego spotkania.",
-  NOT_ASKED: "Twoja odpowiedź nie jest potrzebna albo już ją przekazałeś.",
+  NOT_ASKED: "Twoja odpowiedź nie jest potrzebna albo została już przekazana.",
 } as const;
 
 export type ParticipationErrorCode = keyof typeof PARTICIPATION_ERRORS;

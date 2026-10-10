@@ -119,3 +119,10 @@ export function formatTimeRange(startsAt: string, durationMinutes: number, timeZ
   const end = new Date(new Date(startsAt).getTime() + durationMinutes * 60_000).toISOString();
   return `${formatEventTime(startsAt, timeZone)}–${formatEventTime(end, timeZone)}`;
 }
+
+/** Dzień spotkania bez godziny, np. „sobota, 17 października”. */
+export function formatEventDay(iso: string, timeZone = APP_TIME_ZONE): string {
+  return new Intl.DateTimeFormat("pl-PL", { timeZone, weekday: "long", day: "numeric", month: "long" }).format(
+    new Date(iso),
+  );
+}

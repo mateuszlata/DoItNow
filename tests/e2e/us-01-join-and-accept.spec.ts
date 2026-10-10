@@ -65,6 +65,7 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await organizer.getByLabel("Ile osób łącznie w składzie?").fill("3");
   await expect(organizer.getByLabel("Biorę udział w spotkaniu")).toBeChecked();
   // US-01 dotyczy ogłoszeń z akceptacją organizatora (domyślnie dołączenie jest natychmiastowe).
+  await organizer.getByText("Więcej opcji").click();
   await organizer.getByLabel("Wymagaj mojej akceptacji").check();
   // Pinezka: kliknięcie w mapę zapisuje współrzędne w ukrytych polach formularza.
   const picker = organizer.getByTestId("map-picker");
@@ -73,7 +74,10 @@ test("US-01: participant requests to join, organizer accepts, both see the parti
   await picker.click();
   await expect(organizer.getByText("Pinezka ustawiona")).toBeVisible();
   await organizer.getByRole("button", { name: "Opublikuj ogłoszenie" }).click();
-  await organizer.waitForURL(/\/events\?created=1$/);
+  // Po publikacji organizator trafia na swoje ogłoszenie z zachętą do udostępnienia.
+  await organizer.waitForURL(/\/events\/[0-9a-f-]{36}\?ok=created$/);
+  await expect(organizer.getByTestId("created-share")).toBeVisible();
+  await organizer.goto("/events");
 
   const card = organizer.getByRole("listitem").filter({ hasText: area });
   await card.getByRole("link", { name: "Koszykówka" }).click();
@@ -127,7 +131,10 @@ test("joining without approval is instant and the organizer can remove a partici
   await organizer.getByLabel("Ile osób łącznie w składzie?").fill("4");
   await expect(organizer.getByLabel("Wymagaj mojej akceptacji")).not.toBeChecked();
   await organizer.getByRole("button", { name: "Opublikuj ogłoszenie" }).click();
-  await organizer.waitForURL(/\/events\?created=1$/);
+  // Po publikacji organizator trafia na swoje ogłoszenie z zachętą do udostępnienia.
+  await organizer.waitForURL(/\/events\/[0-9a-f-]{36}\?ok=created$/);
+  await expect(organizer.getByTestId("created-share")).toBeVisible();
+  await organizer.goto("/events");
   await organizer.getByRole("listitem").filter({ hasText: area }).getByRole("link", { name: "Siatkówka" }).click();
   await organizer.waitForURL(/\/events\/[0-9a-f-]{36}$/);
   const eventUrl = organizer.url();
@@ -137,7 +144,7 @@ test("joining without approval is instant and the organizer can remove a partici
   await participant.goto(eventUrl);
   await expect(participant.getByTestId("join-mode")).toContainText("od razu");
   await participant.getByRole("button", { name: "Dołącz" }).click();
-  await expect(participant.getByText("Dołączyłeś — jesteś w składzie!")).toBeVisible();
+  await expect(participant.getByText("Jesteś w składzie!")).toBeVisible();
   await expect(participant.getByTestId("participants")).toContainText(participantNick);
   await expect(participant.getByTestId("free-spots")).toContainText(/2\s*wolne z 4/);
 

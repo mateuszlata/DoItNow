@@ -43,7 +43,7 @@ export default function EventMap({ lat, lng, label, preview = false }: Props) {
   return (
     <div
       ref={container}
-      className={preview ? "isolate h-36 w-full" : "isolate h-56 w-full"}
+      className={preview ? "isolate h-28 w-full" : "isolate h-56 w-full"}
       role="region"
       aria-label={`Mapa: ${label}`}
       data-testid="event-map"

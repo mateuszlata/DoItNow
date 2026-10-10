@@ -111,7 +111,7 @@ const benchAll: Slot[] = [
             {slot.name ?? "zajęte"}
             {slot.captain && <span class="sr-only"> (kapitan, organizator)</span>}
           </span>
-          {slot.note && <span class="text-[11px] text-bench">{slot.note}</span>}
+          {slot.note && <span class="text-xs text-bench">{slot.note}</span>}
           {removeFor && slot.participationId && (
             <form
               method="POST"

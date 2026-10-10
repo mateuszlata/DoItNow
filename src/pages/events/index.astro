@@ -6,7 +6,8 @@ import SportIcon from "@/components/SportIcon.astro";
 import { createClient } from "@/lib/supabase";
 import { EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN, listUpcomingEvents } from "@/lib/services/events";
 import { SPORTS, sportLabel } from "@/lib/sports";
-import { WHEN_OPTIONS, formatEventDate, formatTimeRange } from "@/lib/time";
+import { WHEN_OPTIONS, formatEventDay, formatTimeRange } from "@/lib/time";
+import Countdown from "@/components/events/Countdown.astro";
 import { formatPLN, shareCents } from "@/lib/money";
 import type { EventListItem } from "@/types";
 import EventMap from "@/components/map/EventMap";
@@ -214,8 +215,11 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
               </div>
 
               <div class="flex flex-col gap-3 p-3.5">
-                <div class="flex flex-col gap-0.5 text-sm">
-                  <span class="font-bold">{formatEventDate(event.starts_at)}</span>
+                <div class="flex flex-col gap-1 text-[15px]">
+                  <span class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="font-bold first-letter:uppercase">{formatEventDay(event.starts_at)}</span>
+                    <Countdown startsAt={event.starts_at} durationMinutes={event.duration_minutes} />
+                  </span>
                   <span class="text-ink-2">
                     {event.area}
                     {event.place && <> · {event.place}</>}
@@ -269,7 +273,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                 </div>
 
                 <div class="flex items-center justify-between gap-3">
-                  <div class="flex min-w-0 flex-col gap-0.5 text-[13px]">
+                  <div class="flex min-w-0 flex-col gap-0.5 text-sm">
                     {minimumLabel(event) && (
                       <span class:list={["font-bold", missing === 0 ? "text-ok" : "text-warn"]}>
                         {missing === 0 ? "Minimum osiągnięte" : minimumLabel(event)}

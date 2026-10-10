@@ -23,6 +23,12 @@ const minStartsAt = nowLocalDateTime();
 const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240, 300, 360];
 const durationLabel = (m: number) => (m < 60 ? `${String(m)} min` : `${String(m / 60).replace(".", ",")} h`);
 const ownPlace = values.venueId === "";
+const moreOpen =
+  values.requiresApproval === "on" ||
+  values.minPeople !== "" ||
+  (values.reserveSpots !== "" && values.reserveSpots !== "0") ||
+  values.description !== "" ||
+  Boolean(errors.minPeople ?? errors.reserveSpots ?? errors.description);
 const inputClass =
   "mt-1 w-full rounded-lg border bg-card px-3 py-2 text-ink placeholder-ink-3 focus:ring-2 focus:outline-none";
 const borderClass = (name: keyof FieldErrors) =>
@@ -75,7 +81,7 @@ const borderClass = (name: keyof FieldErrors) =>
     <label class="text-sm text-ink-2">
       Obiekt (opcjonalnie)
       <select name="venueId" class:list={[inputClass, borderClass("venueId")]} data-venue-select>
-        <option value="">Bez obiektu — wpiszę miejsce sam</option>
+        <option value="">Bez obiektu — wpiszę miejsce samodzielnie</option>
         {venues.map((v) => (
           <option
             value={v.id}
@@ -165,63 +171,71 @@ const borderClass = (name: keyof FieldErrors) =>
     </span>
   </label>
 
-  <label class="flex items-start gap-2 text-sm text-ink-2">
-    <input
-      type="checkbox"
-      name="requiresApproval"
-      checked={values.requiresApproval === "on"}
-      class="mt-0.5 size-4 accent-brand"
-    />
-    <span>
-      Wymagaj mojej akceptacji
-      <span class="block text-xs text-ink-3">
-        Bez zaznaczenia każdy zalogowany dołącza od razu; niechcianą osobę możesz usunąć.
-      </span>
-    </span>
-  </label>
+  <details class="group rounded-2xl bg-card-2 px-4 py-3" open={moreOpen} data-more-options>
+    <summary class="cursor-pointer text-sm font-bold text-ink">
+      Więcej opcji
+      <span class="font-normal text-ink-3"> — akceptacja zgłoszeń, minimum, rezerwa, opis</span>
+    </summary>
+    <div class="mt-4 grid gap-4">
+      <label class="flex items-start gap-2 text-sm text-ink-2">
+        <input
+          type="checkbox"
+          name="requiresApproval"
+          checked={values.requiresApproval === "on"}
+          class="mt-0.5 size-4 accent-brand"
+        />
+        <span>
+          Wymagaj mojej akceptacji
+          <span class="block text-xs text-ink-3">
+            Bez zaznaczenia każdy zalogowany dołącza od razu; niechcianą osobę możesz usunąć.
+          </span>
+        </span>
+      </label>
 
-  <div class="grid grid-cols-2 gap-3">
-    <label class="text-sm text-ink-2">
-      Minimum osób (opcjonalnie)
-      <input
-        type="number"
-        name="minPeople"
-        min="1"
-        max="50"
-        placeholder="np. 8"
-        value={values.minPeople}
-        class:list={[inputClass, borderClass("minPeople")]}
-      />
-      <span class="mt-1 block text-xs text-ink-3">Ilu osób potrzeba, żeby zagrać.</span>
-      {errors.minPeople && <span class="mt-1 block text-xs text-bad">{errors.minPeople}</span>}
-    </label>
-    <label class="text-sm text-ink-2">
-      Miejsca rezerwowe
-      <input
-        type="number"
-        name="reserveSpots"
-        min="0"
-        max="50"
-        placeholder="0"
-        value={values.reserveSpots}
-        class:list={[inputClass, borderClass("reserveSpots")]}
-      />
-      <span class="mt-1 block text-xs text-ink-3">Wskakują, gdy ktoś zrezygnuje.</span>
-      {errors.reserveSpots && <span class="mt-1 block text-xs text-bad">{errors.reserveSpots}</span>}
-    </label>
-  </div>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="text-sm text-ink-2">
+          Minimum osób (opcjonalnie)
+          <input
+            type="number"
+            name="minPeople"
+            min="1"
+            max="50"
+            placeholder="np. 8"
+            value={values.minPeople}
+            class:list={[inputClass, borderClass("minPeople")]}
+          />
+          <span class="mt-1 block text-xs text-ink-3">Ilu osób potrzeba, żeby zagrać.</span>
+          {errors.minPeople && <span class="mt-1 block text-xs text-bad">{errors.minPeople}</span>}
+        </label>
+        <label class="text-sm text-ink-2">
+          Miejsca rezerwowe
+          <input
+            type="number"
+            name="reserveSpots"
+            min="0"
+            max="50"
+            placeholder="0"
+            value={values.reserveSpots}
+            class:list={[inputClass, borderClass("reserveSpots")]}
+          />
+          <span class="mt-1 block text-xs text-ink-3">Wskakują, gdy ktoś zrezygnuje.</span>
+          {errors.reserveSpots && <span class="mt-1 block text-xs text-bad">{errors.reserveSpots}</span>}
+        </label>
+      </div>
 
-  <label class="text-sm text-ink-2">
-    Opis (opcjonalnie)
-    <textarea
-      name="description"
-      rows="3"
-      maxlength="1000"
-      placeholder="Poziom gry, co zabrać, jak się rozpoznać…"
-      class:list={[inputClass, borderClass("description")]}
-    >{values.description}</textarea>
-    {errors.description && <span class="mt-1 block text-xs text-bad">{errors.description}</span>}
-  </label>
+      <label class="text-sm text-ink-2">
+        Opis (opcjonalnie)
+        <textarea
+          name="description"
+          rows="3"
+          maxlength="1000"
+          placeholder="Poziom gry, co zabrać, jak się rozpoznać…"
+          class:list={[inputClass, borderClass("description")]}
+        >{values.description}</textarea>
+        {errors.description && <span class="mt-1 block text-xs text-bad">{errors.description}</span>}
+      </label>
+    </div>
+  </details>
 
   <button
     type="submit"

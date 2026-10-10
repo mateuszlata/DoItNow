@@ -5,6 +5,7 @@ import SlotGrid from "@/components/events/SlotGrid.astro";
 import EventMap from "@/components/map/EventMap";
 import SportIcon from "@/components/SportIcon.astro";
 import VenueStatus from "@/components/events/VenueStatus.astro";
+import Countdown from "@/components/events/Countdown.astro";
 import { jerseyNumber } from "@/lib/jerseys";
 import { createClient } from "@/lib/supabase";
 import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/lib/services/events";
@@ -61,16 +62,16 @@ const SUCCESS_MESSAGES: Record<string, string> = {
   updated: "Zmiany zostały zapisane.",
   cancelled: "Spotkanie zostało odwołane.",
   stayed: "Zostajesz w spotkaniu.",
-  left: "Zrezygnowałeś ze spotkania.",
+  left: "Rezygnacja przyjęta — nie grasz w tym spotkaniu.",
 };
 const okKey = Astro.url.searchParams.get("ok") ?? "";
 const okMessage =
   okKey === "joined" && details?.my_participation?.status === "accepted"
-    ? "Dołączyłeś — jesteś w składzie!"
+    ? "Jesteś w składzie!"
     : okKey === "joined" && details?.my_participation?.status === "reserve"
       ? "Skład jest pełny — jesteś na liście rezerwowej i wskoczysz, gdy zwolni się miejsce."
       : okKey === "cancelled" && details?.status === "organizer_left"
-        ? "Odwołałeś spotkanie. Zaakceptowani uczestnicy zdecydują, czy spotkają się bez Ciebie."
+        ? "Spotkanie odwołane. Zaakceptowani uczestnicy zdecydują, czy spotkają się bez Ciebie."
         : okKey === "stayed" && details?.organizer_id === user?.id
           ? "Zostajesz w spotkaniu i przejmujesz jego organizację."
           : SUCCESS_MESSAGES[okKey];
@@ -194,6 +195,22 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
         </p>
       )}
 
+      {okKey === "created" && isOrganizer && (
+        <section class="rounded-[20px] bg-brand p-5 text-on-brand" data-testid="created-share">
+          <p class="display text-3xl">Gotowe! Ogłoszenie wisi</p>
+          <p class="mt-1 text-sm">
+            Najszybciej skompletujesz skład, wysyłając link znajomym, na grupę drużyny albo osiedla.
+          </p>
+          <button
+            type="button"
+            data-share
+            class="mt-3 h-12 w-full rounded-full bg-ink text-sm font-extrabold tracking-wide text-card uppercase"
+          >
+            Udostępnij ogłoszenie
+          </button>
+        </section>
+      )}
+
       {!summary && (
         <div class="rounded-[20px] bg-card p-6 text-center text-ink">
           <h1 class="display text-3xl">Nie znaleziono ogłoszenia</h1>
@@ -214,7 +231,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           {organizerLeft && !isPast && (
             <p class="rounded-2xl bg-warn-soft px-4 py-2.5 text-sm text-warn" data-testid="handover-status">
               {isOrganizer
-                ? "Odwołałeś to spotkanie. Czekamy, czy ktoś z uczestników zostanie i przejmie organizację."
+                ? "To spotkanie zostało przez Ciebie odwołane. Czekamy, czy ktoś z uczestników zostanie i przejmie organizację."
                 : "Organizator zrezygnował. Spotkanie odbędzie się, jeśli uczestnicy zdecydują się zostać — pierwsza osoba, która zostanie, przejmuje organizację."}
             </p>
           )}
@@ -247,11 +264,12 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           )}
 
           <div class="flex flex-col gap-2">
-            <h1 class="display display-hero pl-1.5 text-[56px] leading-[0.86] text-page-ink">
+            <h1 class="display display-hero pl-1.5 text-[48px] leading-[0.86] text-page-ink">
               {day.weekday}
               <br />
               {day.date} · {formatEventTime(summary.starts_at)}
             </h1>
+            <Countdown startsAt={summary.starts_at} durationMinutes={summary.duration_minutes} large />
             <p class="text-[15px] text-page-ink-2">
               {summary.area}
               {details && (
@@ -546,16 +564,19 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
 </Layout>
 
 <script is:inline>
-  document.querySelector("[data-share]")?.addEventListener("click", async () => {
-    const data = { title: document.title, url: location.href };
-    try {
-      if (navigator.share) await navigator.share(data);
-      else {
-        await navigator.clipboard.writeText(location.href);
-        alert("Link skopiowany do schowka.");
+  // Udostępnianie linku do ogłoszenia (bez parametrów komunikatów w adresie).
+  document.querySelectorAll("[data-share]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const url = location.origin + location.pathname;
+      try {
+        if (navigator.share) await navigator.share({ title: document.title, url });
+        else {
+          await navigator.clipboard.writeText(url);
+          alert("Link skopiowany do schowka.");
+        }
+      } catch {
+        // Anulowane udostępnianie — nic nie robimy.
       }
-    } catch {
-      // Anulowane udostępnianie — nic nie robimy.
-    }
+    });
   });
 </script>
