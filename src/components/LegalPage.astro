@@ -1,0 +1,69 @@
+---
+// Wspólny układ dokumentów prawnych: nagłówek, data wersji, czytelna typografia i linki między dokumentami.
+import Layout from "@/layouts/Layout.astro";
+import Logo from "@/components/Logo.astro";
+import { LEGAL_VERSION } from "@/lib/legal";
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const updated = new Date(`${LEGAL_VERSION}T12:00:00Z`).toLocaleDateString("pl-PL", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+---
+
+<Layout title={`${title} · Metando`}>
+  <div class="bg-app min-h-screen px-4 py-8">
+    <article class="legal mx-auto max-w-2xl rounded-3xl bg-card p-6 text-ink shadow-card sm:p-10">
+      <a href="/events" class="mb-6 inline-flex" aria-label="Metando — ogłoszenia">
+        <Logo />
+      </a>
+      <h1 class="display text-4xl leading-none">{title}</h1>
+      <p class="mt-2 text-sm text-ink-3">Obowiązuje od {updated}</p>
+      <slot />
+      <nav class="mt-10 flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4 text-sm" aria-label="Dokumenty">
+        <a href="/regulamin" class="text-link hover:underline">
+          Regulamin
+        </a>
+        <a href="/prywatnosc" class="text-link hover:underline">
+          Polityka prywatności
+        </a>
+        <a href="/events" class="text-link hover:underline">
+          Wróć do ogłoszeń
+        </a>
+      </nav>
+    </article>
+  </div>
+</Layout>
+
+<style>
+  .legal :global(h2) {
+    margin-top: 2rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+  .legal :global(p),
+  .legal :global(ul),
+  .legal :global(ol) {
+    margin-top: 0.75rem;
+    line-height: 1.6;
+  }
+  .legal :global(ul) {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+  .legal :global(ol) {
+    list-style: decimal;
+    padding-left: 1.25rem;
+  }
+  .legal :global(li + li) {
+    margin-top: 0.35rem;
+  }
+  .legal :global(a) {
+    text-decoration: underline;
+  }
+</style>

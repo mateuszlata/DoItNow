@@ -23,11 +23,13 @@ export default function SignUpForm({ serverError, turnstileSiteKey }: Props) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [errors, setErrors] = useState<{
     displayName?: string;
     email?: string;
     password?: string;
     confirmPassword?: string;
+    acceptTerms?: string;
   }>({});
 
   function validate() {
@@ -56,6 +58,10 @@ export default function SignUpForm({ serverError, turnstileSiteKey }: Props) {
       next.confirmPassword = "Powtórz hasło";
     } else if (password !== confirmPassword) {
       next.confirmPassword = "Hasła nie są takie same";
+    }
+
+    if (!acceptTerms) {
+      next.acceptTerms = "Zaakceptuj regulamin, aby założyć konto";
     }
 
     setErrors(next);
@@ -154,6 +160,34 @@ export default function SignUpForm({ serverError, turnstileSiteKey }: Props) {
           />
         }
       />
+
+      <div>
+        <label className="text-ink-2 flex items-start gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            name="acceptTerms"
+            checked={acceptTerms}
+            onChange={(e) => {
+              setAcceptTerms(e.target.checked);
+              clearError("acceptTerms");
+            }}
+            aria-invalid={Boolean(errors.acceptTerms)}
+            className="accent-brand mt-0.5 size-4 shrink-0"
+          />
+          <span>
+            Mam ukończone 18 lat i akceptuję{" "}
+            <a href="/regulamin" target="_blank" className="text-link underline">
+              Regulamin
+            </a>{" "}
+            oraz przyjmuję do wiadomości{" "}
+            <a href="/prywatnosc" target="_blank" className="text-link underline">
+              Politykę prywatności
+            </a>
+            .
+          </span>
+        </label>
+        {errors.acceptTerms && <p className="text-bad mt-1 text-xs">{errors.acceptTerms}</p>}
+      </div>
 
       {turnstileSiteKey && <TurnstileWidget siteKey={turnstileSiteKey} />}
 

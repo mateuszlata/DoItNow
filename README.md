@@ -14,6 +14,7 @@ Produkcja: https://doitnow.doitnow-app.workers.dev
 - **Obiekty zarządców**: cennik za godzinę, godziny otwarcia, koszt spotkania dzielony na osobę, pilnowanie godzin otwarcia i kolizji terminów, **kalendarz rezerwacji** z potwierdzaniem i odrzucaniem terminów.
 - **Wyszukiwarka adresów** z podpowiedziami Google Places (przez serwer, w darmowej puli z budżetem kroczącym) i zapasowo OpenStreetMap.
 - **Usuwanie konta** przez użytkownika (RODO).
+- **Regulamin i polityka prywatności** (`/regulamin`, `/prywatnosc`) z akceptacją przy rejestracji; zaakceptowana wersja trafia do metadanych konta. Dane operatora w `src/lib/legal.ts`.
 - **Ochrona rejestracji przed botami** (Cloudflare Turnstile, token sprawdzany na serwerze).
 
 Płatności w aplikacji są świadomie odłożone — koszt obiektu jest informacją, rozliczenia odbywają się poza Metando (zob. `context/foundation/prd.md`).

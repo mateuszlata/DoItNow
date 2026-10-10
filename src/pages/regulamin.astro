@@ -1,0 +1,160 @@
+---
+import LegalPage from "@/components/LegalPage.astro";
+import { OPERATOR, SERVICE_NAME, SERVICE_URL } from "@/lib/legal";
+---
+
+<LegalPage title="Regulamin">
+  <h2>§ 1. Postanowienia ogólne</h2>
+  <ol>
+    <li>
+      Regulamin określa zasady korzystania z serwisu internetowego {SERVICE_NAME} dostępnego pod adresem {SERVICE_URL}{" "}
+      (dalej: „Serwis”) i jest regulaminem, o którym mowa w art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług
+      drogą elektroniczną.
+    </li>
+    <li>
+      Serwis prowadzi {OPERATOR.name}, {OPERATOR.address}, e-mail: {OPERATOR.email} (dalej: „Operator”). Ten adres
+      e-mail jest też punktem kontaktowym dla użytkowników i organów w rozumieniu aktu o usługach cyfrowych (DSA).
+      Kontakt jest możliwy po polsku i angielsku.
+    </li>
+    <li>
+      Pojęcia: <strong>Użytkownik</strong> — osoba korzystająca z Serwisu; <strong>Organizator</strong> — Użytkownik,
+      który publikuje ogłoszenie o spotkaniu; <strong>Uczestnik</strong> — Użytkownik, który dołącza do spotkania;{" "}
+      <strong>Zarządca</strong> — Użytkownik, który dodaje obiekt sportowy, którym zarządza; <strong>Treści</strong> —
+      wszystko, co Użytkownik publikuje w Serwisie (nick, ogłoszenia, opisy, dane obiektów).
+    </li>
+  </ol>
+
+  <h2>§ 2. Usługi</h2>
+  <ol>
+    <li>
+      Operator świadczy nieodpłatnie usługi: prowadzenia konta, publikowania ogłoszeń o wspólnych spotkaniach sportowych
+      i innych aktywnościach, zgłaszania udziału w spotkaniach, prowadzenia listy obiektów Zarządców wraz z cennikiem i
+      godzinami otwarcia, przyjmowania i rozpatrywania próśb o termin w obiekcie oraz wyszukiwania adresów na mapie.
+    </li>
+    <li>
+      Serwis jest tablicą ogłoszeń. Operator nie jest organizatorem spotkań, nie zarządza obiektami, nie pośredniczy w
+      płatnościach i nie jest stroną ustaleń między Użytkownikami. Koszt obiektu pokazywany w Serwisie ma charakter
+      informacyjny, a rozliczenia odbywają się poza Serwisem, bezpośrednio między zainteresowanymi.
+    </li>
+  </ol>
+
+  <h2>§ 3. Wymagania techniczne</h2>
+  <p>
+    Do korzystania z Serwisu potrzebne są: urządzenie z dostępem do internetu, aktualna przeglądarka internetowa z
+    włączoną obsługą JavaScript i plików cookies oraz — do założenia konta — aktywny adres e-mail. Szczególnym
+    zagrożeniem związanym z korzystaniem z usług elektronicznych jest m.in. przejęcie hasła; nie udostępniaj go nikomu.
+  </p>
+
+  <h2>§ 4. Konto</h2>
+  <ol>
+    <li>Konto może założyć wyłącznie osoba pełnoletnia. Jedna osoba może mieć jedno konto.</li>
+    <li>
+      Umowa o prowadzenie konta zostaje zawarta z chwilą założenia konta, na czas nieokreślony. Użytkownik może ją w
+      każdej chwili rozwiązać, usuwając konto w zakładce „Moje”.
+    </li>
+    <li>
+      Operator może rozwiązać umowę z zachowaniem 14-dniowego okresu wypowiedzenia z ważnych przyczyn (np. zakończenie
+      działalności Serwisu), a ze skutkiem natychmiastowym — gdy Użytkownik rażąco lub uporczywie narusza Regulamin lub
+      prawo. Operator poinformuje Użytkownika o przyczynie na adres e-mail konta.
+    </li>
+    <li>Nick nie może wprowadzać w błąd co do tożsamości, naruszać praw innych osób ani być obraźliwy.</li>
+  </ol>
+
+  <h2>§ 5. Zasady korzystania</h2>
+  <ol>
+    <li>Użytkownik korzysta z Serwisu zgodnie z prawem, Regulaminem i dobrymi obyczajami.</li>
+    <li>
+      Zakazane jest publikowanie Treści bezprawnych, obraźliwych, dyskryminujących, wprowadzających w błąd, reklam
+      niezwiązanych ze spotkaniami (spam), danych osobowych innych osób bez ich zgody oraz Treści naruszających prawa
+      osób trzecich.
+    </li>
+    <li>
+      Organizator publikuje rzetelne informacje o terminie i miejscu oraz odwołuje spotkanie, gdy nie może się ono
+      odbyć. Uczestnik, który nie może przyjść, rezygnuje w Serwisie tak wcześnie, jak to możliwe.
+    </li>
+    <li>
+      Udział w spotkaniach jest dobrowolny i odbywa się na własną odpowiedzialność Użytkowników. Każdy sam ocenia, czy
+      jego stan zdrowia i umiejętności pozwalają na udział w danej aktywności.
+    </li>
+    <li>
+      Zabronione jest zakłócanie działania Serwisu, w tym automatyczne zakładanie kont, masowe zapytania i obchodzenie
+      zabezpieczeń.
+    </li>
+  </ol>
+
+  <h2>§ 6. Zarządcy obiektów</h2>
+  <ol>
+    <li>Obiekt może dodać wyłącznie osoba uprawniona do zarządzania nim lub działająca w imieniu zarządcy.</li>
+    <li>
+      Zarządca dba o aktualność nazwy, adresu, cennika, godzin otwarcia i oferowanych sportów oraz rozpatruje prośby o
+      termin. Potwierdzenie terminu w Serwisie jest informacją dla Organizatora; warunki korzystania z obiektu i
+      płatności Zarządca ustala bezpośrednio z Organizatorem.
+    </li>
+    <li>Zarządca odpowiada za stan obiektu i bezpieczeństwo korzystania z niego na zasadach ogólnych.</li>
+  </ol>
+
+  <h2>§ 7. Zgłaszanie nielegalnych treści i moderacja</h2>
+  <ol>
+    <li>
+      Każdy może zgłosić Treść, którą uważa za nielegalną lub sprzeczną z Regulaminem, pisząc na {OPERATOR.email}.
+      Zgłoszenie powinno zawierać: link do Treści, wyjaśnienie, dlaczego jest nielegalna lub niedozwolona, oraz imię i
+      adres e-mail zgłaszającego (nie dotyczy zgłoszeń treści związanych z wykorzystywaniem dzieci).
+    </li>
+    <li>
+      Operator rozpatruje zgłoszenia niezwłocznie, w sposób staranny i obiektywny, i informuje zgłaszającego o decyzji.
+    </li>
+    <li>
+      Gdy Operator usunie Treść, ograniczy jej widoczność albo zablokuje lub usunie konto, przekazuje Użytkownikowi
+      uzasadnienie z informacją o możliwości odwołania. Odwołanie można złożyć na {OPERATOR.email} w ciągu 6 miesięcy;
+      Operator rozpatruje je w ciągu 14 dni.
+    </li>
+  </ol>
+
+  <h2>§ 8. Odpowiedzialność</h2>
+  <ol>
+    <li>
+      Operator dokłada starań, by Serwis działał poprawnie i bez przerw, ale nie gwarantuje jego nieprzerwanej
+      dostępności; przerwy mogą wynikać z prac technicznych lub awarii dostawców.
+    </li>
+    <li>
+      Operator nie odpowiada za Treści Użytkowników, przebieg spotkań, zachowanie Użytkowników, stan obiektów ani
+      rozliczenia między Użytkownikami, chyba że po otrzymaniu wiarygodnej wiadomości o bezprawnym charakterze Treści
+      nie uniemożliwi do niej dostępu.
+    </li>
+    <li>
+      Postanowienia Regulaminu nie wyłączają ani nie ograniczają odpowiedzialności, której nie można wyłączyć z mocy
+      prawa.
+    </li>
+  </ol>
+
+  <h2>§ 9. Reklamacje</h2>
+  <ol>
+    <li>
+      Reklamacje dotyczące działania Serwisu można składać na {OPERATOR.email}. Warto opisać problem, wskazać datę jego
+      wystąpienia i adres e-mail konta.
+    </li>
+    <li>Operator odpowiada na reklamację w ciągu 14 dni od jej otrzymania, na adres e-mail, z którego ją wysłano.</li>
+    <li>
+      Konsument może skorzystać z pozasądowych sposobów rozwiązywania sporów, np. pomocy miejskiego lub powiatowego
+      rzecznika konsumentów albo wojewódzkiego inspektoratu Inspekcji Handlowej.
+    </li>
+  </ol>
+
+  <h2>§ 10. Dane osobowe</h2>
+  <p>
+    Zasady przetwarzania danych osobowych opisuje <a href="/prywatnosc">Polityka prywatności</a>.
+  </p>
+
+  <h2>§ 11. Zmiany Regulaminu i postanowienia końcowe</h2>
+  <ol>
+    <li>
+      Operator może zmienić Regulamin z ważnych przyczyn, w szczególności zmiany przepisów, zakresu usług lub sposobu
+      działania Serwisu. O zmianach Operator informuje w Serwisie i e-mailem co najmniej 14 dni przed ich wejściem w
+      życie. Użytkownik, który nie akceptuje zmian, może przed tą datą usunąć konto.
+    </li>
+    <li>
+      Regulamin podlega prawu polskiemu. Wybór prawa nie pozbawia konsumenta ochrony przysługującej mu na podstawie
+      przepisów, których nie można wyłączyć w drodze umowy.
+    </li>
+  </ol>
+</LegalPage>

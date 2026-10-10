@@ -1,3 +1,6 @@
+/* Czcionki z własnego serwera (bez przekazywania IP odwiedzających do Google Fonts). */
+@import "@fontsource-variable/work-sans";
+@import "@fontsource-variable/big-shoulders-display";
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -117,8 +120,8 @@
  * `ink*` i `link` to tekst na kremowych kartach, `page-ink*` i `page-link` — tekst wprost na zielonym tle.
  */
 :root {
-  --font-body: "Work Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-head: "Big Shoulders Display", "Work Sans", sans-serif;
+  --font-body: "Work Sans Variable", "Work Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-head: "Big Shoulders Display Variable", "Big Shoulders Display", "Work Sans Variable", sans-serif;
   --page: #0f3b2e;
   --page-2: #164a3a;
   --page-deep: #0a2e23;

@@ -42,7 +42,11 @@ const steps = [
   ["new event form redirects anonymous user", () => request("/events/new"), { status: 302, location: "/auth/signin" }],
   [
     "signup creates account",
-    () => request("/api/auth/signup", { method: "POST", form: { displayName: "Smoke", email, password } }),
+    () =>
+      request("/api/auth/signup", {
+        method: "POST",
+        form: { displayName: "Smoke", email, password, acceptTerms: "on" },
+      }),
     // lokalnie potwierdzanie e-maila jest wyłączone, więc rejestracja od razu loguje
     { status: 302, location: "/events" },
   ],

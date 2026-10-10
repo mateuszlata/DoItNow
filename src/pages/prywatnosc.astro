@@ -1,0 +1,149 @@
+---
+import LegalPage from "@/components/LegalPage.astro";
+import { OPERATOR, SERVICE_NAME } from "@/lib/legal";
+---
+
+<LegalPage title="Polityka prywatności">
+  <p>
+    Ten dokument wyjaśnia, jakie dane osobowe przetwarza serwis {SERVICE_NAME}, w jakim celu, komu je powierzamy i jakie
+    masz prawa. Piszemy prostym językiem — jeśli coś jest niejasne, napisz do nas.
+  </p>
+
+  <h2>1. Administrator danych</h2>
+  <p>
+    Administratorem Twoich danych osobowych jest {OPERATOR.name}, {OPERATOR.address}. Kontakt we wszystkich sprawach
+    dotyczących danych: <strong>{OPERATOR.email}</strong>.
+  </p>
+
+  <h2>2. Jakie dane przetwarzamy i dlaczego</h2>
+  <ul>
+    <li>
+      <strong>Konto:</strong> adres e-mail, hasło (przechowywane wyłącznie w postaci zaszyfrowanego skrótu) i nick. Cel:
+      założenie i prowadzenie konta, logowanie, wiadomości dotyczące konta. Podstawa: wykonanie umowy o świadczenie
+      usługi (art. 6 ust. 1 lit. b RODO).
+    </li>
+    <li>
+      <strong>Ogłoszenia i udział w spotkaniach:</strong> sport, termin, okolica, dokładne miejsce i jego współrzędne,
+      opis, skład, zgłoszenia i ich status, decyzje organizatora. Cel: działanie serwisu — publikowanie spotkań i
+      dołączanie do nich. Podstawa: wykonanie umowy (art. 6 ust. 1 lit. b RODO).
+    </li>
+    <li>
+      <strong>Obiekty zarządców:</strong> nazwa, adres i położenie obiektu, cennik, godziny otwarcia, oferowane sporty
+      oraz decyzje o rezerwacjach. Podstawa: wykonanie umowy (art. 6 ust. 1 lit. b RODO).
+    </li>
+    <li>
+      <strong>Wyszukiwanie adresów:</strong> wpisany tekst przekazujemy przez nasz serwer do usługi podpowiedzi adresów
+      (punkt 4). Samych zapytań nie zapisujemy; liczymy tylko, ile zapytań wykonało konto w danej godzinie, żeby chronić
+      serwis przed nadużyciami. Podstawa: nasz prawnie uzasadniony interes — bezpieczeństwo i kontrola kosztów (art. 6
+      ust. 1 lit. f RODO).
+    </li>
+    <li>
+      <strong>Bezpieczeństwo i ochrona przed botami:</strong> adres IP, dane o przeglądarce i techniczne dzienniki
+      zapytań (logi serwera) oraz wynik sprawdzenia Cloudflare Turnstile przy rejestracji. Podstawa: prawnie uzasadniony
+      interes — bezpieczeństwo serwisu (art. 6 ust. 1 lit. f RODO).
+    </li>
+  </ul>
+  <p>
+    Podanie adresu e-mail, hasła i nicku jest dobrowolne, ale bez nich nie da się założyć konta. Nie podejmujemy wobec
+    Ciebie decyzji opartych wyłącznie na zautomatyzowanym przetwarzaniu i nie profilujemy Cię w celach marketingowych.
+  </p>
+
+  <h2>3. Kto widzi Twoje dane</h2>
+  <ul>
+    <li>Nick widzą inni użytkownicy przy ogłoszeniach, w składach i zgłoszeniach.</li>
+    <li>
+      Sport, termin, okolicę i liczbę miejsc widzi każdy odwiedzający. Dokładne miejsce i mapę spotkania widzą tylko
+      zalogowani użytkownicy.
+    </li>
+    <li>Adres e-mail nie jest pokazywany innym użytkownikom.</li>
+    <li>
+      Obiekty zarządców (nazwa, adres, cennik, godziny) widzą zalogowani użytkownicy jako ofertę obiektu; nick zarządcy
+      nie jest przy nich pokazywany.
+    </li>
+  </ul>
+
+  <h2>4. Komu powierzamy dane</h2>
+  <p>Korzystamy z zaufanych dostawców, którzy przetwarzają dane w naszym imieniu lub świadczą nam usługi:</p>
+  <ul>
+    <li>
+      <strong>Supabase Inc.</strong> — baza danych i logowanie; dane przechowywane na serwerach w Unii Europejskiej
+      (Irlandia).
+    </li>
+    <li>
+      <strong>Cloudflare, Inc.</strong> — hosting aplikacji, ochrona przed atakami i botami (Turnstile), dzienniki
+      techniczne.
+    </li>
+    <li>
+      <strong>Google Ireland Ltd / Google LLC</strong> — podpowiedzi adresów (Google Places). Przekazujemy wyłącznie
+      wpisany tekst wyszukiwania, bez danych Twojego konta.
+    </li>
+    <li>
+      <strong>komoot GmbH (Photon)</strong> — zapasowa wyszukiwarka adresów oparta na OpenStreetMap; również tylko tekst
+      wyszukiwania.
+    </li>
+    <li>
+      <strong>OpenStreetMap Foundation</strong> — kafelki map. Twoja przeglądarka pobiera je bezpośrednio z serwerów
+      OSM, które widzą przy tym Twój adres IP.
+    </li>
+  </ul>
+  <p>
+    Przycisk „Nawiguj” otwiera Mapy Google dopiero po Twoim kliknięciu — od tego momentu obowiązuje polityka prywatności
+    Google. Dane możemy też udostępnić organom publicznym, gdy wymaga tego prawo.
+  </p>
+
+  <h2>5. Przekazywanie danych poza Europejski Obszar Gospodarczy</h2>
+  <p>
+    Część dostawców (Cloudflare, Google, Supabase) to firmy z USA lub korzystające z infrastruktury poza EOG.
+    Przekazanie danych odbywa się na podstawie decyzji Komisji Europejskiej o odpowiednim stopniu ochrony (EU-US Data
+    Privacy Framework) lub standardowych klauzul umownych zatwierdzonych przez Komisję. Wielka Brytania, gdzie działa
+    OpenStreetMap Foundation, również ma decyzję o odpowiednim stopniu ochrony.
+  </p>
+
+  <h2>6. Jak długo przechowujemy dane</h2>
+  <ul>
+    <li>
+      Dane konta, ogłoszenia, zgłoszenia i obiekty — do czasu usunięcia konta. Konto usuniesz sam w zakładce „Moje” →
+      „Usuń konto”; usuwamy wtedy profil, Twoje ogłoszenia, zgłoszenia i obiekty. Spotkania innych osób odbywające się w
+      Twoim obiekcie pozostają, ale bez powiązania z obiektem.
+    </li>
+    <li>
+      Liczniki zapytań do wyszukiwarki adresów — do usunięcia konta, w praktyce mają znaczenie tylko przez godzinę.
+    </li>
+    <li>Dzienniki techniczne — przez krótki okres wynikający z ustawień dostawców (zwykle kilka dni).</li>
+    <li>
+      Kopie zapasowe bazy danych mogą zawierać usunięte dane do czasu ich nadpisania zgodnie z harmonogramem dostawcy.
+    </li>
+  </ul>
+
+  <h2>7. Twoje prawa</h2>
+  <p>Masz prawo do:</p>
+  <ul>
+    <li>dostępu do swoich danych i otrzymania ich kopii,</li>
+    <li>sprostowania danych,</li>
+    <li>usunięcia danych (możesz to zrobić sam, usuwając konto),</li>
+    <li>ograniczenia przetwarzania,</li>
+    <li>przeniesienia danych,</li>
+    <li>sprzeciwu wobec przetwarzania opartego na prawnie uzasadnionym interesie,</li>
+    <li>
+      wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych (ul. Stawki 2, 00-193 Warszawa), jeśli uważasz, że
+      przetwarzamy dane niezgodnie z prawem.
+    </li>
+  </ul>
+  <p>Aby skorzystać z praw, napisz na {OPERATOR.email}. Odpowiemy bez zbędnej zwłoki, najpóźniej w ciągu miesiąca.</p>
+
+  <h2>8. Pliki cookies i podobne technologie</h2>
+  <p>
+    Używamy wyłącznie niezbędnych plików cookies: utrzymują Twoją sesję po zalogowaniu i chronią formularz rejestracji
+    przed botami (Cloudflare Turnstile). Nie używamy cookies analitycznych ani reklamowych i nie śledzimy Cię między
+    stronami. Niezbędne cookies nie wymagają zgody; jeśli je zablokujesz w przeglądarce, logowanie przestanie działać.
+  </p>
+
+  <h2>9. Wiek użytkowników</h2>
+  <p>Serwis jest przeznaczony dla osób pełnoletnich. Nie zbieramy świadomie danych osób poniżej 18 lat.</p>
+
+  <h2>10. Zmiany polityki</h2>
+  <p>
+    Gdy zmienimy sposób przetwarzania danych, zaktualizujemy ten dokument i datę na górze strony, a o istotnych zmianach
+    poinformujemy w serwisie lub e-mailem.
+  </p>
+</LegalPage>
