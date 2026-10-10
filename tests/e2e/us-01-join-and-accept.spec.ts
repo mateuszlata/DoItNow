@@ -164,7 +164,7 @@ test("joining without approval is instant and the organizer can remove a partici
   // Czat: uczestnik pisze, organizator widzi wiadomość i odpowiada; po usunięciu ze składu czat znika.
   const chat = participant.getByTestId("event-chat");
   await expect(participant.locator("astro-island:not([ssr])").filter({ has: chat })).toBeAttached();
-  await chat.getByLabel("Wiadomość").fill("Biorę piłkę, do zobaczenia!");
+  await chat.getByLabel("Wiadomość", { exact: true }).fill("Biorę piłkę, do zobaczenia!");
   await chat.getByRole("button", { name: "Wyślij wiadomość" }).click();
   await expect(chat.getByTestId("chat-message")).toHaveText(["Biorę piłkę, do zobaczenia!"]);
 
@@ -172,8 +172,8 @@ test("joining without approval is instant and the organizer can remove a partici
   const organizerChat = organizer.getByTestId("event-chat");
   await expect(organizerChat.getByTestId("chat-message")).toHaveText(["Biorę piłkę, do zobaczenia!"]);
   await expect(organizer.locator("astro-island:not([ssr])").filter({ has: organizerChat })).toBeAttached();
-  await organizerChat.getByLabel("Wiadomość").fill("Super, ja mam znaczniki");
-  await organizerChat.getByLabel("Wiadomość").press("Enter");
+  await organizerChat.getByLabel("Wiadomość", { exact: true }).fill("Super, ja mam znaczniki");
+  await organizerChat.getByLabel("Wiadomość", { exact: true }).press("Enter");
   await expect(organizerChat.getByTestId("chat-message")).toHaveText([
     "Biorę piłkę, do zobaczenia!",
     "Super, ja mam znaczniki",
