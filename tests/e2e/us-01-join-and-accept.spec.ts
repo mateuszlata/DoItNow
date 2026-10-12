@@ -152,6 +152,19 @@ test("joining without approval is instant and the organizer can remove a partici
   await organizer.waitForURL(/\/events\/[0-9a-f-]{36}$/);
   const eventUrl = organizer.url();
 
+  // Gość z udostępnionego linku: podgląd linku opisuje spotkanie, a przyciski prowadzą do rejestracji z powrotem tutaj.
+  const guestContext = await browser.newContext();
+  const guest = await guestContext.newPage();
+  await guest.goto(eventUrl);
+  await expect(guest.locator('meta[property="og:title"]')).toHaveAttribute("content", new RegExp(`Siatkówka.*${area}`));
+  await expect(guest.locator('meta[property="og:description"]')).toHaveAttribute("content", /Brakuje 3 osób/);
+  await expect(guest.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/og\/siatkowka\.png$/);
+  await expect(guest.getByTestId("guest-intro")).toBeVisible();
+  const eventPath = new URL(eventUrl).pathname;
+  await guest.getByRole("link", { name: "Mam konto" }).click();
+  await expect(guest).toHaveURL(`/auth/signin?next=${encodeURIComponent(eventPath)}`);
+  await guestContext.close();
+
   // Uczestnik dołącza jednym kliknięciem i od razu jest w składzie.
   const participant = await signUpAndSignIn(browser, participantNick);
   await participant.goto(eventUrl);

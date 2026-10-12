@@ -12,11 +12,13 @@ const MAX_DISPLAY_NAME_LENGTH = 30;
 
 interface Props {
   serverError?: string | null;
+  /** Ścieżka, na którą wracamy po zalogowaniu (sprawdzona przez safeNext). */
+  next?: string | null;
   /** Klucz witryny Cloudflare Turnstile; bez niego formularz działa bez widgetu. */
   turnstileSiteKey?: string;
 }
 
-export default function SignUpForm({ serverError, turnstileSiteKey }: Props) {
+export default function SignUpForm({ serverError, next, turnstileSiteKey }: Props) {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,6 +90,7 @@ export default function SignUpForm({ serverError, turnstileSiteKey }: Props) {
 
   return (
     <form method="POST" action="/api/auth/signup" className="space-y-4" onSubmit={handleSubmit} noValidate>
+      {next && <input type="hidden" name="next" value={next} />}
       <FormField
         id="displayName"
         label="Nick (widoczny dla innych)"

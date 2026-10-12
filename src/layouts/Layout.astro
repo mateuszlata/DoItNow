@@ -5,9 +5,23 @@ import { missingConfigs } from "@/lib/config-status";
 
 interface Props {
   title?: string;
+  /** Opis strony i podglądu linku (Messenger, WhatsApp, wyszukiwarki). */
+  description?: string;
+  /** Tytuł podglądu linku, gdy ma być inny niż tytuł karty. */
+  shareTitle?: string;
+  /** Obrazek podglądu linku — ścieżka w /public (1200×630). */
+  image?: string;
 }
 
-const { title = "Metando" } = Astro.props;
+const DEFAULT_DESCRIPTION = "Metando — spotkaj się i zrób coś razem: znajdź ludzi do wspólnego sportu w Twoim mieście.";
+const {
+  title = "Metando",
+  description = DEFAULT_DESCRIPTION,
+  shareTitle = title,
+  image = "/og/default.png",
+} = Astro.props;
+const pageUrl = new URL(Astro.url.pathname, Astro.url.origin).href;
+const imageUrl = new URL(image, Astro.url.origin).href;
 ---
 
 <!doctype html>
@@ -18,10 +32,17 @@ const { title = "Metando" } = Astro.props;
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#0a2e23" />
-    <meta
-      name="description"
-      content="Metando — spotkaj się i zrób coś razem: znajdź ludzi do wspólnego sportu w Twoim mieście."
-    />
+    <meta name="description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Metando" />
+    <meta property="og:locale" content="pl_PL" />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:title" content={shareTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <title>{title}</title>
   </head>
   <body>

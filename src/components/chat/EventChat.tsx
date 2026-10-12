@@ -19,6 +19,39 @@ interface Props {
 const timeFormat = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" });
 const dayFormat = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", timeZone: "Europe/Warsaw" });
 
+const URL_PATTERN = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g;
+
+/** Tekst wiadomości z klikalnymi linkami (tylko http/https; reszta jako zwykły tekst). */
+function withLinks(text: string) {
+  return text.split(URL_PATTERN).map((part, index) =>
+    index % 2 === 1 ? (
+      <a key={index} href={part} target="_blank" rel="noopener noreferrer nofollow ugc" className="break-all underline">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
+async function shareEvent(eventId: string): Promise<string | null> {
+  const url = `${window.location.origin}/events/${eventId}`;
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: "Dołącz do spotkania w Metando", url });
+      return null;
+    } catch {
+      // anulowane udostępnianie — próbujemy schowka
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    return "Link do spotkania skopiowany — wklej go znajomym.";
+  } catch {
+    return url;
+  }
+}
+
 function formatTime(iso: string): string {
   const date = new Date(iso);
   const today = dayFormat.format(new Date()) === dayFormat.format(date);
@@ -67,7 +100,20 @@ export default function EventChat({
 
   return (
     <section className="bg-card text-ink rounded-[20px] p-4" data-testid="event-chat" aria-label="Czat spotkania">
-      <h2 className="display text-2xl leading-none">Czat</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="display text-2xl leading-none">Czat</h2>
+        <button
+          type="button"
+          className="bg-card-2 hover:bg-line rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors"
+          onClick={() => {
+            void shareEvent(eventId).then((message) => {
+              if (message) setNotice(message);
+            });
+          }}
+        >
+          Zaproś znajomych
+        </button>
+      </div>
       <p className="text-ink-3 mt-1 text-xs">Widzą go organizator i osoby w składzie oraz na rezerwie.</p>
 
       <div
@@ -101,7 +147,7 @@ export default function EventChat({
                 )}
                 data-testid="chat-message"
               >
-                {message.hidden ? "Wiadomość usunięta" : message.body}
+                {message.hidden ? "Wiadomość usunięta" : withLinks(message.body ?? "")}
               </p>
               {!message.hidden && (
                 <span className="mt-0.5 flex gap-3 text-[11px]">

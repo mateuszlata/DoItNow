@@ -1,5 +1,6 @@
 ---
 // Górny pasek (logo, nick) i dolna nawigacja aplikacji: Gramy · + · Moje.
+import { authHref, safeNext } from "@/lib/next-path";
 import { createClient } from "@/lib/supabase";
 import { getDisplayName } from "@/lib/services/profiles";
 import { countPendingRequests } from "@/lib/services/events";
@@ -29,6 +30,8 @@ if (user) {
 
 const titleLines = title?.split("|") ?? [];
 const navItem = "flex min-w-16 flex-col items-center gap-1 text-xs font-bold tracking-wide uppercase";
+// Po zalogowaniu wracamy na bieżącą stronę.
+const signinHref = authHref("signin", safeNext(Astro.url.pathname + Astro.url.search));
 ---
 
 <header class="mb-5 flex h-12 items-center justify-between gap-3">
@@ -53,7 +56,7 @@ const navItem = "flex min-w-16 flex-col items-center gap-1 text-xs font-bold tra
       )}
     </a>
   ) : (
-    <a href="/auth/signin" class="flex h-11 items-center rounded-full bg-card px-5 text-sm font-bold text-ink">
+    <a href={signinHref} class="flex h-11 items-center rounded-full bg-card px-5 text-sm font-bold text-ink">
       Zaloguj
     </a>
   )}

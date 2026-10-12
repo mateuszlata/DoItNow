@@ -8,17 +8,20 @@ import VenueStatus from "@/components/events/VenueStatus.astro";
 import Countdown from "@/components/events/Countdown.astro";
 import EventChat from "@/components/chat/EventChat";
 import { isChatOpen, listMessages } from "@/lib/services/chat";
+import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
 import { createClient } from "@/lib/supabase";
 import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/lib/services/events";
 import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
 import { freeReserve, freeWord, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
 import { sportLabel } from "@/lib/sports";
-import { eventDayParts, formatEventTime, formatTimeRange } from "@/lib/time";
+import { eventDayParts, formatEventDay, formatEventTime, formatTimeRange } from "@/lib/time";
 import { formatPLN, shareCents } from "@/lib/money";
 import type { ChatMessage, EventDetails, PublicEvent } from "@/types";
 
 const { user } = Astro.locals;
+// Goście z udostępnionego linku wracają tu po rejestracji lub logowaniu.
+const backHere = safeNext(Astro.url.pathname);
 const id = Astro.params.id ?? "";
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
@@ -78,6 +81,21 @@ const okMessage =
           ? "Zostajesz w spotkaniu i przejmujesz jego organizację."
           : SUCCESS_MESSAGES[okKey];
 const errorMessage = participationErrorMessage(Astro.url.searchParams.get("error"));
+
+// Podgląd linku przy udostępnianiu (Messenger, WhatsApp): sport, termin, okolica i ile osób brakuje.
+function missingPeople(count: number): string {
+  return count === 1 ? "Brakuje 1 osoby" : `Brakuje ${String(count)} osób`;
+}
+const share = summary
+  ? {
+      title: `${sportLabel(summary.sport)} · ${formatEventDay(summary.starts_at)}, ${formatTimeRange(summary.starts_at, summary.duration_minutes)} · ${summary.area}`,
+      description:
+        summary.spots - summary.accepted_count > 0
+          ? `${missingPeople(summary.spots - summary.accepted_count)} w składzie. Dołącz w Metando jednym kliknięciem.`
+          : "Skład w komplecie — zobacz spotkanie w Metando i zapisz się na rezerwę, jeśli są miejsca.",
+      image: `/og/${summary.sport}.png`,
+    }
+  : null;
 
 const isPast = summary ? new Date(summary.starts_at).getTime() <= Date.now() : false;
 const isCancelled = details?.status === "cancelled";
@@ -142,7 +160,12 @@ const joinLabel = summary?.requires_approval
 const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isOpen : true)));
 ---
 
-<Layout title={summary ? `${sportLabel(summary.sport)} · Metando` : "Nie znaleziono · Metando"}>
+<Layout
+  title={summary ? `${sportLabel(summary.sport)} · Metando` : "Nie znaleziono · Metando"}
+  shareTitle={share?.title}
+  description={share?.description}
+  image={share?.image}
+>
   <div class="bg-app min-h-screen p-4 pb-40">
     <div class="mx-auto flex max-w-xl flex-col gap-5">
       <Topbar hideNav />
@@ -473,13 +496,20 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           )}
 
           {!user && (
-            <p class="text-sm text-page-ink-2">
-              Dokładne miejsce, organizator i nicki zawodników są widoczne po{" "}
-              <a href="/auth/signin" class="font-semibold text-page-link hover:underline">
-                zalogowaniu
+            <section class="rounded-[20px] bg-page-2 p-5 text-page-ink" data-testid="guest-intro">
+              <h2 class="display text-2xl leading-none">Pierwszy raz w Metando?</h2>
+              <p class="mt-2 text-sm text-page-ink-2">
+                Metando łączy ludzi, którzy chcą razem pograć — bez szukania po grupach i dzwonienia. Załóż darmowe
+                konto w 30 sekund, a wrócisz prosto do tego spotkania i dołączysz jednym kliknięciem. Dokładne miejsce i
+                skład zobaczysz po zalogowaniu.
+              </p>
+              <a
+                href={authHref("signup", backHere)}
+                class="mt-3 inline-grid h-11 place-items-center rounded-full bg-brand px-5 text-sm font-extrabold tracking-wide text-on-brand uppercase"
+              >
+                Załóż konto i dołącz
               </a>
-              .
-            </p>
+            </section>
           )}
         </>
       )}
@@ -494,12 +524,20 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
       </div>
       <div class="mx-auto flex max-w-xl flex-wrap items-center gap-2.5 px-4 pt-3.5 pb-5">
         {!user && (
-          <a
-            href="/auth/signin"
-            class="grid h-14 flex-1 place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
-          >
-            Zaloguj się, aby dołączyć
-          </a>
+          <>
+            <a
+              href={authHref("signup", backHere)}
+              class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+            >
+              Dołącz — załóż konto
+            </a>
+            <a
+              href={authHref("signin", backHere)}
+              class="grid h-14 flex-1 place-items-center rounded-full bg-page-2 text-sm font-bold text-page-ink"
+            >
+              Mam konto
+            </a>
+          </>
         )}
 
         {isOrganizer && details && isOpen && (
