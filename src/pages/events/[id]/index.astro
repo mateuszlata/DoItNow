@@ -9,6 +9,7 @@ import Countdown from "@/components/events/Countdown.astro";
 import EventChat from "@/components/chat/EventChat";
 import MatchLineup, { type LineupPlayerView } from "@/components/lineup/MatchLineup";
 import { getLineup, type SavedLineup } from "@/lib/services/lineups";
+import { supportsLineup } from "@/lib/lineup";
 import { isChatOpen, listMessages } from "@/lib/services/chat";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -129,10 +130,10 @@ if (isChatMember && supabase && details) {
   if (result.ok) chat = { messages: result.data, syncedAt };
 }
 
-// Składy na mecz (piłka nożna): grający organizator i przyjęci do składu — widzą je członkowie spotkania.
+// Składy na mecz (sporty z boiskiem lub kortem): grający organizator i przyjęci do składu — widzą je członkowie spotkania.
 let lineupPlayers: LineupPlayerView[] = [];
 let savedLineup: SavedLineup | null = null;
-if (details && supabase && details.sport === "pilka-nozna" && isChatMember) {
+if (details && supabase && supportsLineup(details.sport) && isChatMember) {
   lineupPlayers = [
     ...(details.organizer_plays && !organizerLeft
       ? [
@@ -492,6 +493,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           {details && lineupPlayers.length >= 2 && (
             <MatchLineup
               eventId={details.id}
+              sport={details.sport}
               players={lineupPlayers}
               canEdit={isOrganizer && isOpen}
               initial={savedLineup}

@@ -6,11 +6,10 @@ import {
   randomSplit,
   splitByPositions,
   swapPlayers,
-  type FootballPosition,
   type LineupPlayer,
 } from "@/lib/lineup";
 
-const player = (name: string, position: FootballPosition): LineupPlayer => ({ userId: name, name, position });
+const player = (name: string, position: string): LineupPlayer => ({ userId: name, name, position });
 
 const ten = [
   player("Kuba", "bramka"),
@@ -28,7 +27,7 @@ const ten = [
 describe("formation", () => {
   it("has a goalkeeper and the right number of places for each team size", () => {
     for (let size = 1; size <= 11; size++) {
-      const slots = formation(size);
+      const slots = formation("pilka-nozna", size);
       expect(slots).toHaveLength(size);
       expect(slots[0]).toMatchObject({ role: "bramka", x: 50 });
       expect(slots.every((s) => s.y > 75 && s.y < 150)).toBe(true);
@@ -42,7 +41,7 @@ describe("formation", () => {
 
 describe("splitByPositions", () => {
   it("puts two goalkeepers in different teams, in goal, and balances the rest", () => {
-    const { assignments, notes } = splitByPositions(ten);
+    const { assignments, notes } = splitByPositions("pilka-nozna", ten);
     const team = (t: 0 | 1) => assignments.filter((a) => a.team === t);
     expect(team(0)).toHaveLength(5);
     expect(team(1)).toHaveLength(5);
@@ -53,7 +52,7 @@ describe("splitByPositions", () => {
   });
 
   it("explains a missing goalkeeper and still fills the goal", () => {
-    const { assignments, notes } = splitByPositions([
+    const { assignments, notes } = splitByPositions("pilka-nozna", [
       player("A", "atak"),
       player("B", "obojetnie"),
       player("C", "obrona"),
@@ -64,11 +63,45 @@ describe("splitByPositions", () => {
   });
 });
 
+describe("other sports", () => {
+  it("builds formations that fit each team size without repeating places", () => {
+    for (const sport of ["koszykowka", "siatkowka", "tenis", "badminton", "tenis-stolowy"]) {
+      for (let size = 1; size <= 7; size++) {
+        const slots = formation(sport, size);
+        expect(slots).toHaveLength(size);
+        expect(new Set(slots.map((s) => `${String(s.x)}:${String(s.y)}`)).size).toBe(size);
+        expect(slots.every((s) => s.y > 75 && s.y < 150)).toBe(true);
+      }
+    }
+  });
+
+  it("splits volleyball setters between teams and points out a missing one", () => {
+    const six = [
+      player("A", "rozgrywajacy"),
+      player("B", "przyjmujacy"),
+      player("C", "srodkowy"),
+      player("D", "atakujacy"),
+      player("E", "libero"),
+      player("F", "obojetnie"),
+    ];
+    const { assignments, notes } = splitByPositions("siatkowka", six);
+    expect(assignments.filter((a) => a.team === 0)).toHaveLength(3);
+    expect(notes[0]).toContain("rozgrywającego");
+  });
+
+  it("pairs racket players into two sides", () => {
+    const four = ["A", "B", "C", "D"].map((n) => player(n, "obojetnie"));
+    const { assignments, notes } = splitByPositions("tenis", four);
+    expect(assignments.filter((a) => a.team === 1)).toHaveLength(2);
+    expect(notes).toEqual([]);
+  });
+});
+
 describe("randomSplit", () => {
   it("splits evenly and deterministically for a given random source", () => {
     let seed = 1;
     const random = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
-    const { assignments } = randomSplit(ten, random);
+    const { assignments } = randomSplit("pilka-nozna", ten, random);
     expect(assignments.filter((a) => a.team === 0)).toHaveLength(5);
     expect(assignments.filter((a) => a.team === 1)).toHaveLength(5);
   });

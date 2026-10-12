@@ -1,10 +1,6 @@
 import { z } from "astro/zod";
 import { KIT_COLUMNS, kitFrom, type KitColumns } from "@/lib/kit";
-import { isFootballPosition, type FootballPosition } from "@/lib/lineup";
-
-function positionOf(value: string | null | undefined): FootballPosition {
-  return isFootballPosition(value) ? value : "obojetnie";
-}
+import { isPosition, supportsLineup } from "@/lib/lineup";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
@@ -394,7 +390,7 @@ interface ParticipationWithProfile {
   user_id: string;
   status: ParticipationStatus;
   stay_confirmed: boolean | null;
-  profile: ({ display_name: string; football_position: string | null } & KitColumns) | null;
+  profile: ({ display_name: string } & KitColumns) | null;
 }
 
 function toParticipant(row: ParticipationWithProfile): Participant {
@@ -403,7 +399,7 @@ function toParticipant(row: ParticipationWithProfile): Participant {
     user_id: row.user_id,
     display_name: row.profile?.display_name ?? "Użytkownik",
     kit: kitFrom(row.profile, row.user_id),
-    position: positionOf(row.profile?.football_position),
+    position: "obojetnie",
     stay_confirmed: row.stay_confirmed,
   };
 }
@@ -421,18 +417,16 @@ export async function getEventDetails(
   if (!UUID_PATTERN.test(id)) return null;
   const { data, error } = await supabase
     .from("events")
-    .select(`*, organizer:profiles!events_organizer_profile_fkey(display_name, football_position, ${KIT_COLUMNS})`)
+    .select(`*, organizer:profiles!events_organizer_profile_fkey(display_name, ${KIT_COLUMNS})`)
     .eq("id", id)
-    .maybeSingle<
-      EventRecord & { organizer: ({ display_name: string; football_position: string | null } & KitColumns) | null }
-    >();
+    .maybeSingle<EventRecord & { organizer: ({ display_name: string } & KitColumns) | null }>();
   if (error) throw new Error(`Nie udało się pobrać ogłoszenia: ${error.message}`);
   if (!data) return null;
 
   const { data: rows, error: participationsError } = await supabase
     .from("participations")
     .select(
-      `id, user_id, status, stay_confirmed, created_at, updated_at, event_id, profile:profiles(display_name, football_position, ${KIT_COLUMNS})`,
+      `id, user_id, status, stay_confirmed, created_at, updated_at, event_id, profile:profiles(display_name, ${KIT_COLUMNS})`,
     )
     .eq("event_id", id)
     .in("status", ["pending", "accepted", "reserve"])
@@ -455,14 +449,28 @@ export async function getEventDetails(
   const pending = isOrganizer ? all.filter((r) => r.status === "pending").map(toParticipant) : [];
 
   const { organizer, ...event } = data;
+  // Ulubione pozycje graczy w sporcie wydarzenia (Składy na mecz).
+  const positions = new Map<string, string>();
+  if (supportsLineup(event.sport)) {
+    const userIds = [event.organizer_id, ...all.map((r) => r.user_id)];
+    const { data: rowsWithPositions } = await supabase
+      .from("player_positions")
+      .select("user_id, position")
+      .eq("sport", event.sport)
+      .in("user_id", userIds);
+    for (const row of (rowsWithPositions ?? []) as { user_id: string; position: string }[]) {
+      if (isPosition(event.sport, row.position)) positions.set(row.user_id, row.position);
+    }
+  }
+  const withPosition = (p: Participant): Participant => ({ ...p, position: positions.get(p.user_id) ?? "obojetnie" });
   return {
     ...event,
     organizer_name: organizer?.display_name ?? "Użytkownik",
     organizer_kit: kitFrom(organizer, event.organizer_id),
-    organizer_position: positionOf(organizer?.football_position),
-    participants,
-    reserves,
-    pending,
+    organizer_position: positions.get(event.organizer_id) ?? "obojetnie",
+    participants: participants.map(withPosition),
+    reserves: reserves.map(withPosition),
+    pending: pending.map(withPosition),
     my_participation: mine,
     free_spots: Math.max(event.spots - participants.length, 0),
   };

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEvent } from "@/lib/services/events";
 import { requestToJoin } from "@/lib/services/participations";
 import { clearLineup, getLineup, saveLineup } from "@/lib/services/lineups";
-import { getFootballPosition, saveFootballPosition } from "@/lib/services/profiles";
+import { getPositions, savePosition } from "@/lib/services/profiles";
 import { toLocalDateTime } from "@/lib/time";
 import { HOUR, cleanupTestUsers, newUser, type TestUser } from "./helpers";
 
@@ -92,10 +92,18 @@ describe("match lineups", () => {
     ).toBe(false);
   });
 
-  it("is only available for football", async () => {
+  it("works for volleyball but not for running", async () => {
     const volleyball = await footballEvent(organizer, "siatkowka");
     expect(
       await saveLineup(organizer.client, volleyball, {
+        teamA: "#ff7a1a",
+        teamB: "#ffffff",
+        assignments: [{ user_id: organizer.id, team: 0, slot: 0 }],
+      }),
+    ).toEqual({ ok: true });
+    const running = await footballEvent(organizer, "bieganie");
+    expect(
+      await saveLineup(organizer.client, running, {
         teamA: "#ff7a1a",
         teamB: "#2a9d55",
         assignments: [{ user_id: organizer.id, team: 0, slot: 0 }],
@@ -109,9 +117,16 @@ describe("match lineups", () => {
     expect(await getLineup(p1.client, eventId)).toBeNull();
   });
 
-  it("stores the favourite position on the profile", async () => {
-    expect(await getFootballPosition(p1.client, p1.id)).toBe("obojetnie");
-    expect(await saveFootballPosition(p1.client, p1.id, "bramka")).toBe(true);
-    expect(await getFootballPosition(p1.client, p1.id)).toBe("bramka");
+  it("stores favourite positions per sport and rejects positions from another sport", async () => {
+    expect(await getPositions(p1.client, p1.id)).toEqual({});
+    expect(await savePosition(p1.client, p1.id, "pilka-nozna", "bramka")).toBe(true);
+    expect(await savePosition(p1.client, p1.id, "siatkowka", "libero")).toBe(true);
+    expect(await savePosition(p1.client, p1.id, "koszykowka", "bramka")).toBe(false);
+    expect(await getPositions(p1.client, p1.id)).toEqual({ "pilka-nozna": "bramka", siatkowka: "libero" });
+    // Pozycje są widoczne dla innych zalogowanych (składy), ale zmienia je tylko właściciel.
+    const { error } = await p2.client
+      .from("player_positions")
+      .upsert({ user_id: p1.id, sport: "tenis", position: "x" });
+    expect(error).not.toBeNull();
   });
 });

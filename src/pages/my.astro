@@ -12,8 +12,8 @@ import { minimumLabel, takenSpots, teamSize } from "@/lib/capacity";
 import SportPicker from "@/components/SportPicker.astro";
 import { getFavoriteSports } from "@/lib/services/preferences";
 import KitCreator from "@/components/KitCreator";
-import { getDisplayName, getFootballPosition, getKit } from "@/lib/services/profiles";
-import { FOOTBALL_POSITIONS } from "@/lib/lineup";
+import { getDisplayName, getKit, getPositions } from "@/lib/services/profiles";
+import { POSITION_SPORTS, positionsFor } from "@/lib/lineup";
 import { defaultKit } from "@/lib/kit";
 import { isAdmin } from "@/lib/services/chat";
 
@@ -39,8 +39,9 @@ const kitStatus = Astro.url.searchParams.get("ok");
 const kit = supabase && user ? await getKit(supabase, user.id) : defaultKit("");
 const nick = (supabase && user ? await getDisplayName(supabase, user.id) : null) ?? "";
 const admin = supabase ? await isAdmin(supabase) : false;
-const position = supabase && user ? await getFootballPosition(supabase, user.id) : "obojetnie";
+const positions = supabase && user ? await getPositions(supabase, user.id) : {};
 const positionStatus = Astro.url.searchParams.get("ok");
+const positionSport = Astro.url.searchParams.get("sport");
 ---
 
 <Layout title="Moje spotkania · Metando">
@@ -176,32 +177,49 @@ const positionStatus = Astro.url.searchParams.get("ok");
       </section>
 
       <section id="moja-pozycja" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
-        <h2 class="display text-2xl leading-none">Moja pozycja</h2>
+        <h2 class="display text-2xl leading-none">Moje pozycje</h2>
         <p class="mt-1 mb-3 text-sm text-ink-2">
-          W piłce nożnej organizator może podzielić skład na drużyny według pozycji. Gdzie lubisz grać?
+          Organizator może podzielić skład na drużyny według pozycji. Gdzie lubisz grać?
         </p>
         {positionStatus === "position-failed" && (
           <p class="mb-3 text-sm font-semibold text-bad">Nie udało się zapisać pozycji. Spróbuj ponownie.</p>
         )}
-        <form method="POST" action="/api/profile/position" class="flex flex-wrap items-center gap-2">
-          {FOOTBALL_POSITIONS.map((p) => (
-            <label class="inline-flex h-10 cursor-pointer items-center rounded-full border border-line-strong bg-card px-4 text-sm font-bold text-ink transition-colors has-checked:border-ink has-checked:bg-ink has-checked:text-card has-focus-visible:ring-2 has-focus-visible:ring-brand">
-              <input type="radio" name="position" value={p.id} checked={position === p.id} class="sr-only" />
-              {p.label}
-            </label>
-          ))}
-          <button
-            type="submit"
-            class:list={[
-              "h-10 rounded-full px-5 text-sm font-extrabold tracking-wide uppercase transition-colors",
-              positionStatus === "position-saved"
-                ? "bg-free text-white"
-                : "bg-brand text-on-brand hover:bg-brand-hover",
-            ]}
-          >
-            {positionStatus === "position-saved" ? "✓ Zapisano" : "Zapisz"}
-          </button>
-        </form>
+        <div class="flex flex-col gap-4">
+          {POSITION_SPORTS.map((sport) => {
+            const current = positions[sport] ?? "obojetnie";
+            const saved = positionStatus === "position-saved" && positionSport === sport;
+            return (
+              <form method="POST" action="/api/profile/position" class="flex flex-col gap-2" data-position-form>
+                <input type="hidden" name="sport" value={sport} />
+                <span class="text-sm font-bold text-ink-2">{sportLabel(sport)}</span>
+                <div class="flex flex-wrap items-center gap-2">
+                  {positionsFor(sport).map((option) => (
+                    <label class="inline-flex h-9 cursor-pointer items-center rounded-full border border-line-strong bg-card px-3.5 text-sm font-bold text-ink transition-colors has-checked:border-ink has-checked:bg-ink has-checked:text-card has-focus-visible:ring-2 has-focus-visible:ring-brand">
+                      <input
+                        type="radio"
+                        name="position"
+                        value={option.id}
+                        checked={current === option.id}
+                        class="sr-only"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                  <button
+                    type="submit"
+                    data-save-button
+                    class:list={[
+                      "h-9 rounded-full px-4 text-xs font-extrabold tracking-wide uppercase transition-colors",
+                      saved ? "bg-free text-white" : "bg-brand text-on-brand hover:bg-brand-hover",
+                    ]}
+                  >
+                    {saved ? "✓ Zapisano" : "Zapisz"}
+                  </button>
+                </div>
+              </form>
+            );
+          })}
+        </div>
       </section>
 
       <section id="moje-sporty" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
@@ -256,3 +274,16 @@ const positionStatus = Astro.url.searchParams.get("ok");
     </div>
   </div>
 </Layout>
+
+<script>
+  // Po zmianie pozycji przycisk „Zapisano” wraca do „Zapisz”.
+  document.querySelectorAll<HTMLFormElement>("form[data-position-form]").forEach((form) => {
+    form.addEventListener("change", () => {
+      const button = form.querySelector<HTMLButtonElement>("[data-save-button]");
+      if (!button?.classList.contains("bg-free")) return;
+      button.textContent = "Zapisz";
+      button.classList.remove("bg-free", "text-white");
+      button.classList.add("bg-brand", "text-on-brand", "hover:bg-brand-hover");
+    });
+  });
+</script>

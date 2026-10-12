@@ -2,32 +2,39 @@ import { useEffect, useMemo, useState } from "react";
 import { Dices, RotateCcw, Target } from "lucide-react";
 import KitJersey from "@/components/KitJersey";
 import type { PlayerKit } from "@/lib/kit";
+import Court from "@/components/lineup/Court";
 import {
-  FOOTBALL_POSITIONS,
+  DEFAULT_TEAM_COLORS,
+  SPORT_LINEUPS,
+  positionsFor,
+  supportsLineup,
   TEAM_COLORS,
   formation,
   mirrorSlot,
   parseAssignments,
+  positionShort,
   randomSplit,
   splitByPositions,
   swapPlayers,
   type Assignment,
-  type FootballPosition,
 } from "@/lib/lineup";
 import { cn } from "@/lib/utils";
 
-// „Składy na mecz”: pionowe boisko z graczami w ich barwach. Organizator dzieli skład na dwie drużyny
+// „Składy na mecz”: pionowe boisko (murawa, parkiet, siatkówka, kort) z graczami w ich barwach. Organizator dzieli skład na dwie drużyny
 // (według pozycji, losowo albo ręczną zamianą), a po podziale stroje przefarbowują się na kolory drużyn.
 
 export interface LineupPlayerView {
   userId: string;
   name: string;
   kit: PlayerKit;
-  position: FootballPosition;
+  /** Ulubiona pozycja w sporcie wydarzenia. */
+  position: string;
 }
 
 interface Props {
   eventId: string;
+  /** Sport wydarzenia — wybiera boisko, ustawienie i pozycje. */
+  sport: string;
   players: LineupPlayerView[];
   /** Organizator otwartego spotkania może ustawiać i zapisywać składy. */
   canEdit: boolean;
@@ -42,10 +49,12 @@ function teamKit(color: string, label: string): PlayerKit {
   return { pattern: "plain", primary: color, secondary: color, label };
 }
 
-export default function MatchLineup({ eventId, players, canEdit, initial }: Props) {
+export default function MatchLineup({ eventId, sport, players, canEdit, initial }: Props) {
+  const court = supportsLineup(sport) ? SPORT_LINEUPS[sport].court : "football";
   const ids = useMemo(() => players.map((p) => p.userId), [players]);
-  const [teamA, setTeamA] = useState(initial?.teamA ?? TEAM_COLORS[0].hex);
-  const [teamB, setTeamB] = useState(initial?.teamB ?? "#ffffff");
+  const [teamA, setTeamA] = useState(initial?.teamA ?? DEFAULT_TEAM_COLORS[court][0]);
+  const [teamB, setTeamB] = useState(initial?.teamB ?? DEFAULT_TEAM_COLORS[court][1]);
+  const hasPositions = positionsFor(sport).length > 0;
   const saved = useMemo(() => (initial ? parseAssignments(initial.assignments, ids) : null), [initial, ids]);
   const [assignments, setAssignments] = useState<Assignment[] | null>(saved && saved.length > 0 ? saved : null);
   // Zapisane składy pokazujemy z animacją: najpierw ławka, po chwili wybiegnięcie na boisko.
@@ -74,7 +83,7 @@ export default function MatchLineup({ eventId, players, canEdit, initial }: Prop
     const assignment = shown?.find((a) => a.user_id === player.userId);
     if (assignment) {
       const size = shown?.filter((a) => a.team === assignment.team).length ?? 1;
-      const slots = formation(size);
+      const slots = formation(sport, size);
       const slot = slots[Math.min(assignment.slot, slots.length - 1)];
       return assignment.team === 0 ? slot : mirrorSlot(slot);
     }
@@ -126,8 +135,6 @@ export default function MatchLineup({ eventId, players, canEdit, initial }: Prop
     else setSelected(null);
   }
 
-  const positionShort = (position: FootballPosition) => FOOTBALL_POSITIONS.find((p) => p.id === position)?.short ?? "";
-
   return (
     <section
       className="bg-page-2 text-page-ink flex flex-col gap-3 rounded-[20px] px-3.5 py-4"
@@ -170,21 +177,23 @@ export default function MatchLineup({ eventId, players, canEdit, initial }: Prop
             </div>
           ))}
           <div className="flex flex-wrap gap-2">
+            {hasPositions && (
+              <button
+                type="button"
+                onClick={() => {
+                  const result = splitByPositions(sport, lineupPlayers);
+                  update(result.assignments, result.notes);
+                }}
+                className="bg-card text-ink inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold"
+              >
+                <Target className="size-4" aria-hidden="true" />
+                Wg pozycji
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
-                const result = splitByPositions(lineupPlayers);
-                update(result.assignments, result.notes);
-              }}
-              className="bg-card text-ink inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold"
-            >
-              <Target className="size-4" aria-hidden="true" />
-              Wg pozycji
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                update(randomSplit(lineupPlayers).assignments);
+                update(randomSplit(sport, lineupPlayers).assignments);
               }}
               className="bg-card text-ink inline-flex h-10 items-center gap-1.5 rounded-full px-4 text-sm font-bold"
             >
@@ -214,19 +223,7 @@ export default function MatchLineup({ eventId, players, canEdit, initial }: Prop
           className="absolute inset-0 h-full w-full"
           aria-hidden="true"
         >
-          <rect x="0" y="0" width="100" height={PITCH} rx="3" fill="#2f8a4e" />
-          {[0, 1, 2, 3].map((i) => (
-            <rect key={i} x="4" y={4 + i * 35.5} width="92" height="17.75" fill="rgba(255,255,255,0.06)" />
-          ))}
-          <g fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="0.5">
-            <rect x="4" y="4" width="92" height="142" />
-            <line x1="4" y1="75" x2="96" y2="75" />
-            <ellipse cx="50" cy="75" rx="11" ry="11" />
-            <rect x="24" y="4" width="52" height="19" />
-            <rect x="24" y="127" width="52" height="19" />
-            <rect x="38" y="1.5" width="24" height="2.5" />
-            <rect x="38" y="146" width="24" height="2.5" />
-          </g>
+          <Court kind={court} />
           <rect x="0" y={PITCH + 3} width="100" height={height - PITCH - 3} rx="3" fill="#0f3b2e" />
         </svg>
 
@@ -275,7 +272,7 @@ export default function MatchLineup({ eventId, players, canEdit, initial }: Prop
               <span className="max-w-full truncate text-[11px] leading-tight font-bold text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.7)]">
                 {player.name}
               </span>
-              <span className="text-[10px] leading-tight text-white/80">{positionShort(player.position)}</span>
+              <span className="text-[10px] leading-tight text-white/80">{positionShort(sport, player.position)}</span>
             </Tag>
           );
         })}

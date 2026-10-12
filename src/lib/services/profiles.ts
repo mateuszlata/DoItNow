@@ -1,7 +1,7 @@
 import { z } from "astro/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { KIT_COLUMNS, kitFrom, type KitColumns, type PlayerKit } from "@/lib/kit";
-import { isFootballPosition, type FootballPosition } from "@/lib/lineup";
+import { isPosition } from "@/lib/lineup";
 
 export const displayNameSchema = z
   .string()
@@ -30,20 +30,23 @@ export async function saveKit(supabase: SupabaseClient, userId: string, kit: Pla
   return !error;
 }
 
-export async function getFootballPosition(supabase: SupabaseClient, userId: string): Promise<FootballPosition> {
-  const { data } = await supabase
-    .from("profiles")
-    .select("football_position")
-    .eq("id", userId)
-    .maybeSingle<{ football_position: string | null }>();
-  return isFootballPosition(data?.football_position) ? data.football_position : "obojetnie";
+/** Ulubione pozycje użytkownika: sport → pozycja (brak wpisu = „obojętnie”). */
+export async function getPositions(supabase: SupabaseClient, userId: string): Promise<Record<string, string>> {
+  const { data } = await supabase.from("player_positions").select("sport, position").eq("user_id", userId);
+  const result: Record<string, string> = {};
+  for (const row of (data ?? []) as { sport: string; position: string }[]) {
+    if (isPosition(row.sport, row.position)) result[row.sport] = row.position;
+  }
+  return result;
 }
 
-export async function saveFootballPosition(
+export async function savePosition(
   supabase: SupabaseClient,
   userId: string,
-  position: FootballPosition,
+  sport: string,
+  position: string,
 ): Promise<boolean> {
-  const { error } = await supabase.from("profiles").update({ football_position: position }).eq("id", userId);
+  if (!isPosition(sport, position)) return false;
+  const { error } = await supabase.from("player_positions").upsert({ user_id: userId, sport, position });
   return !error;
 }

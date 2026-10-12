@@ -15,7 +15,7 @@ export const LINEUP_ERRORS = {
   EVENT_NOT_FOUND: "Nie znaleziono ogłoszenia.",
   NOT_ORGANIZER: "Składy ustawia organizator.",
   EVENT_CANCELLED: "To spotkanie zostało odwołane.",
-  LINEUP_NOT_SUPPORTED: "Składy na boisku są na razie dostępne dla piłki nożnej.",
+  LINEUP_NOT_SUPPORTED: "Składy na boisku nie są dostępne dla tego sportu.",
   INVALID_LINEUP: "Nieprawidłowy podział składu. Spróbuj ponownie.",
   NOT_IN_SQUAD: "Ktoś z podziału nie jest już w składzie. Odśwież stronę.",
 } as const;

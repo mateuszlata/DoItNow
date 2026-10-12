@@ -1,5 +1,4 @@
 import type { PlayerKit } from "@/lib/kit";
-import type { FootballPosition } from "@/lib/lineup";
 
 import type { SportId } from "@/lib/sports";
 
@@ -87,8 +86,8 @@ export interface Participant {
   display_name: string;
   /** Barwy gracza (własne albo domyślne z id konta). */
   kit: PlayerKit;
-  /** Ulubiona pozycja w piłce nożnej („Składy na mecz”). */
-  position: FootballPosition;
+  /** Ulubiona pozycja w sporcie wydarzenia („Składy na mecz”); „obojetnie”, gdy brak. */
+  position: string;
   /** Po odwołaniu przez organizatora: czy uczestnik potwierdził, że zostaje (null = nie odpowiedział). */
   stay_confirmed?: boolean | null;
 }
@@ -97,7 +96,7 @@ export interface Participant {
 export interface EventDetails extends EventRecord {
   organizer_name: string;
   organizer_kit: PlayerKit;
-  organizer_position: FootballPosition;
+  organizer_position: string;
   /** Zaakceptowani uczestnicy. */
   participants: Participant[];
   /** Lista rezerwowa w kolejności awansu. */
