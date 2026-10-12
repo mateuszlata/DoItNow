@@ -9,12 +9,20 @@ interface Props {
   next: string;
   /** Pierwsze pytanie na liście ogłoszeń (z opcją „Pomiń”) albo edycja w „Moje”. */
   variant?: "onboarding" | "settings";
+  /** Wybór właśnie zapisany — przycisk pokazuje „Zapisano”, dopóki nic się nie zmieni. */
+  saved?: boolean;
 }
 
-const { selected, next, variant = "settings" } = Astro.props;
+const { selected, next, variant = "settings", saved = false } = Astro.props;
 ---
 
-<form method="POST" action="/api/profile/sports" class="flex flex-col gap-3" data-testid="sport-picker">
+<form
+  method="POST"
+  action="/api/profile/sports"
+  class="flex flex-col gap-3"
+  data-testid="sport-picker"
+  data-saved={saved ? "" : undefined}
+>
   <input type="hidden" name="next" value={next} />
   <fieldset>
     <legend class="sr-only">Sporty, które Cię interesują</legend>
@@ -45,9 +53,13 @@ const { selected, next, variant = "settings" } = Astro.props;
   <div class="flex flex-wrap items-center gap-2">
     <button
       type="submit"
-      class="h-11 rounded-full bg-brand px-5 text-sm font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
+      data-save-button
+      class:list={[
+        "h-11 rounded-full px-5 text-sm font-extrabold tracking-wide uppercase transition-colors",
+        saved ? "bg-free text-white" : "bg-brand text-on-brand hover:bg-brand-hover",
+      ]}
     >
-      {variant === "onboarding" ? "Pokaż moje sporty" : "Zapisz"}
+      {saved ? "✓ Zapisano" : variant === "onboarding" ? "Pokaż moje sporty" : "Zapisz"}
     </button>
     {variant === "onboarding" && (
       <button
@@ -60,3 +72,17 @@ const { selected, next, variant = "settings" } = Astro.props;
     )}
   </div>
 </form>
+
+<script>
+  // Po zmianie wyboru przycisk „Zapisano” wraca do „Zapisz”.
+  document.querySelectorAll<HTMLFormElement>("form[data-saved]").forEach((form) => {
+    form.addEventListener("change", () => {
+      const button = form.querySelector<HTMLButtonElement>("[data-save-button]");
+      if (!button || !form.hasAttribute("data-saved")) return;
+      form.removeAttribute("data-saved");
+      button.textContent = "Zapisz";
+      button.classList.remove("bg-free", "text-white");
+      button.classList.add("bg-brand", "text-on-brand", "hover:bg-brand-hover");
+    });
+  });
+</script>

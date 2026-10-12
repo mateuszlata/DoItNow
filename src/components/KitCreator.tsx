@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dices } from "lucide-react";
+import { Check, Dices } from "lucide-react";
 import KitJersey from "@/components/KitJersey";
 import { KIT_COLORS, KIT_PATTERNS, isKitLabel, type PlayerKit } from "@/lib/kit";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 interface Props {
   initialKit: PlayerKit;
   nick: string;
+  /** Strój właśnie zapisany — przycisk pokazuje „Zapisano”, dopóki nic się nie zmieni. */
+  saved?: boolean;
 }
 
 const PREVIEW_SPORTS = [
@@ -24,8 +26,15 @@ function pick<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-export default function KitCreator({ initialKit, nick }: Props) {
-  const [kit, setKit] = useState<PlayerKit>(initialKit);
+export default function KitCreator({ initialKit, nick, saved = false }: Props) {
+  const [kit, setKitState] = useState<PlayerKit>(initialKit);
+  const [dirty, setDirty] = useState(false);
+  const showSaved = saved && !dirty;
+  // Każda zmiana stroju przywraca przycisk „Zapisz strój”.
+  const setKit: typeof setKitState = (value) => {
+    setDirty(true);
+    setKitState(value);
+  };
   const [mode, setMode] = useState<"number" | "initials">(/^\d+$/.test(initialKit.label) ? "number" : "initials");
   const [draft, setDraft] = useState(initialKit.label);
   const draftValid = isKitLabel(draft.trim().toUpperCase()) && (mode === "number") === /^\d+$/.test(draft.trim());
@@ -160,9 +169,13 @@ export default function KitCreator({ initialKit, nick }: Props) {
           <button
             type="submit"
             disabled={!draftValid}
-            className="bg-brand text-on-brand hover:bg-brand-hover h-11 rounded-full px-5 text-sm font-extrabold tracking-wide uppercase transition-colors disabled:opacity-50"
+            className={cn(
+              "inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-extrabold tracking-wide uppercase transition-colors disabled:opacity-50",
+              showSaved ? "bg-free text-white" : "bg-brand text-on-brand hover:bg-brand-hover",
+            )}
           >
-            Zapisz strój
+            {showSaved && <Check className="size-4" aria-hidden="true" />}
+            {showSaved ? "Zapisano" : "Zapisz strój"}
           </button>
           <button
             type="button"

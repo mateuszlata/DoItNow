@@ -155,11 +155,10 @@ const nick = (supabase && user ? await getDisplayName(supabase, user.id) : null)
         <p class="mt-1 mb-4 text-sm text-ink-2">
           Twój strój to Twój znak rozpoznawczy w składzie i w czacie. Wybierz wzór, kolory i ulubiony numer.
         </p>
-        {kitStatus === "kit-saved" && <p class="mb-3 text-sm font-semibold text-ok">Strój zapisany.</p>}
         {kitStatus === "kit-failed" && (
           <p class="mb-3 text-sm font-semibold text-bad">Nie udało się zapisać stroju. Spróbuj ponownie.</p>
         )}
-        <KitCreator initialKit={kit} nick={nick} client:visible />
+        <KitCreator initialKit={kit} nick={nick} saved={kitStatus === "kit-saved"} client:load />
       </section>
 
       <section id="moje-sporty" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
@@ -167,8 +166,7 @@ const nick = (supabase && user ? await getDisplayName(supabase, user.id) : null)
         <p class="mt-1 mb-3 text-sm text-ink-2">
           Lista ogłoszeń pokazuje najpierw te sporty. Bez zaznaczenia widzisz wszystkie.
         </p>
-        {sportsSaved && <p class="mb-3 text-sm font-semibold text-ok">Zapisano.</p>}
-        <SportPicker selected={favorites ?? []} next="/my#moje-sporty" />
+        <SportPicker selected={favorites ?? []} next="/my#moje-sporty" saved={sportsSaved} />
       </section>
 
       <details class="mt-8 rounded-[20px] bg-page-2 px-5 py-4" open={deleteError ? true : undefined}>
