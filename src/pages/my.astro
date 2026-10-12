@@ -14,6 +14,7 @@ import { getFavoriteSports } from "@/lib/services/preferences";
 import KitCreator from "@/components/KitCreator";
 import { getDisplayName, getKit } from "@/lib/services/profiles";
 import { defaultKit } from "@/lib/kit";
+import { isAdmin } from "@/lib/services/chat";
 
 // Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
 const user = Astro.locals.user;
@@ -36,12 +37,22 @@ const sportsSaved = Astro.url.searchParams.get("ok") === "sports-saved";
 const kitStatus = Astro.url.searchParams.get("ok");
 const kit = supabase && user ? await getKit(supabase, user.id) : defaultKit("");
 const nick = (supabase && user ? await getDisplayName(supabase, user.id) : null) ?? "";
+const admin = supabase ? await isAdmin(supabase) : false;
 ---
 
 <Layout title="Moje spotkania · Metando">
   <div class="bg-app min-h-screen p-4 pb-32">
     <div class="mx-auto max-w-3xl">
       <Topbar title="Moje spotkania" />
+      {admin && (
+        <a
+          href="/admin"
+          class="mb-4 inline-flex rounded-full bg-page-2 px-4 py-2 text-sm font-bold text-page-ink hover:bg-page-deep"
+          data-testid="admin-link"
+        >
+          Panel admina →
+        </a>
+      )}
 
       {totalPending > 0 && (
         <p class="mb-4 rounded-2xl border border-warn-line bg-warn-soft px-3 py-2 text-sm text-warn">

@@ -1,21 +1,17 @@
 ---
 // Podgląd zużycia darmowej puli Google Places: miesiąc, dziś i dzisiejszy przydział (budżet kroczący).
-// Dostęp tylko dla adresów z sekretu ADMIN_EMAILS.
+// Dostęp: konta z tabeli public.admins.
 import Layout from "@/layouts/Layout.astro";
 import Topbar from "@/components/Topbar.astro";
-import { ADMIN_EMAILS, GOOGLE_MAPS_API_KEY } from "astro:env/server";
+import { GOOGLE_MAPS_API_KEY } from "astro:env/server";
+import { isAdmin } from "@/lib/services/chat";
 import { createClient } from "@/lib/supabase";
 import { PLACES_MONTHLY_LIMIT, PLACES_USER_HOURLY_LIMIT, quotaStats, type QuotaStats } from "@/lib/services/places";
 
-const user = Astro.locals.user;
-const admins = (ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
-if (!user?.email || !admins.includes(user.email.toLowerCase())) return Astro.redirect("/events");
-
 const supabase = createClient(Astro.request.headers, Astro.cookies);
-const stats: QuotaStats[] = supabase ? await quotaStats(supabase) : [];
+if (!Astro.locals.user || !supabase || !(await isAdmin(supabase))) return Astro.redirect("/events");
+
+const stats: QuotaStats[] = await quotaStats(supabase);
 const LABELS: Record<string, string> = {
   autocomplete: "Podpowiedzi (Autocomplete)",
   details: "Szczegóły miejsca (Place Details)",

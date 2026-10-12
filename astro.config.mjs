@@ -23,8 +23,6 @@ export default defineConfig({
       SUPABASE_KEY: envField.string({ context: "server", access: "secret", optional: true }),
       // Klucz Google Places (New), tylko po stronie serwera; bez niego wyszukiwarka używa OpenStreetMap.
       GOOGLE_MAPS_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
-      // Adresy e-mail z dostępem do strony statystyk /admin/places (po przecinku).
-      ADMIN_EMAILS: envField.string({ context: "server", access: "secret", optional: true }),
       // Cloudflare Turnstile na rejestracji; bez kluczy (lokalnie, w CI) formularz działa bez widgetu.
       TURNSTILE_SITE_KEY: envField.string({ context: "server", access: "secret", optional: true }),
       TURNSTILE_SECRET_KEY: envField.string({ context: "server", access: "secret", optional: true }),

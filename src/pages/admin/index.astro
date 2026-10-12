@@ -1,0 +1,301 @@
+---
+// Panel administratora: puls serwisu, co/gdzie/kiedy się gra, lejek i powroty, obiekty, adopcja strojów.
+// Dostęp: konta z tabeli public.admins (dane liczy funkcja admin_stats w bazie).
+import Layout from "@/layouts/Layout.astro";
+import Topbar from "@/components/Topbar.astro";
+import Bars from "@/components/admin/Bars.astro";
+import AdminMap from "@/components/admin/AdminMap";
+import SportIcon from "@/components/SportIcon.astro";
+import { createClient } from "@/lib/supabase";
+import { isAdmin } from "@/lib/services/chat";
+import { getAdminStats } from "@/lib/services/admin";
+import { sportLabel } from "@/lib/sports";
+import { formatPLN } from "@/lib/money";
+import { KIT_COLORS, KIT_PATTERNS } from "@/lib/kit";
+
+const supabase = createClient(Astro.request.headers, Astro.cookies);
+if (!Astro.locals.user || !supabase || !(await isAdmin(supabase))) return Astro.redirect("/events");
+
+const stats = await getAdminStats(supabase);
+const pct = (part: number, whole: number) => (whole > 0 ? `${String(Math.round((100 * part) / whole))}%` : "—");
+/** Odmiana: 1 spotkanie, 2 spotkania, 5 spotkań. */
+function plural(n: number, one: string, few: string, many: string): string {
+  const lastDigit = n % 10;
+  const lastTwo = n % 100;
+  if (n === 1) return one;
+  return lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14) ? few : many;
+}
+const WEEKDAYS = ["pon", "wt", "śr", "czw", "pt", "sob", "nd"];
+const dayLabel = (iso: string) => iso.slice(8, 10);
+const updated = stats
+  ? new Intl.DateTimeFormat("pl-PL", { timeStyle: "short", dateStyle: "short", timeZone: "Europe/Warsaw" }).format(
+      new Date(stats.generated_at),
+    )
+  : "";
+
+const tile = "rounded-2xl bg-card p-4 text-ink";
+const section = "rounded-[20px] bg-card p-5 text-ink";
+---
+
+<Layout title="Panel admina · Metando">
+  <div class="bg-app min-h-screen p-4 pb-32">
+    <div class="mx-auto max-w-5xl">
+      <Topbar title="Panel|admina" />
+
+      <nav class="mb-5 flex flex-wrap gap-2 text-sm font-bold" aria-label="Panel administratora">
+        <span class="rounded-full bg-card px-4 py-2 text-ink">Statystyki</span>
+        <a href="/admin/reports" class="rounded-full bg-page-2 px-4 py-2 text-page-ink hover:bg-page-deep">
+          Zgłoszenia{stats && stats.moderation.open_reports > 0 && ` (${String(stats.moderation.open_reports)})`}
+        </a>
+        <a href="/admin/places" class="rounded-full bg-page-2 px-4 py-2 text-page-ink hover:bg-page-deep">
+          Limit Google
+        </a>
+      </nav>
+
+      {!stats && <p class="rounded-2xl bg-bad-soft p-4 text-bad">Nie udało się wczytać statystyk.</p>}
+
+      {stats && (
+        <div class="flex flex-col gap-5" data-testid="admin-stats">
+          <p class="text-xs text-page-ink-2">Stan na {updated}. Odśwież stronę, aby przeliczyć.</p>
+
+          <section aria-label="Puls serwisu" class="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Użytkownicy</p>
+              <p class="display text-4xl leading-none">{stats.users.total}</p>
+              <p class="mt-1 text-xs text-ink-2">
+                +{stats.users.new_today} dziś · +{stats.users.new_7d} w 7 dni · +{stats.users.new_30d} w 30 dni
+              </p>
+            </div>
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Aktywni (logowanie)</p>
+              <p class="display text-4xl leading-none">{stats.users.active_7d}</p>
+              <p class="mt-1 text-xs text-ink-2">w 7 dni · {stats.users.active_30d} w 30 dni</p>
+            </div>
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Spotkania</p>
+              <p class="display text-4xl leading-none">{stats.events.total}</p>
+              <p class="mt-1 text-xs text-ink-2">
+                {stats.events.upcoming} nadchodzących · {stats.events.played} rozegranych · {stats.events.cancelled}{" "}
+                odwołanych
+              </p>
+            </div>
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Pełny skład</p>
+              <p class="display text-4xl leading-none">
+                {stats.events.filled_pct === null ? "—" : `${String(stats.events.filled_pct)}%`}
+              </p>
+              <p class="mt-1 text-xs text-ink-2">
+                rozegranych · średnio w{" "}
+                {stats.events.avg_fill_hours === null ? "—" : `${String(stats.events.avg_fill_hours)} h`}
+              </p>
+            </div>
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Dołączenia</p>
+              <p class="display text-4xl leading-none">{stats.events.joins}</p>
+              <p class="mt-1 text-xs text-ink-2">skład i rezerwa</p>
+            </div>
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Wiadomości w czatach</p>
+              <p class="display text-4xl leading-none">{stats.events.messages}</p>
+            </div>
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Spotkania na obiektach</p>
+              <p class="display text-4xl leading-none">{stats.events.venue_events}</p>
+              <p class="mt-1 text-xs text-ink-2">{stats.events.venue_approved} potwierdzonych</p>
+            </div>
+            <div class:list={tile}>
+              <p class="text-xs text-ink-3">Wynajem przez Metando</p>
+              <p class="display text-4xl leading-none">{formatPLN(stats.events.venue_revenue_cents)}</p>
+              <p class="mt-1 text-xs text-ink-2">potwierdzone, rozegrane</p>
+            </div>
+          </section>
+
+          <section class:list={section}>
+            <h2 class="display text-2xl leading-none">Ostatnie 30 dni</h2>
+            <div class="mt-4 grid gap-6 md:grid-cols-2">
+              {(
+                [
+                  ["signups", "Rejestracje"],
+                  ["events", "Nowe spotkania"],
+                  ["joins", "Dołączenia"],
+                  ["messages", "Wiadomości"],
+                ] as const
+              ).map(([key, title]) => (
+                <div>
+                  <h3 class="mb-2 text-sm font-bold">
+                    {title}{" "}
+                    <span class="font-normal text-ink-3">· razem {stats.daily.reduce((s, d) => s + d[key], 0)}</span>
+                  </h3>
+                  <Bars
+                    items={stats.daily.map((d) => ({
+                      label: dayLabel(d.day),
+                      value: d[key],
+                      title: `${d.day}: ${String(d[key])}`,
+                    }))}
+                    labelEvery={5}
+                    height={80}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section class:list={section}>
+            <h2 class="display text-2xl leading-none">Lejek i powroty</h2>
+            <p class="mt-1 text-xs text-ink-3">
+              Udział = organizacja albo miejsce w składzie (bez odwołanych spotkań).
+            </p>
+            <ul class="mt-4 flex flex-col gap-2.5">
+              {(
+                [
+                  ["Zarejestrowani", stats.funnel.registered],
+                  ["Zagrali co najmniej raz", stats.funnel.played_1],
+                  ["Zagrali 2+ razy", stats.funnel.played_2],
+                  ["Stali gracze (4+ spotkania)", stats.funnel.regular],
+                  ["Wracają w różnych tygodniach", stats.funnel.returning_weeks],
+                ] as const
+              ).map(([label, value]) => (
+                <li>
+                  <div class="flex justify-between text-sm">
+                    <span>{label}</span>
+                    <span class="font-bold">
+                      {value} <span class="font-normal text-ink-3">· {pct(value, stats.funnel.registered)}</span>
+                    </span>
+                  </div>
+                  <div class="mt-1 h-2.5 overflow-hidden rounded-full bg-card-2">
+                    <div
+                      class="h-full rounded-full bg-brand"
+                      style={`width: ${String(stats.funnel.registered > 0 ? Math.round((100 * value) / stats.funnel.registered) : 0)}%`}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <div class="grid gap-5 md:grid-cols-2">
+            <section class:list={section}>
+              <h2 class="display text-2xl leading-none">Sporty</h2>
+              <ul class="mt-4 flex flex-col gap-2">
+                {stats.sports.length === 0 && <li class="text-sm text-ink-3">Brak spotkań.</li>}
+                {stats.sports.map((s) => (
+                  <li class="flex items-center justify-between gap-3 text-sm">
+                    <span class="inline-flex items-center gap-2">
+                      <SportIcon sport={s.sport} size={16} />
+                      {sportLabel(s.sport)}
+                    </span>
+                    <span>
+                      <strong>{s.events}</strong> {plural(s.events, "spotkanie", "spotkania", "spotkań")} · {s.players}{" "}
+                      {plural(s.players, "miejsce", "miejsca", "miejsc")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section class:list={section}>
+              <h2 class="display text-2xl leading-none">Kiedy się gra</h2>
+              <h3 class="mt-4 mb-2 text-sm font-bold">Dni tygodnia</h3>
+              <Bars
+                items={WEEKDAYS.map((label, i) => ({
+                  label,
+                  value: stats.weekdays.find((w) => w.dow === i + 1)?.events ?? 0,
+                }))}
+                height={60}
+              />
+              <h3 class="mt-4 mb-2 text-sm font-bold">Godziny rozpoczęcia</h3>
+              <Bars
+                items={Array.from({ length: 24 }, (_, h) => ({
+                  label: String(h),
+                  value: stats.hours.find((x) => x.hour === h)?.events ?? 0,
+                }))}
+                height={60}
+                labelEvery={3}
+              />
+            </section>
+          </div>
+
+          <section class:list={section}>
+            <h2 class="display text-2xl leading-none">Gdzie się gra</h2>
+            <p class="mt-1 mb-3 text-xs text-ink-3">Spotkania z pinezką z ostatnich 90 dni ({stats.pins.length}).</p>
+            <AdminMap pins={stats.pins} client:load />
+            <h3 class="mt-4 mb-2 text-sm font-bold">Najpopularniejsze okolice</h3>
+            <ol class="grid gap-1 text-sm sm:grid-cols-2">
+              {stats.areas.map((a, i) => (
+                <li class="flex justify-between gap-3">
+                  <span class="truncate">
+                    {i + 1}. {a.area}
+                  </span>
+                  <strong>{a.events}</strong>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section class:list={section}>
+            <h2 class="display text-2xl leading-none">Obiekty</h2>
+            {stats.venues.length === 0 ? (
+              <p class="mt-3 text-sm text-ink-3">Żaden zarządca nie dodał jeszcze obiektu.</p>
+            ) : (
+              <div class="mt-3 overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                  <thead class="text-xs text-ink-3">
+                    <tr>
+                      <th class="py-1.5 pr-3 font-normal">Obiekt</th>
+                      <th class="py-1.5 pr-3 font-normal">Spotkania</th>
+                      <th class="py-1.5 pr-3 font-normal">Potwierdzone</th>
+                      <th class="py-1.5 font-normal">Wynajem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.venues.map((v) => (
+                      <tr class="border-t border-line">
+                        <td class="py-1.5 pr-3">
+                          {v.name} <span class="text-ink-3">· {v.area}</span>
+                        </td>
+                        <td class="py-1.5 pr-3">{v.events}</td>
+                        <td class="py-1.5 pr-3">{v.approved}</td>
+                        <td class="py-1.5">{formatPLN(v.revenue_cents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section class:list={section}>
+            <h2 class="display text-2xl leading-none">Barwy i preferencje</h2>
+            <ul class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+              <li>
+                Własny strój: <strong>{stats.adoption.kits}</strong> ({pct(stats.adoption.kits, stats.users.total)})
+              </li>
+              <li>
+                Ulubione sporty: <strong>{stats.adoption.favorites}</strong> (
+                {pct(stats.adoption.favorites, stats.users.total)})
+              </li>
+              <li>
+                Najczęstszy wzór:{" "}
+                <strong>{KIT_PATTERNS.find((p) => p.id === stats.adoption.top_pattern)?.label ?? "—"}</strong>
+              </li>
+              <li class="flex items-center gap-2">
+                Najczęstszy kolor:
+                {stats.adoption.top_color ? (
+                  <>
+                    <span
+                      class="inline-block size-4 rounded-full border border-line-strong"
+                      style={`background: ${stats.adoption.top_color}`}
+                    />
+                    <strong>{KIT_COLORS.find((c) => c.hex === stats.adoption.top_color)?.label}</strong>
+                  </>
+                ) : (
+                  <strong>—</strong>
+                )}
+              </li>
+            </ul>
+          </section>
+        </div>
+      )}
+    </div>
+  </div>
+</Layout>

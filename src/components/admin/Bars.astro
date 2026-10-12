@@ -1,0 +1,28 @@
+---
+// Prosty wykres słupkowy dla panelu administratora (bez bibliotek): słupki pionowe z podpisami.
+interface Props {
+  items: { label: string; value: number; title?: string }[];
+  /** Wysokość obszaru słupków w px. */
+  height?: number;
+  /** Podpis co n-ty słupek (np. dni miesiąca). */
+  labelEvery?: number;
+}
+
+const { items, height = 96, labelEvery = 1 } = Astro.props;
+const max = Math.max(1, ...items.map((i) => i.value));
+---
+
+<div class="flex items-end gap-[3px]" style={`height: ${String(height + 18)}px`}>
+  {items.map((item, index) => (
+    <div
+      class="flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
+      title={item.title ?? `${item.label}: ${String(item.value)}`}
+    >
+      <div
+        class:list={["w-full rounded-t-[3px]", item.value > 0 ? "bg-brand" : "bg-card-2"]}
+        style={`height: ${String(Math.max(2, Math.round((item.value / max) * height)))}px`}
+      />
+      <span class="h-3 text-[10px] leading-3 text-ink-3">{index % labelEvery === 0 ? item.label : ""}</span>
+    </div>
+  ))}
+</div>
