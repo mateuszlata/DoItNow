@@ -19,6 +19,7 @@ Produkcja: https://doitnow.doitnow-app.workers.dev
 - **Panel administratora** (`/admin`): użytkownicy i aktywność, spotkania i odsetek pełnych składów, wykresy z 30 dni, lejek i powroty, sporty, dni i godziny, mapa spotkań, obiekty, moderacja zgłoszeń i limit Google. Dostęp: konta z tabeli `admins`.
 - **Moje barwy**: kreator stroju (wzór, dwa kolory, numer albo inicjały) jako avatar w składzie, czacie i na górnym pasku; bez ustawienia — stały strój wyliczony z id konta.
 - **Moje sporty**: wybór ulubionych sportów („W co grasz?”) jako domyślny filtr listy; lista pozwala wybrać kilka sportów naraz.
+- **Odświeżanie na żywo** strony spotkania: co 15 s (przy widocznej karcie) porównanie odcisku stanu z serwerem; po zmianie przeładowanie w tym samym miejscu, a gdy ktoś pisze lub ma niezapisane składy — pasek „Coś się zmieniło”.
 - **Czat w wydarzeniu** dla organizatora, składu i rezerwy: usuwanie własnych wiadomości, ukrywanie przez organizatora, zgłaszanie do moderacji (`/admin/reports` dla kont z tabeli `admins`), limit 10 wiadomości na minutę.
 - **Regulamin i polityka prywatności** (`/regulamin`, `/prywatnosc`) z akceptacją przy rejestracji; zaakceptowana wersja trafia do metadanych konta. Dane operatora w `src/lib/legal.ts`.
 - **Ochrona rejestracji przed botami** (Cloudflare Turnstile, token sprawdzany na serwerze).

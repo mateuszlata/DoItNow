@@ -10,6 +10,7 @@ import EventChat from "@/components/chat/EventChat";
 import MatchLineup, { type LineupPlayerView } from "@/components/lineup/MatchLineup";
 import { getLineup, type SavedLineup } from "@/lib/services/lineups";
 import { supportsLineup } from "@/lib/lineup";
+import { eventVersion } from "@/lib/services/live";
 import { isChatOpen, listMessages } from "@/lib/services/chat";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -61,6 +62,9 @@ const summary = details
       guest_count: details.guest_count,
     }
   : publicEvent;
+
+// Odświeżanie na żywo: odcisk stanu spotkania w chwili renderowania (skrypt na dole porównuje go z serwerem).
+const liveVersion = supabase && summary ? await eventVersion(supabase, id, Boolean(user)) : null;
 
 const SUCCESS_MESSAGES: Record<string, string> = {
   joined: "Zgłoszenie wysłane. Organizator musi je zaakceptować.",
@@ -194,6 +198,18 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
   <div class="bg-app min-h-screen p-4 pb-40">
     <div class="mx-auto flex max-w-xl flex-col gap-5">
       <Topbar hideNav />
+      {liveVersion && <div hidden data-live-event={id} data-live-version={liveVersion} />}
+      <div
+        hidden
+        data-live-banner
+        role="status"
+        class="sticky top-2 z-50 flex items-center justify-between gap-3 rounded-full bg-brand px-4 py-2 text-sm font-bold text-on-brand shadow-lg"
+      >
+        Coś się zmieniło w spotkaniu.
+        <button type="button" data-live-reload class="rounded-full bg-ink px-3 py-1 text-xs text-card">
+          Odśwież
+        </button>
+      </div>
 
       <div class="-mt-2 flex items-center justify-between gap-3">
         <a
@@ -679,4 +695,72 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
       }
     });
   });
+</script>
+
+<script>
+  // Odświeżanie na żywo: co 15 s (gdy karta jest widoczna) porównujemy odcisk stanu spotkania z serwerem.
+  // Po zmianie strona przeładowuje się w tym samym miejscu — chyba że ktoś właśnie pisze albo ma
+  // niezapisane składy; wtedy pokazujemy pasek „Coś się zmieniło”.
+  const marker = document.querySelector<HTMLElement>("[data-live-event]");
+  const banner = document.querySelector<HTMLElement>("[data-live-banner]");
+  if (marker && banner) {
+    const eventId = marker.dataset.liveEvent ?? "";
+    const version = marker.dataset.liveVersion ?? "";
+    const scrollKey = `live-scroll:${eventId}`;
+
+    try {
+      const saved = sessionStorage.getItem(scrollKey);
+      if (saved) {
+        sessionStorage.removeItem(scrollKey);
+        window.scrollTo(0, Number(saved));
+      }
+    } catch {
+      // brak dostępu do sessionStorage — zostajemy na górze strony
+    }
+
+    const busy = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLTextAreaElement && active.value.trim()) return true;
+      if (active instanceof HTMLInputElement && active.type !== "checkbox" && active.type !== "radio") return true;
+      if (document.querySelector("[data-dirty]")) return true;
+      const draft = document.querySelector<HTMLTextAreaElement>("#chat-input");
+      return Boolean(draft?.value.trim());
+    };
+
+    const reload = () => {
+      try {
+        sessionStorage.setItem(scrollKey, String(window.scrollY));
+      } catch {
+        // bez zapamiętania przewinięcia
+      }
+      // Bez jednorazowych komunikatów (?ok=…, ?error=…), żeby nie pokazały się ponownie.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("ok");
+      url.searchParams.delete("error");
+      window.location.replace(url.toString());
+    };
+
+    banner.querySelector("[data-live-reload]")?.addEventListener("click", reload);
+
+    let changed = false;
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      if (!changed) {
+        try {
+          const response = await fetch(`/api/events/${eventId}/version`, { cache: "no-store" });
+          if (!response.ok) return;
+          const data = (await response.json()) as { version?: string | null };
+          changed = Boolean(data.version) && data.version !== version;
+        } catch {
+          return;
+        }
+      }
+      if (!changed) return;
+      if (busy()) banner.hidden = false;
+      else reload();
+    };
+
+    window.setInterval(() => void check(), 15000);
+    document.addEventListener("visibilitychange", () => void check());
+  }
 </script>

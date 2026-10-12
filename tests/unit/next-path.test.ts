@@ -36,3 +36,12 @@ describe("authHref", () => {
     expect(authHref("signup", null)).toBe("/auth/signup");
   });
 });
+
+describe("fingerprint", () => {
+  it("is stable for the same state and changes when the state changes", async () => {
+    const { fingerprint } = await import("@/lib/services/live");
+    const state = JSON.stringify([{ id: "e1", spots: 5 }, [{ id: "p1", status: "accepted" }], null]);
+    expect(fingerprint(state)).toBe(fingerprint(state));
+    expect(fingerprint(state)).not.toBe(fingerprint(state.replace("accepted", "withdrawn")));
+  });
+});

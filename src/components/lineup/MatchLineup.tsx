@@ -139,6 +139,7 @@ export default function MatchLineup({ eventId, sport, players, canEdit, initial 
     <section
       className="bg-page-2 text-page-ink flex flex-col gap-3 rounded-[20px] px-3.5 py-4"
       data-testid="match-lineup"
+      data-dirty={canEdit && dirty ? "" : undefined}
     >
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="display text-[30px] leading-none">Składy na mecz</h2>
