@@ -1,0 +1,62 @@
+---
+// „W co grasz?” — wybór ulubionych sportów kafelkami z ptaszkiem. Zapis: /api/profile/sports.
+import SportIcon from "@/components/SportIcon.astro";
+import { SPORTS } from "@/lib/sports";
+
+interface Props {
+  selected: string[];
+  /** Strona, na którą wracamy po zapisie. */
+  next: string;
+  /** Pierwsze pytanie na liście ogłoszeń (z opcją „Pomiń”) albo edycja w „Moje”. */
+  variant?: "onboarding" | "settings";
+}
+
+const { selected, next, variant = "settings" } = Astro.props;
+---
+
+<form method="POST" action="/api/profile/sports" class="flex flex-col gap-3" data-testid="sport-picker">
+  <input type="hidden" name="next" value={next} />
+  <fieldset>
+    <legend class="sr-only">Sporty, które Cię interesują</legend>
+    <div class="flex flex-wrap gap-2">
+      {SPORTS.map((s) => (
+        <label class="group inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border border-line-strong bg-card px-3.5 text-sm font-bold text-ink transition-colors has-checked:border-ink has-checked:bg-ink has-checked:text-card has-focus-visible:ring-2 has-focus-visible:ring-brand">
+          <input type="checkbox" name="sports" value={s.id} checked={selected.includes(s.id)} class="sr-only" />
+          <SportIcon sport={s.id} size={16} />
+          {s.label}
+          <svg
+            class="hidden group-has-checked:inline"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 12l5 5L20 7"></path>
+          </svg>
+        </label>
+      ))}
+    </div>
+  </fieldset>
+  <div class="flex flex-wrap items-center gap-2">
+    <button
+      type="submit"
+      class="h-11 rounded-full bg-brand px-5 text-sm font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
+    >
+      {variant === "onboarding" ? "Pokaż moje sporty" : "Zapisz"}
+    </button>
+    {variant === "onboarding" && (
+      <button
+        type="submit"
+        formaction="/api/profile/sports?skip=1"
+        class="h-11 rounded-full px-4 text-sm font-bold text-ink-2 hover:text-ink"
+      >
+        Pomiń — pokazuj wszystko
+      </button>
+    )}
+  </div>
+</form>

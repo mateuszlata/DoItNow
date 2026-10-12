@@ -306,7 +306,10 @@ export const EVENTS_PAGE_SIZE = 20;
 export const MAX_EVENTS_SHOWN = 500;
 
 export interface EventFilters {
+  /** Jeden sport (starsze linki); `sports` ma pierwszeństwo. */
   sport?: string;
+  /** Kilka sportów naraz; pusta lista = wszystkie. */
+  sports?: string[];
   day?: string;
   /** Szybki filtr terminu: today | tomorrow | weekend (ma pierwszeństwo przed `day`). */
   when?: string;
@@ -340,8 +343,11 @@ export async function listUpcomingEvents(
     .order("id", { ascending: true })
     .limit(limit + 1);
 
-  if (filters.sport && (SPORT_IDS as readonly string[]).includes(filters.sport)) {
-    query = query.eq("sport", filters.sport);
+  const sports = (filters.sports ?? (filters.sport ? [filters.sport] : [])).filter((id) =>
+    (SPORT_IDS as readonly string[]).includes(id),
+  );
+  if (sports.length > 0) {
+    query = query.in("sport", sports);
   }
   const quickRange = filters.when ? whenRange(filters.when, now) : null;
   if (quickRange) {

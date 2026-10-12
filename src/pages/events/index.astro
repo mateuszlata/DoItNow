@@ -12,10 +12,11 @@ import { formatPLN, shareCents } from "@/lib/money";
 import type { EventListItem } from "@/types";
 import EventMap from "@/components/map/EventMap";
 import VenueStatus from "@/components/events/VenueStatus.astro";
+import SportPicker from "@/components/SportPicker.astro";
+import { getFavoriteSports, normalizeSports, parseSportsParam } from "@/lib/services/preferences";
 import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, takenSpots, teamSize } from "@/lib/capacity";
 
 const { user } = Astro.locals;
-const sport = Astro.url.searchParams.get("sport") ?? "";
 const day = Astro.url.searchParams.get("day") ?? "";
 const whenParam = Astro.url.searchParams.get("when") ?? "";
 const when = (WHEN_OPTIONS as readonly string[]).includes(whenParam) ? whenParam : "";
@@ -28,6 +29,19 @@ const show = Number.isFinite(requestedShow)
   : EVENTS_PAGE_SIZE;
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
+
+// Sporty na liście: z adresu (`sports`, starsze `sport`), a bez niego — ulubione sporty zalogowanego.
+// `all` pokazuje wszystkie sporty mimo zapisanych ulubionych.
+const favorites = user && supabase ? await getFavoriteSports(supabase, user.id) : null;
+const hasFavorites = favorites !== null && favorites.length > 0;
+const sportsParam = parseSportsParam(Astro.url.searchParams.get("sports") ?? Astro.url.searchParams.get("sport"));
+const showAll = Astro.url.searchParams.has("all");
+const usingFavorites = sportsParam === null && !showAll && hasFavorites;
+const selected: string[] = sportsParam ?? (usingFavorites ? favorites : []);
+// Pierwsze wejście zalogowanego: pytamy, w co gra.
+const askSports = user !== null && favorites === null;
+const okKey = Astro.url.searchParams.get("ok");
+
 let events: EventListItem[] = [];
 let hasMore = false;
 let loadError = false;
@@ -35,7 +49,7 @@ if (supabase) {
   try {
     ({ events, hasMore } = await listUpcomingEvents(
       supabase,
-      { sport, day, when },
+      { sports: selected, day, when },
       { authenticated: Boolean(user), limit: show },
     ));
   } catch (error) {
@@ -45,15 +59,32 @@ if (supabase) {
   }
 }
 
+/** Parametry adresu dla wybranych sportów: ulubione nie potrzebują parametru, „wszystkie” przy ulubionych — `all`. */
+function sportsQuery(list: string[]): Record<string, string> {
+  const same =
+    favorites !== null &&
+    hasFavorites &&
+    list.length === favorites.length &&
+    list.every((id) => favorites.includes(id));
+  if (same) return {};
+  if (list.length === 0) return hasFavorites ? { all: "1" } : {};
+  return { sports: list.join(",") };
+}
+
 /** Link filtra z zachowaniem pozostałych filtrów; `null` usuwa parametr. */
-function filterHref(changes: Record<string, string | null>): string {
-  const params = new URLSearchParams();
-  const current: Record<string, string> = { sport, day, when };
-  for (const [key, value] of Object.entries({ ...current, ...changes })) {
-    if (value) params.set(key, value);
-  }
+function filterHref(changes: { sports?: string[]; when?: string | null; day?: string | null }): string {
+  const params = new URLSearchParams(sportsQuery(changes.sports ?? selected));
+  const nextWhen = changes.when === undefined ? when : changes.when;
+  const nextDay = changes.day === undefined ? day : changes.day;
+  if (nextWhen) params.set("when", nextWhen);
+  if (nextDay) params.set("day", nextDay);
   const query = params.toString();
   return query ? `/events?${query}` : "/events";
+}
+
+/** Kliknięcie kafelka sportu dokłada go do wyboru albo z niego usuwa. */
+function toggleSport(id: string): string[] {
+  return normalizeSports(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
 }
 
 const moreHref = (() => {
@@ -62,7 +93,12 @@ const moreHref = (() => {
   return `${href}${separator}show=${String(Math.min(show + EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN))}`;
 })();
 
-const WHEN_LABELS: Record<string, string> = { "": "Wszystkie", today: "Dziś", tomorrow: "Jutro", weekend: "Weekend" };
+const WHEN_LABELS: Record<string, string> = {
+  "": "Każdy termin",
+  today: "Dziś",
+  tomorrow: "Jutro",
+  weekend: "Weekend",
+};
 
 /** Mini-koszulki składu na karcie (do 12 miejsc; większe składy pokazują pasek). */
 function seats(event: EventListItem): boolean[] | null {
@@ -97,34 +133,98 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         </p>
       )}
 
+      {okKey === "sports-saved" && (
+        <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-4 py-2 text-sm font-semibold text-ok">
+          Zapisaliśmy Twoje sporty. Zmienisz je w zakładce „Moje”.
+        </p>
+      )}
+      {askSports && (
+        <section class="mb-5 rounded-[20px] bg-card p-4 text-ink" data-testid="ask-sports">
+          <h2 class="display text-2xl leading-none">W co grasz?</h2>
+          <p class="mt-1 mb-3 text-sm text-ink-2">
+            Zaznacz sporty, które Cię interesują — pokażemy przede wszystkim te spotkania.
+          </p>
+          <SportPicker selected={[]} next="/events" variant="onboarding" />
+        </section>
+      )}
+
+      <div class="mb-1.5 flex items-baseline justify-between gap-3">
+        <span class="text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Sport</span>
+        {usingFavorites && (
+          <span class="text-xs text-page-ink-2">
+            Twoje sporty ·{" "}
+            <a href="/my#moje-sporty" class="font-semibold text-page-link hover:underline">
+              zmień
+            </a>
+          </span>
+        )}
+        {hasFavorites && !usingFavorites && (
+          <a href={filterHref({ sports: favorites })} class="text-xs font-semibold text-page-link hover:underline">
+            Wróć do moich sportów
+          </a>
+        )}
+      </div>
       <nav
-        class="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
+        class="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:[mask-image:none]"
         aria-label="Sport"
         data-testid="sport-chips"
       >
-        {[{ id: "", label: "Wszystkie" }, ...SPORTS].map((s) => (
-          <a
-            href={filterHref({ sport: s.id || null })}
-            aria-current={s.id === sport ? "page" : undefined}
-            class:list={[
-              "inline-flex h-11 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
-              s.id === sport ? "bg-brand text-on-brand" : "bg-page-2 text-page-ink hover:bg-page-deep",
-            ]}
-          >
-            <SportIcon sport={s.id} />
-            {s.label}
-          </a>
-        ))}
+        <a
+          href={filterHref({ sports: [] })}
+          aria-current={selected.length === 0 ? "page" : undefined}
+          class:list={[
+            "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
+            selected.length === 0 ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
+          ]}
+        >
+          <SportIcon />
+          Wszystkie sporty
+        </a>
+        {SPORTS.map((s) => {
+          const on = selected.includes(s.id);
+          return (
+            <a
+              href={filterHref({ sports: toggleSport(s.id) })}
+              data-selected={on ? "" : undefined}
+              class:list={[
+                "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
+                on ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
+              ]}
+            >
+              <SportIcon sport={s.id} />
+              {s.label}
+              {on && <span class="sr-only">(wybrany)</span>}
+              {on && (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 12l5 5L20 7"></path>
+                </svg>
+              )}
+            </a>
+          );
+        })}
       </nav>
 
+      <span class="mb-1.5 block text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Kiedy</span>
       <form method="GET" class="mb-5 flex gap-1.5 rounded-full bg-page-deep p-1" aria-label="Termin">
-        {sport && <input type="hidden" name="sport" value={sport} />}
+        {Object.entries(sportsQuery(selected)).map(([name, value]) => (
+          <input type="hidden" name={name} value={value} />
+        ))}
         {["", ...WHEN_OPTIONS].map((option) => (
           <a
             href={filterHref({ when: option || null, day: null })}
             aria-current={option === when && !(option === "" && day) ? "page" : undefined}
             class:list={[
-              "grid h-10 flex-1 place-items-center rounded-full text-[13px] font-extrabold tracking-wide uppercase transition-colors",
+              "grid h-10 flex-1 place-items-center rounded-full text-[12px] font-extrabold tracking-wide whitespace-nowrap uppercase transition-colors sm:text-[13px]",
               option === when && !(option === "" && day) ? "bg-card text-ink" : "text-page-ink-2 hover:text-page-ink",
             ]}
           >
@@ -188,8 +288,8 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         <div class="rounded-[20px] bg-page-2 p-6 text-center">
           <p class="display text-3xl text-page-ink">Pusto na boisku</p>
           <p class="mt-2 text-sm text-page-ink-2">
-            Brak nadchodzących spotkań{sport || day || when ? " dla wybranych filtrów" : ""}. Wystaw własne — ktoś na
-            pewno dołączy.
+            Brak nadchodzących spotkań{selected.length > 0 || day || when ? " dla wybranych filtrów" : ""}. Wystaw
+            własne — ktoś na pewno dołączy.
           </p>
         </div>
       )}

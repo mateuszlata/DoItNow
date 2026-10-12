@@ -167,6 +167,17 @@ test("joining without approval is instant and the organizer can remove a partici
 
   // Uczestnik dołącza jednym kliknięciem i od razu jest w składzie.
   const participant = await signUpAndSignIn(browser, participantNick);
+
+  // Pierwsze wejście na listę: „W co grasz?” — po wyborze lista pokazuje ulubione sporty.
+  await participant.goto("/events");
+  const askSports = participant.getByTestId("ask-sports");
+  await askSports.getByText("Siatkówka").click();
+  await askSports.getByRole("button", { name: "Pokaż moje sporty" }).click();
+  await expect(participant.getByText("Zapisaliśmy Twoje sporty.")).toBeVisible();
+  await expect(participant.getByTestId("ask-sports")).toHaveCount(0);
+  await expect(participant.getByTestId("sport-chips").locator("[data-selected]")).toHaveText(/Siatkówka/);
+  await expect(participant.getByRole("listitem").filter({ hasText: area })).toBeVisible();
+
   await participant.goto(eventUrl);
   await expect(participant.getByTestId("join-mode")).toContainText("od razu");
   await participant.getByRole("button", { name: "Dołącz" }).click();

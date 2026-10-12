@@ -9,6 +9,8 @@ import { formatEventDate } from "@/lib/time";
 import type { MyEventItem } from "@/types";
 import SportCard from "@/components/events/SportCard.astro";
 import { minimumLabel, takenSpots, teamSize } from "@/lib/capacity";
+import SportPicker from "@/components/SportPicker.astro";
+import { getFavoriteSports } from "@/lib/services/preferences";
 
 // Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
 const user = Astro.locals.user;
@@ -26,6 +28,8 @@ const totalPending = organized
   .reduce((sum, e) => sum + e.pending_count, 0);
 const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
 const deleteError = Astro.url.searchParams.get("error");
+const favorites = supabase && user ? await getFavoriteSports(supabase, user.id) : null;
+const sportsSaved = Astro.url.searchParams.get("ok") === "sports-saved";
 ---
 
 <Layout title="Moje spotkania · Metando">
@@ -139,6 +143,15 @@ const deleteError = Astro.url.searchParams.get("error");
           Wyloguj się
         </button>
       </form>
+
+      <section id="moje-sporty" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
+        <h2 class="display text-2xl leading-none">Moje sporty</h2>
+        <p class="mt-1 mb-3 text-sm text-ink-2">
+          Lista ogłoszeń pokazuje najpierw te sporty. Bez zaznaczenia widzisz wszystkie.
+        </p>
+        {sportsSaved && <p class="mb-3 text-sm font-semibold text-ok">Zapisano.</p>}
+        <SportPicker selected={favorites ?? []} next="/my#moje-sporty" />
+      </section>
 
       <details class="mt-8 rounded-[20px] bg-page-2 px-5 py-4" open={deleteError ? true : undefined}>
         <summary class="cursor-pointer text-sm font-bold text-page-ink-2">Usuń konto</summary>
