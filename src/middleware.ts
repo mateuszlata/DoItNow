@@ -5,6 +5,12 @@ import { authHref, safeNext } from "@/lib/next-path";
 const PROTECTED_ROUTES = ["/events/new", "/my", "/venues", "/admin"];
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  // Jeden adres serwisu: www.metando.pl → metando.pl (z zachowaniem ścieżki).
+  if (context.url.hostname === "www.metando.pl") {
+    const target = new URL(context.url.pathname + context.url.search, "https://metando.pl");
+    return context.redirect(target.href, 301);
+  }
+
   const supabase = createClient(context.request.headers, context.cookies);
 
   if (supabase) {
