@@ -7,9 +7,11 @@ interface Props {
   token: string | null;
   invites: { id: string; name: string; answer: "yes" | "no" }[];
   origin: string;
+  /** Gotowa wiadomość z zaproszeniem (opis spotkania + link). */
+  message: string;
 }
 
-const { eventId, guestCount, token, invites, origin } = Astro.props;
+const { eventId, guestCount, token, invites, origin, message } = Astro.props;
 const yes = invites.filter((i) => i.answer === "yes");
 const no = invites.filter((i) => i.answer === "no");
 const pending = Math.max(guestCount - yes.length, 0);
@@ -41,23 +43,24 @@ const link = token ? `${origin}/i/${token}` : null;
 
       {link ? (
         <div class="mt-3 flex flex-col gap-2">
-          <input
-            type="text"
-            readonly
-            value={link}
-            aria-label="Link zaproszenia"
-            class="w-full rounded-lg border border-line-strong bg-card-2 px-3 py-2 text-xs text-ink"
-            data-invite-link
-          />
+          <label class="text-xs text-ink-3" for="invite-message">
+            Wiadomość do znajomych (możesz ją zmienić)
+          </label>
+          <textarea
+            id="invite-message"
+            rows="4"
+            class="w-full rounded-lg border border-line-strong bg-card-2 px-3 py-2 text-sm text-ink"
+            data-invite-message
+          >{message || link}</textarea>
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              data-invite-copy={link}
+              data-invite-copy
               class="h-10 rounded-full bg-brand px-4 text-sm font-extrabold tracking-wide text-on-brand uppercase"
             >
-              Kopiuj link
+              Kopiuj wiadomość
             </button>
-            <button type="button" data-invite-share={link} class="h-10 rounded-full bg-card-2 px-4 text-sm font-bold">
+            <button type="button" data-invite-share class="h-10 rounded-full bg-card-2 px-4 text-sm font-bold">
               Udostępnij
             </button>
           </div>
@@ -100,21 +103,21 @@ const link = token ? `${origin}/i/${token}` : null;
 </section>
 
 <script>
+  const message = () => document.querySelector<HTMLTextAreaElement>("[data-invite-message]")?.value.trim() ?? "";
   document.querySelectorAll<HTMLButtonElement>("[data-invite-copy]").forEach((button) => {
     button.addEventListener("click", () => {
-      const link = button.dataset.inviteCopy ?? "";
-      void navigator.clipboard.writeText(link).then(() => {
+      void navigator.clipboard.writeText(message()).then(() => {
         button.textContent = "✓ Skopiowano";
       });
     });
   });
   document.querySelectorAll<HTMLButtonElement>("[data-invite-share]").forEach((button) => {
     button.addEventListener("click", () => {
-      const url = button.dataset.inviteShare ?? "";
+      const text = message();
       if (typeof navigator.share === "function") {
-        void navigator.share({ title: "Zaproszenie na mecz w Metando", url }).catch(() => undefined);
+        void navigator.share({ title: "Zaproszenie na mecz w Metando", text }).catch(() => undefined);
       } else {
-        void navigator.clipboard.writeText(url).then(() => {
+        void navigator.clipboard.writeText(text).then(() => {
           button.textContent = "✓ Skopiowano";
         });
       }

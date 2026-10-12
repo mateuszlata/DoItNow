@@ -12,6 +12,7 @@ import { getLineup, type SavedLineup } from "@/lib/services/lineups";
 import { supportsLineup } from "@/lib/lineup";
 import { eventVersion } from "@/lib/services/live";
 import InvitePanel from "@/components/events/InvitePanel.astro";
+import { eventShareText, inviteShareText } from "@/lib/share";
 import { getInviteToken, inviteErrorMessage, releaseStaleInvites } from "@/lib/services/invites";
 import { isChatOpen, listMessages } from "@/lib/services/chat";
 import { authHref, safeNext } from "@/lib/next-path";
@@ -68,6 +69,10 @@ const summary = details
   : publicEvent;
 
 // Odświeżanie na żywo: odcisk stanu spotkania w chwili renderowania (skrypt na dole porównuje go z serwerem).
+// Gotowe wiadomości do udostępniania: opis spotkania + link (zamiast samego linku).
+const eventUrl = `${Astro.url.origin}/events/${id}`;
+const shareText = summary ? eventShareText(summary, Math.max(summary.spots - summary.accepted_count, 0), eventUrl) : "";
+
 const liveVersion = supabase && summary ? await eventVersion(supabase, id, Boolean(user)) : null;
 
 const SUCCESS_MESSAGES: Record<string, string> = {
@@ -117,6 +122,7 @@ const isOpen = details !== null && !isPast && details.status === "active";
 
 const isOrganizer = details !== null && user !== null && details.organizer_id === user.id;
 const inviteToken = details && isOrganizer && isOpen && supabase ? await getInviteToken(supabase, details.id) : null;
+const inviteText = details && inviteToken ? inviteShareText(details, `${Astro.url.origin}/i/${inviteToken}`) : "";
 const myParticipation = details?.my_participation ?? null;
 const myStatus = myParticipation?.status ?? null;
 const mustAnswer = details !== null && needsAnswer(details, myStatus, myParticipation?.stay_confirmed ?? null);
@@ -247,6 +253,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           type="button"
           aria-label="Udostępnij"
           data-share
+          data-share-text={shareText}
           class="grid size-11 place-items-center rounded-full bg-page-2 text-page-ink transition-colors hover:bg-page-deep"
         >
           <svg
@@ -285,6 +292,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           <button
             type="button"
             data-share
+            data-share-text={shareText}
             class="mt-3 h-12 w-full rounded-full bg-ink text-sm font-extrabold tracking-wide text-card uppercase"
           >
             Udostępnij ogłoszenie
@@ -522,6 +530,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               token={inviteToken}
               invites={details.invites}
               origin={Astro.url.origin}
+              message={inviteText}
             />
           )}
           {details && lineupPlayers.length >= 2 && (
@@ -542,6 +551,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               open={isChatOpen(details)}
               initialMessages={chat.messages}
               initialSyncedAt={chat.syncedAt}
+              shareText={shareText}
               client:visible
             />
           )}
@@ -696,15 +706,15 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
 </Layout>
 
 <script is:inline>
-  // Udostępnianie linku do ogłoszenia (bez parametrów komunikatów w adresie).
+  // Udostępnianie ogłoszenia: gotowa wiadomość z opisem spotkania i linkiem (bez parametrów komunikatów).
   document.querySelectorAll("[data-share]").forEach((button) => {
     button.addEventListener("click", async () => {
-      const url = location.origin + location.pathname;
+      const text = button.dataset.shareText || location.origin + location.pathname;
       try {
-        if (navigator.share) await navigator.share({ title: document.title, url });
+        if (navigator.share) await navigator.share({ title: document.title, text });
         else {
-          await navigator.clipboard.writeText(url);
-          alert("Link skopiowany do schowka.");
+          await navigator.clipboard.writeText(text);
+          alert("Wiadomość z linkiem skopiowana — wklej ją znajomym.");
         }
       } catch {
         // Anulowane udostępnianie — nic nie robimy.

@@ -16,6 +16,8 @@ interface Props {
   open: boolean;
   initialMessages: ChatMessage[];
   initialSyncedAt: string;
+  /** Gotowa wiadomość do udostępnienia (opis spotkania + link). */
+  shareText?: string;
 }
 
 const timeFormat = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" });
@@ -36,19 +38,20 @@ function withLinks(text: string) {
   );
 }
 
-async function shareEvent(eventId: string): Promise<string | null> {
+async function shareEvent(eventId: string, shareText?: string): Promise<string | null> {
   const url = `${window.location.origin}/events/${eventId}`;
+  const text = shareText ?? url;
   if (typeof navigator.share === "function") {
     try {
-      await navigator.share({ title: "Dołącz do spotkania w Metando", url });
+      await navigator.share({ title: "Dołącz do spotkania w Metando", text });
       return null;
     } catch {
       // anulowane udostępnianie — próbujemy schowka
     }
   }
   try {
-    await navigator.clipboard.writeText(url);
-    return "Link do spotkania skopiowany — wklej go znajomym.";
+    await navigator.clipboard.writeText(text);
+    return "Wiadomość z linkiem skopiowana — wklej ją znajomym.";
   } catch {
     return url;
   }
@@ -67,6 +70,7 @@ export default function EventChat({
   open,
   initialMessages,
   initialSyncedAt,
+  shareText,
 }: Props) {
   const { messages, error, sending, send, act } = useEventChat(eventId, initialMessages, initialSyncedAt);
   const [draft, setDraft] = useState("");
@@ -108,7 +112,7 @@ export default function EventChat({
           type="button"
           className="bg-card-2 hover:bg-line rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors"
           onClick={() => {
-            void shareEvent(eventId).then((message) => {
+            void shareEvent(eventId, shareText).then((message) => {
               if (message) setNotice(message);
             });
           }}

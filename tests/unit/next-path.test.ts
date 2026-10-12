@@ -45,3 +45,24 @@ describe("fingerprint", () => {
     expect(fingerprint(state)).not.toBe(fingerprint(state.replace("accepted", "withdrawn")));
   });
 });
+
+describe("share messages", () => {
+  const event = { sport: "siatkowka", area: "Wola", starts_at: "2026-11-07T17:00:00Z", duration_minutes: 90 };
+
+  it("describes the event and how many people are missing before the link", async () => {
+    const { eventShareText } = await import("@/lib/share");
+    const text = eventShareText(event, 3, "https://metando.pl/events/abc");
+    expect(text).toContain("🏐 Siatkówka");
+    expect(text).toContain("Wola");
+    expect(text).toContain("Brakuje jeszcze 3 osób.");
+    expect(text.endsWith("https://metando.pl/events/abc")).toBe(true);
+    expect(eventShareText(event, 1, "u")).toContain("Brakuje jeszcze 1 osoby.");
+  });
+
+  it("invites friends without inflecting the sport name", async () => {
+    const { inviteShareText } = await import("@/lib/share");
+    const text = inviteShareText(event, "https://metando.pl/i/xyz");
+    expect(text.startsWith("Hej! Zbieram ekipę: 🏐 Siatkówka")).toBe(true);
+    expect(text).toContain("bez zakładania konta");
+  });
+});
