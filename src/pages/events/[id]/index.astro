@@ -7,6 +7,8 @@ import SportIcon from "@/components/SportIcon.astro";
 import VenueStatus from "@/components/events/VenueStatus.astro";
 import Countdown from "@/components/events/Countdown.astro";
 import EventChat from "@/components/chat/EventChat";
+import MatchLineup, { type LineupPlayerView } from "@/components/lineup/MatchLineup";
+import { getLineup, type SavedLineup } from "@/lib/services/lineups";
 import { isChatOpen, listMessages } from "@/lib/services/chat";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -101,6 +103,7 @@ const isPast = summary ? new Date(summary.starts_at).getTime() <= Date.now() : f
 const isCancelled = details?.status === "cancelled";
 const organizerLeft = details?.status === "organizer_left";
 const isOpen = details !== null && !isPast && details.status === "active";
+
 const isOrganizer = details !== null && user !== null && details.organizer_id === user.id;
 const myParticipation = details?.my_participation ?? null;
 const myStatus = myParticipation?.status ?? null;
@@ -124,6 +127,26 @@ if (isChatMember && supabase && details) {
   const syncedAt = new Date(Date.now() - 5000).toISOString();
   const result = await listMessages(supabase, details.id);
   if (result.ok) chat = { messages: result.data, syncedAt };
+}
+
+// Składy na mecz (piłka nożna): grający organizator i przyjęci do składu — widzą je członkowie spotkania.
+let lineupPlayers: LineupPlayerView[] = [];
+let savedLineup: SavedLineup | null = null;
+if (details && supabase && details.sport === "pilka-nozna" && isChatMember) {
+  lineupPlayers = [
+    ...(details.organizer_plays && !organizerLeft
+      ? [
+          {
+            userId: details.organizer_id,
+            name: details.organizer_name,
+            kit: details.organizer_kit,
+            position: details.organizer_position,
+          },
+        ]
+      : []),
+    ...details.participants.map((p) => ({ userId: p.user_id, name: p.display_name, kit: p.kit, position: p.position })),
+  ];
+  savedLineup = lineupPlayers.length >= 2 ? await getLineup(supabase, details.id) : null;
 }
 
 const withdrawLocked = isOpen && myStatus === "accepted" && !canWithdraw && !mustAnswer;
@@ -464,6 +487,15 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               handover={details.handover_at !== null}
               removeFor={isOrganizer && isOpen ? details.id : undefined}
               viewerId={user?.id}
+            />
+          )}
+          {details && lineupPlayers.length >= 2 && (
+            <MatchLineup
+              eventId={details.id}
+              players={lineupPlayers}
+              canEdit={isOrganizer && isOpen}
+              initial={savedLineup}
+              client:load
             />
           )}
           {chat && details && user && (

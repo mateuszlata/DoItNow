@@ -12,7 +12,8 @@ import { minimumLabel, takenSpots, teamSize } from "@/lib/capacity";
 import SportPicker from "@/components/SportPicker.astro";
 import { getFavoriteSports } from "@/lib/services/preferences";
 import KitCreator from "@/components/KitCreator";
-import { getDisplayName, getKit } from "@/lib/services/profiles";
+import { getDisplayName, getFootballPosition, getKit } from "@/lib/services/profiles";
+import { FOOTBALL_POSITIONS } from "@/lib/lineup";
 import { defaultKit } from "@/lib/kit";
 import { isAdmin } from "@/lib/services/chat";
 
@@ -38,6 +39,8 @@ const kitStatus = Astro.url.searchParams.get("ok");
 const kit = supabase && user ? await getKit(supabase, user.id) : defaultKit("");
 const nick = (supabase && user ? await getDisplayName(supabase, user.id) : null) ?? "";
 const admin = supabase ? await isAdmin(supabase) : false;
+const position = supabase && user ? await getFootballPosition(supabase, user.id) : "obojetnie";
+const positionStatus = Astro.url.searchParams.get("ok");
 ---
 
 <Layout title="Moje spotkania · Metando">
@@ -170,6 +173,35 @@ const admin = supabase ? await isAdmin(supabase) : false;
           <p class="mb-3 text-sm font-semibold text-bad">Nie udało się zapisać stroju. Spróbuj ponownie.</p>
         )}
         <KitCreator initialKit={kit} nick={nick} saved={kitStatus === "kit-saved"} client:load />
+      </section>
+
+      <section id="moja-pozycja" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
+        <h2 class="display text-2xl leading-none">Moja pozycja</h2>
+        <p class="mt-1 mb-3 text-sm text-ink-2">
+          W piłce nożnej organizator może podzielić skład na drużyny według pozycji. Gdzie lubisz grać?
+        </p>
+        {positionStatus === "position-failed" && (
+          <p class="mb-3 text-sm font-semibold text-bad">Nie udało się zapisać pozycji. Spróbuj ponownie.</p>
+        )}
+        <form method="POST" action="/api/profile/position" class="flex flex-wrap items-center gap-2">
+          {FOOTBALL_POSITIONS.map((p) => (
+            <label class="inline-flex h-10 cursor-pointer items-center rounded-full border border-line-strong bg-card px-4 text-sm font-bold text-ink transition-colors has-checked:border-ink has-checked:bg-ink has-checked:text-card has-focus-visible:ring-2 has-focus-visible:ring-brand">
+              <input type="radio" name="position" value={p.id} checked={position === p.id} class="sr-only" />
+              {p.label}
+            </label>
+          ))}
+          <button
+            type="submit"
+            class:list={[
+              "h-10 rounded-full px-5 text-sm font-extrabold tracking-wide uppercase transition-colors",
+              positionStatus === "position-saved"
+                ? "bg-free text-white"
+                : "bg-brand text-on-brand hover:bg-brand-hover",
+            ]}
+          >
+            {positionStatus === "position-saved" ? "✓ Zapisano" : "Zapisz"}
+          </button>
+        </form>
       </section>
 
       <section id="moje-sporty" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
