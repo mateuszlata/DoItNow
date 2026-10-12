@@ -1,7 +1,10 @@
 ---
-// Skład jako koszulki z numerami (projekt D2): kremowe zajęte, pomarańczowa Twoja, ciemnozielone „+” wolne,
-// a pod spodem ławka rezerwowych. Zalogowani widzą nicki; goście tylko koszulki (bez danych osób, FR-001).
+// Skład jako koszulki (projekt D2): zalogowani widzą graczy w ich barwach (strój = avatar) z nickami,
+// goście — jednolite kremowe koszulki bez danych osób (FR-001). Ciemnozielone „+” to wolne miejsca,
+// pod spodem ławka rezerwowych.
 import Jersey from "@/components/Jersey.astro";
+import KitJersey from "@/components/KitJersey";
+import type { PlayerKit } from "@/lib/kit";
 import { jerseyNumber } from "@/lib/jerseys";
 import type { Participant } from "@/types";
 
@@ -9,6 +12,8 @@ interface Props {
   teamSize: number;
   /** Nick grającego organizatora (pierwsza koszulka, kapitan) albo null, gdy organizator nie gra. */
   organizerName: string | null;
+  /** Strój grającego organizatora. */
+  organizerKit?: PlayerKit;
   participants: Participant[];
   reserveSpots: number;
   reserves: Participant[];
@@ -28,6 +33,7 @@ const {
   sport,
   teamSize,
   organizerName,
+  organizerKit,
   participants,
   reserveSpots,
   reserves,
@@ -41,6 +47,7 @@ interface Slot {
   kind: "taken" | "free";
   number: string;
   name?: string;
+  kit?: PlayerKit;
   note?: string;
   captain?: boolean;
   mine?: boolean;
@@ -50,9 +57,10 @@ interface Slot {
 const taken: Slot[] = anonymous
   ? Array.from({ length: anonymous.taken }, (_, i) => ({ kind: "taken" as const, number: jerseyNumber(i) }))
   : [
-      ...(organizerName ? [{ name: organizerName, captain: true }] : []),
+      ...(organizerName ? [{ name: organizerName, kit: organizerKit, captain: true }] : []),
       ...participants.map((p) => ({
         name: p.display_name,
+        kit: p.kit,
         mine: p.user_id === viewerId,
         participationId: p.participation_id,
         note: handover && p.stay_confirmed == null ? "nie potwierdził(a)" : undefined,
@@ -70,6 +78,7 @@ const bench: Slot[] = [
         kind: "taken" as const,
         number: `R${String(i + 1)}`,
         name: p.display_name,
+        kit: p.kit,
         mine: p.user_id === viewerId,
         participationId: p.participation_id,
       }))),
@@ -93,12 +102,13 @@ const benchAll: Slot[] = [
           data-slot="taken"
           title={slot.captain ? "organizator (kapitan)" : undefined}
         >
-          <Jersey
-            sport={sport}
-            fill={slot.mine ? "#FF7A1A" : "#F3EAD3"}
-            trim={slot.mine ? "#0F3B2E" : "#FF7A1A"}
-            label={slot.number}
-          />
+          {slot.kit ? (
+            <span class:list={["rounded-2xl p-0.5", slot.mine && "bg-brand/30 ring-2 ring-brand"]}>
+              <KitJersey kit={slot.kit} sport={sport} width={54} />
+            </span>
+          ) : (
+            <Jersey sport={sport} fill="#F3EAD3" trim="#FF7A1A" label={slot.number} />
+          )}
           {slot.captain && (
             <span
               class="display absolute top-0 left-1 grid size-6 place-items-center rounded-full bg-brand text-sm text-on-brand shadow-[0_0_0_3px_var(--page-2)]"
@@ -166,13 +176,21 @@ const benchAll: Slot[] = [
         {benchAll.map((slot) =>
           slot.kind === "taken" ? (
             <li class="relative flex flex-col items-center gap-1" data-slot="reserve">
-              <Jersey
-                sport={sport}
-                fill={slot.mine ? "#FF7A1A" : "#FFC58F"}
-                numberColor="#0F3B2E"
-                label={slot.number}
-                width={50}
-              />
+              {slot.kit ? (
+                <span class:list={["rounded-2xl p-0.5", slot.mine && "bg-brand/30 ring-2 ring-brand"]}>
+                  <KitJersey kit={slot.kit} sport={sport} width={46} />
+                </span>
+              ) : (
+                <Jersey sport={sport} fill="#FFC58F" numberColor="#0F3B2E" label={slot.number} width={50} />
+              )}
+              {slot.kit && (
+                <span
+                  class="display absolute top-0 -left-1 grid h-5 min-w-5 place-items-center rounded-full bg-bench px-1 text-xs text-page-deep shadow-[0_0_0_3px_var(--page-2)]"
+                  aria-hidden="true"
+                >
+                  {slot.number}
+                </span>
+              )}
               <span class="max-w-20 truncate text-xs font-bold text-bench">{slot.name ?? "rezerwa"}</span>
               {removeFor && slot.participationId && (
                 <form

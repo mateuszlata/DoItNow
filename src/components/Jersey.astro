@@ -2,6 +2,7 @@
 // Strój z numerem: miejsce w składzie (projekt D2). Krój zależy od sportu — koszulka piłkarska,
 // koszykarska bez rękawów, polo do gier rakietowych, kolarska z zamkiem albo numer startowy biegacza.
 import { sportKit, type Kit } from "@/lib/sports";
+import { JERSEY_SHAPES } from "@/lib/kit";
 
 interface Props {
   /** Id sportu wydarzenia (wybiera krój stroju). */
@@ -20,36 +21,7 @@ const { sport = "", fill, trim, numberColor = "#0F3B2E", label = "", width = 58 
 const kit: Kit = sportKit(sport);
 const height = Math.round((width * 52) / 48);
 
-// Sylwetki w polu 48×52; `numberTop` to położenie numeru jako ułamek wysokości.
-const SHAPES: Record<Kit, { body: string; stripe?: string; detail?: string; numberTop: number }> = {
-  tank: {
-    body: "M15 2h6c0 5 1.5 8 3 8s3-3 3-8h6c0 6 2 10 7 12v36H8V14c5-2 7-6 7-12z",
-    stripe: "M8 44h32",
-    numberTop: 0.32,
-  },
-  tee: {
-    body: "M16 3l-6 3-9 8 5 8 6-4v32h24V18l6 4 5-8-9-8-6-3c-1 4-4 6-8 6s-7-2-8-6z",
-    stripe: "M12 44h24",
-    numberTop: 0.36,
-  },
-  polo: {
-    body: "M16 3l-6 3-9 8 5 8 6-4v32h24V18l6 4 5-8-9-8-6-3c-1 4-4 6-8 6s-7-2-8-6z",
-    detail: "M17 4l7 8 7-8M24 12v6",
-    stripe: "M12 46h24",
-    numberTop: 0.42,
-  },
-  cycling: {
-    body: "M17 3l-7 3-8 15 7 4 5-9v34h20V16l5 9 7-4-8-15-7-3c-1 3-4 5-7 5s-6-2-7-5z",
-    detail: "M24 8v9",
-    stripe: "M14 46h20",
-    numberTop: 0.42,
-  },
-  bib: {
-    body: "M8 9h32a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4z",
-    numberTop: 0.36,
-  },
-};
-const shape = SHAPES[kit];
+const shape = JERSEY_SHAPES[kit];
 ---
 
 <span class="relative inline-block shrink-0" style={`width: ${String(width)}px; height: ${String(height)}px`}>

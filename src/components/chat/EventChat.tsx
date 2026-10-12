@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { useEventChat } from "@/components/hooks/useEventChat";
+import KitJersey from "@/components/KitJersey";
+import { kitFrom } from "@/lib/kit";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/types";
 
@@ -133,7 +135,8 @@ export default function EventChat({
               key={message.id}
               className={cn("flex max-w-[85%] flex-col", mine ? "items-end self-end" : "items-start")}
             >
-              <span className="text-ink-3 mb-0.5 text-[11px]">
+              <span className="text-ink-3 mb-0.5 flex items-center gap-1.5 text-[11px]">
+                <KitJersey kit={kitFrom(message, message.author_id)} width={20} />
                 {mine ? "Ty" : message.author_name} · {formatTime(message.created_at)}
               </span>
               <p

@@ -1,4 +1,5 @@
 import { z } from "astro/zod";
+import { KIT_COLUMNS, kitFrom, type KitColumns } from "@/lib/kit";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
@@ -388,7 +389,7 @@ interface ParticipationWithProfile {
   user_id: string;
   status: ParticipationStatus;
   stay_confirmed: boolean | null;
-  profile: { display_name: string } | null;
+  profile: ({ display_name: string } & KitColumns) | null;
 }
 
 function toParticipant(row: ParticipationWithProfile): Participant {
@@ -396,6 +397,7 @@ function toParticipant(row: ParticipationWithProfile): Participant {
     participation_id: row.id,
     user_id: row.user_id,
     display_name: row.profile?.display_name ?? "Użytkownik",
+    kit: kitFrom(row.profile, row.user_id),
     stay_confirmed: row.stay_confirmed,
   };
 }
@@ -413,15 +415,17 @@ export async function getEventDetails(
   if (!UUID_PATTERN.test(id)) return null;
   const { data, error } = await supabase
     .from("events")
-    .select("*, organizer:profiles!events_organizer_profile_fkey(display_name)")
+    .select(`*, organizer:profiles!events_organizer_profile_fkey(display_name, ${KIT_COLUMNS})`)
     .eq("id", id)
-    .maybeSingle<EventRecord & { organizer: { display_name: string } | null }>();
+    .maybeSingle<EventRecord & { organizer: ({ display_name: string } & KitColumns) | null }>();
   if (error) throw new Error(`Nie udało się pobrać ogłoszenia: ${error.message}`);
   if (!data) return null;
 
   const { data: rows, error: participationsError } = await supabase
     .from("participations")
-    .select("id, user_id, status, stay_confirmed, created_at, updated_at, event_id, profile:profiles(display_name)")
+    .select(
+      `id, user_id, status, stay_confirmed, created_at, updated_at, event_id, profile:profiles(display_name, ${KIT_COLUMNS})`,
+    )
     .eq("event_id", id)
     .in("status", ["pending", "accepted", "reserve"])
     .order("updated_at", { ascending: true })
@@ -446,6 +450,7 @@ export async function getEventDetails(
   return {
     ...event,
     organizer_name: organizer?.display_name ?? "Użytkownik",
+    organizer_kit: kitFrom(organizer, event.organizer_id),
     participants,
     reserves,
     pending,

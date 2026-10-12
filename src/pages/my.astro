@@ -11,6 +11,9 @@ import SportCard from "@/components/events/SportCard.astro";
 import { minimumLabel, takenSpots, teamSize } from "@/lib/capacity";
 import SportPicker from "@/components/SportPicker.astro";
 import { getFavoriteSports } from "@/lib/services/preferences";
+import KitCreator from "@/components/KitCreator";
+import { getDisplayName, getKit } from "@/lib/services/profiles";
+import { defaultKit } from "@/lib/kit";
 
 // Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
 const user = Astro.locals.user;
@@ -30,6 +33,9 @@ const isPast = (e: MyEventItem) => new Date(e.starts_at).getTime() <= now;
 const deleteError = Astro.url.searchParams.get("error");
 const favorites = supabase && user ? await getFavoriteSports(supabase, user.id) : null;
 const sportsSaved = Astro.url.searchParams.get("ok") === "sports-saved";
+const kitStatus = Astro.url.searchParams.get("ok");
+const kit = supabase && user ? await getKit(supabase, user.id) : defaultKit("");
+const nick = (supabase && user ? await getDisplayName(supabase, user.id) : null) ?? "";
 ---
 
 <Layout title="Moje spotkania · Metando">
@@ -143,6 +149,18 @@ const sportsSaved = Astro.url.searchParams.get("ok") === "sports-saved";
           Wyloguj się
         </button>
       </form>
+
+      <section id="moj-stroj" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
+        <h2 class="display text-2xl leading-none">Moje barwy</h2>
+        <p class="mt-1 mb-4 text-sm text-ink-2">
+          Twój strój to Twój znak rozpoznawczy w składzie i w czacie. Wybierz wzór, kolory i ulubiony numer.
+        </p>
+        {kitStatus === "kit-saved" && <p class="mb-3 text-sm font-semibold text-ok">Strój zapisany.</p>}
+        {kitStatus === "kit-failed" && (
+          <p class="mb-3 text-sm font-semibold text-bad">Nie udało się zapisać stroju. Spróbuj ponownie.</p>
+        )}
+        <KitCreator initialKit={kit} nick={nick} client:visible />
+      </section>
 
       <section id="moje-sporty" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
         <h2 class="display text-2xl leading-none">Moje sporty</h2>

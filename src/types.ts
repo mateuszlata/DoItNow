@@ -1,3 +1,5 @@
+import type { PlayerKit } from "@/lib/kit";
+
 import type { SportId } from "@/lib/sports";
 
 /** `organizer_left`: organizator odwołał spotkanie z uczestnikami, czeka na przejęcie przez uczestnika. */
@@ -77,11 +79,13 @@ export interface ParticipationRecord {
   stay_confirmed: boolean | null;
 }
 
-/** Uczestnik lub zgłaszający widoczny w szczegółach: tylko nick, nigdy e-mail (FR-006). */
+/** Uczestnik lub zgłaszający widoczny w szczegółach: tylko nick i strój, nigdy e-mail (FR-006). */
 export interface Participant {
   participation_id: string;
   user_id: string;
   display_name: string;
+  /** Barwy gracza (własne albo domyślne z id konta). */
+  kit: PlayerKit;
   /** Po odwołaniu przez organizatora: czy uczestnik potwierdził, że zostaje (null = nie odpowiedział). */
   stay_confirmed?: boolean | null;
 }
@@ -89,6 +93,7 @@ export interface Participant {
 /** Szczegóły ogłoszenia dla zalogowanego użytkownika. */
 export interface EventDetails extends EventRecord {
   organizer_name: string;
+  organizer_kit: PlayerKit;
   /** Zaakceptowani uczestnicy. */
   participants: Participant[];
   /** Lista rezerwowa w kolejności awansu. */
@@ -148,6 +153,11 @@ export interface ChatMessage {
   body: string | null;
   created_at: string;
   hidden: boolean;
+  /** Strój autora (puste = domyślny z id konta). */
+  kit_pattern: string | null;
+  kit_primary: string | null;
+  kit_secondary: string | null;
+  kit_label: string | null;
 }
 
 /** Otwarte zgłoszenie wiadomości do moderacji (strona administratora). */
