@@ -95,6 +95,14 @@ describe("parseEventForm: skład i pinezka", () => {
     expect(result.ok && result.data).toMatchObject({ spots: 12, organizerPlays: false });
   });
 
+  it("organizer guests take places in the team but must leave at least one for Metando", () => {
+    const withGuests = parseEventForm({ ...base, guests: "3" }, now);
+    expect(withGuests.ok && withGuests.data).toMatchObject({ spots: 8, guestCount: 3 });
+    const full = parseEventForm({ ...base, guests: "11" }, now);
+    expect(!full.ok && full.errors.guests).toBe("Zostaw co najmniej jedno miejsce dla graczy z Metando.");
+    expect(parseEventForm({ ...base, guests: "-1" }, now).ok).toBe(false);
+  });
+
   it("accepts an optional pin and rejects coordinates out of range or without a pair", () => {
     const pinned = parseEventForm({ ...base, lat: "52.2297", lng: "21.0122" }, now);
     expect(pinned.ok && pinned.data).toMatchObject({ lat: 52.2297, lng: 21.0122 });
@@ -113,6 +121,13 @@ describe("capacity", () => {
     expect(teamSize(event)).toBe(12);
     expect(takenSpots(event)).toBe(4);
     expect(freeSpots(event)).toBe(8);
+  });
+
+  it("counts organizer guests as taken places in the team", () => {
+    const event = { spots: 8, organizer_plays: true, guest_count: 3, accepted_count: 2 };
+    expect(teamSize(event)).toBe(12);
+    expect(takenSpots(event)).toBe(6);
+    expect(freeSpots(event)).toBe(6);
   });
 
   it("does not count an organizer who only organizes", () => {

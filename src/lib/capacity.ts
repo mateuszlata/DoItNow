@@ -1,12 +1,14 @@
-// Liczenie składu: `spots` to miejsca do obsadzenia, a organizator, który gra, zajmuje jedno więcej.
+// Liczenie składu: `spots` to miejsca do obsadzenia przez Metando, organizator, który gra, zajmuje jedno więcej,
+// a goście organizatora (znajomi spoza aplikacji) — kolejne.
 interface Capacity {
   spots: number;
   organizer_plays: boolean;
+  guest_count?: number;
 }
 
 /** Liczba osób w całym składzie, np. 12 przy grze 6 na 6. */
 export function teamSize(event: Capacity): number {
-  return event.spots + (event.organizer_plays ? 1 : 0);
+  return event.spots + (event.organizer_plays ? 1 : 0) + (event.guest_count ?? 0);
 }
 
 /** Wolne miejsca: miejsca do obsadzenia minus zaakceptowani uczestnicy. */
@@ -16,7 +18,7 @@ export function freeSpots(event: Capacity & { accepted_count: number }): number 
 
 /** Zajęte miejsca w składzie, łącznie z grającym organizatorem. */
 export function takenSpots(event: Capacity & { accepted_count: number }): number {
-  return event.accepted_count + (event.organizer_plays ? 1 : 0);
+  return event.accepted_count + (event.organizer_plays ? 1 : 0) + (event.guest_count ?? 0);
 }
 
 /** Ilu osób brakuje do minimum (0 = spotkanie dojdzie do skutku); null, gdy organizator nie ustawił minimum. */

@@ -46,6 +46,19 @@ async function acceptParticipant(eventId: string, participant: TestUser): Promis
   if (!decision.ok) throw new Error(`accept failed: ${decision.code}`);
 }
 
+describe("goście organizatora", () => {
+  it("are saved on create and edit and keep the team size", async () => {
+    const eventId = await insertEvent(organizer, new Date(Date.now() + 96 * HOUR), 4);
+    const result = await updateEvent(organizer.client, eventId, editForm({ total: "8", guests: "2" }));
+    if (!result.ok) throw new Error(JSON.stringify(result.errors));
+    // 8 osób: grający organizator + 2 gości + 5 miejsc do obsadzenia w Metando
+    expect(result.event).toMatchObject({ spots: 5, guest_count: 2 });
+
+    const { events } = await listUpcomingEvents(anonClient(), {}, { authenticated: false, limit: 500 });
+    expect(events.find((e) => e.id === eventId)).toMatchObject({ guest_count: 2, spots: 5 });
+  });
+});
+
 describe("edycja ogłoszenia (FR-004)", () => {
   it("the organizer can edit an event more than 12 h before it starts", async () => {
     const eventId = await insertEvent(organizer, new Date(Date.now() + 72 * HOUR), 2);
@@ -101,6 +114,7 @@ describe("edycja ogłoszenia (FR-004)", () => {
       p_requires_approval: false,
       p_duration_minutes: 90,
       p_venue_id: null,
+      p_guest_count: 0,
     });
     expect(error?.message).toBe("STARTS_IN_PAST");
   });
@@ -141,6 +155,7 @@ describe("skład i pinezka", () => {
       p_requires_approval: false,
       p_duration_minutes: 90,
       p_venue_id: null,
+      p_guest_count: 0,
     });
     expect(error?.message).toBe("INVALID_DATA");
   });

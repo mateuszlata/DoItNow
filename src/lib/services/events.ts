@@ -57,6 +57,15 @@ export const createEventSchema = z.object({
     .min(1, "Skład musi mieć co najmniej 1 osobę.")
     .max(50, "Maksymalnie 50 osób."),
   organizerPlays: checkbox,
+  // Znajomi organizatora spoza Metando — zajmują miejsca w składzie (puste = brak).
+  guests: z.preprocess(
+    (v) => (v === "" || v === undefined ? 0 : v),
+    z.coerce
+      .number({ error: "Podaj liczbę znajomych." })
+      .int("Liczba musi być całkowita.")
+      .min(0, "Nie może być ujemna.")
+      .max(49, "Maksymalnie 49 osób."),
+  ),
   // Zgłoszenia czekają na decyzję organizatora (domyślnie dołączenie jest natychmiastowe).
   requiresApproval: checkbox,
   // Liczba miejsc na liście rezerwowej (puste = brak rezerwy).
@@ -83,8 +92,8 @@ export const createEventSchema = z.object({
 });
 
 export type EventFormField = keyof z.input<typeof createEventSchema>;
-/** Surowe wartości pól formularza, tak jak przychodzą z przeglądarki. */
-export type EventFormValues = Record<EventFormField, string>;
+/** Surowe wartości pól formularza, tak jak przychodzą z przeglądarki (`guests` może nie wystąpić). */
+export type EventFormValues = Record<Exclude<EventFormField, "guests">, string> & { guests?: string };
 export type FieldErrors = Partial<Record<EventFormField | "form", string>>;
 
 export type CreateEventResult = { ok: true; event: EventRecord } | { ok: false; errors: FieldErrors };
@@ -97,8 +106,10 @@ export interface ParsedEvent {
   startsAt: Date;
   durationMinutes: number;
   venueId: string | null;
-  /** Miejsca do obsadzenia: skład minus organizator, jeśli gra. */
+  /** Miejsca do obsadzenia przez Metando: skład minus organizator, jeśli gra, i jego goście. */
   spots: number;
+  /** Goście organizatora (znajomi spoza aplikacji). */
+  guestCount: number;
   organizerPlays: boolean;
   requiresApproval: boolean;
   reserveSpots: number;
@@ -134,9 +145,12 @@ export function parseEventForm(
   if (startsAt.getTime() <= now.getTime()) {
     return { ok: false, errors: { startsAt: "Wydarzenie musi odbyć się w przyszłości." } };
   }
-  const spots = data.total - (data.organizerPlays ? 1 : 0);
-  if (spots < 1) {
+  const spots = data.total - (data.organizerPlays ? 1 : 0) - data.guests;
+  if (data.total - (data.organizerPlays ? 1 : 0) < 1) {
     return { ok: false, errors: { total: "Skoro bierzesz udział, skład musi liczyć co najmniej 2 osoby." } };
+  }
+  if (spots < 1) {
+    return { ok: false, errors: { guests: "Zostaw co najmniej jedno miejsce dla graczy z Metando." } };
   }
   if (data.minPeople !== null && data.minPeople > data.total) {
     return { ok: false, errors: { minPeople: "Minimum nie może być większe niż skład." } };
@@ -154,6 +168,7 @@ export function parseEventForm(
       durationMinutes: data.durationMinutes,
       venueId: data.venueId,
       spots,
+      guestCount: data.guests,
       organizerPlays: data.organizerPlays,
       requiresApproval: data.requiresApproval,
       reserveSpots: data.reserveSpots,
@@ -221,6 +236,7 @@ export async function createEvent(
       spots: data.spots,
       description: data.description,
       organizer_plays: data.organizerPlays,
+      guest_count: data.guestCount,
       lat: data.lat,
       lng: data.lng,
       reserve_spots: data.reserveSpots,
@@ -278,6 +294,7 @@ export async function updateEvent(
     p_spots: data.spots,
     p_description: data.description ?? "",
     p_organizer_plays: data.organizerPlays,
+    p_guest_count: data.guestCount,
     p_lat: data.lat,
     p_lng: data.lng,
     p_reserve_spots: data.reserveSpots,
@@ -331,8 +348,8 @@ export async function listUpcomingEvents(
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
   const columns: string = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count";
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
@@ -377,7 +394,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   const { data, error } = await supabase
     .from("events_public")
     .select(
-      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status",
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count",
     )
     .eq("id", id)
     .maybeSingle<PublicEvent>();

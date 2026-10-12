@@ -172,6 +172,23 @@ const borderClass = (name: keyof FieldErrors) =>
     </span>
   </label>
 
+  <label class="text-sm text-ink-2">
+    Przyprowadzasz znajomych spoza Metando? (opcjonalnie)
+    <input
+      type="number"
+      name="guests"
+      min="0"
+      max="49"
+      placeholder="0"
+      value={values.guests ?? ""}
+      class:list={[inputClass, borderClass("guests")]}
+    />
+    <span class="mt-1 block text-xs text-ink-3">
+      Zajmą miejsca w składzie — inni zobaczą je jako „gość organizatora”.
+    </span>
+    {errors.guests && <span class="mt-1 block text-xs text-bad">{errors.guests}</span>}
+  </label>
+
   <details class="group rounded-2xl bg-card-2 px-4 py-3" open={moreOpen} data-more-options>
     <summary class="cursor-pointer text-sm font-bold text-ink">
       Więcej opcji

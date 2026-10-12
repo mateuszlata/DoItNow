@@ -163,6 +163,7 @@ describe("widoczność (FR-001, FR-006)", () => {
       "area",
       "cost_cents",
       "duration_minutes",
+      "guest_count",
       "id",
       "min_people",
       "organizer_plays",

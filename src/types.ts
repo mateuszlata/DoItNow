@@ -26,6 +26,8 @@ export interface EventRecord {
   lng: number | null;
   /** Limit listy rezerwowej (0 = bez rezerwy). */
   reserve_spots: number;
+  /** Goście organizatora — znajomi spoza Metando zajmujący miejsca w składzie. */
+  guest_count: number;
   /** Minimalna liczba osób w składzie (z grającym organizatorem), żeby spotkanie się odbyło. */
   min_people: number | null;
   /** Kiedy pierwotny organizator odwołał spotkanie z uczestnikami. */
@@ -60,6 +62,7 @@ export type PublicEvent = Pick<
   | "duration_minutes"
   | "cost_cents"
   | "venue_status"
+  | "guest_count"
 > & {
   accepted_count: number;
   reserve_count: number;

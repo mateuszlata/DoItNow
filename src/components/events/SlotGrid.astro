@@ -19,6 +19,8 @@ interface Props {
   reserves: Participant[];
   /** Po odwołaniu przez organizatora oznaczamy osoby, które jeszcze nie odpowiedziały. */
   handover: boolean;
+  /** Goście organizatora (znajomi spoza Metando) — zajęte miejsca bez kont. */
+  guests?: number;
   /** Dla gości: liczby zajętych miejsc bez nicków. */
   anonymous?: { taken: number; reserved: number };
   /** Id ogłoszenia, gdy ogląda organizator: przy osobach pojawia się przycisk „Usuń”. */
@@ -35,6 +37,7 @@ const {
   organizerName,
   organizerKit,
   participants,
+  guests = 0,
   reserveSpots,
   reserves,
   handover,
@@ -50,6 +53,7 @@ interface Slot {
   kit?: PlayerKit;
   note?: string;
   captain?: boolean;
+  guest?: boolean;
   mine?: boolean;
   participationId?: string;
 }
@@ -65,6 +69,7 @@ const taken: Slot[] = anonymous
         participationId: p.participation_id,
         note: handover && p.stay_confirmed == null ? "nie potwierdził(a)" : undefined,
       })),
+      ...Array.from({ length: guests }, () => ({ name: "gość organizatora", guest: true })),
     ].map((p, i) => ({ kind: "taken" as const, number: jerseyNumber(i), ...p }));
 const team: Slot[] = [
   ...taken,
@@ -99,13 +104,15 @@ const benchAll: Slot[] = [
       slot.kind === "taken" ? (
         <li
           class="relative flex flex-col items-center gap-1"
-          data-slot="taken"
-          title={slot.captain ? "organizator (kapitan)" : undefined}
+          data-slot={slot.guest ? "guest" : "taken"}
+          title={slot.captain ? "organizator (kapitan)" : slot.guest ? "znajomy organizatora spoza Metando" : undefined}
         >
           {slot.kit ? (
             <span class:list={["rounded-2xl p-0.5", slot.mine && "bg-brand/30 ring-2 ring-brand"]}>
               <KitJersey kit={slot.kit} sport={sport} width={54} />
             </span>
+          ) : slot.guest ? (
+            <Jersey sport={sport} fill="#2B6553" trim="#F3EAD3" numberColor="#F3EAD3" label="G" />
           ) : (
             <Jersey sport={sport} fill="#F3EAD3" trim="#FF7A1A" label={slot.number} />
           )}
@@ -117,7 +124,12 @@ const benchAll: Slot[] = [
               K
             </span>
           )}
-          <span class:list={["max-w-full truncate px-1 text-xs font-bold", slot.mine ? "text-brand" : "text-page-ink"]}>
+          <span
+            class:list={[
+              "max-w-full truncate px-1 text-xs font-bold",
+              slot.mine ? "text-brand" : slot.guest ? "text-page-ink-2" : "text-page-ink",
+            ]}
+          >
             {slot.name ?? "zajęte"}
             {slot.captain && <span class="sr-only"> (kapitan, organizator)</span>}
           </span>

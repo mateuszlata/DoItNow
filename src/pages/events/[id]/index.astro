@@ -58,6 +58,7 @@ const summary = details
       duration_minutes: details.duration_minutes,
       cost_cents: details.cost_cents,
       venue_status: details.venue_status,
+      guest_count: details.guest_count,
     }
   : publicEvent;
 
@@ -483,6 +484,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               organizerName={details.organizer_plays && !organizerLeft ? details.organizer_name : null}
               organizerKit={details.organizer_kit}
               participants={details.participants}
+              guests={details.guest_count}
               reserveSpots={details.reserve_spots}
               reserves={details.reserves}
               handover={details.handover_at !== null}
@@ -524,7 +526,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               reserves={[]}
               handover={false}
               anonymous={{
-                taken: publicEvent.accepted_count + (publicEvent.organizer_plays ? 1 : 0),
+                taken: publicEvent.accepted_count + (publicEvent.organizer_plays ? 1 : 0) + publicEvent.guest_count,
                 reserved: publicEvent.reserve_count,
               }}
             />
