@@ -479,12 +479,18 @@ export async function getEventDetails(
       if (isPosition(event.sport, row.position)) positions.set(row.user_id, row.position);
     }
   }
+  const { data: inviteRows } = await supabase
+    .from("invite_responses")
+    .select("id, name, answer")
+    .eq("event_id", id)
+    .order("created_at", { ascending: true });
   const withPosition = (p: Participant): Participant => ({ ...p, position: positions.get(p.user_id) ?? "obojetnie" });
   return {
     ...event,
     organizer_name: organizer?.display_name ?? "Użytkownik",
     organizer_kit: kitFrom(organizer, event.organizer_id),
     organizer_position: positions.get(event.organizer_id) ?? "obojetnie",
+    invites: inviteRows ?? [],
     participants: participants.map(withPosition),
     reserves: reserves.map(withPosition),
     pending: pending.map(withPosition),

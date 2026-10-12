@@ -173,7 +173,7 @@ const borderClass = (name: keyof FieldErrors) =>
   </label>
 
   <label class="text-sm text-ink-2">
-    Przyprowadzasz znajomych spoza Metando? (opcjonalnie)
+    Ilu znajomych spoza Metando zapraszasz? (opcjonalnie)
     <input
       type="number"
       name="guests"
@@ -184,7 +184,8 @@ const borderClass = (name: keyof FieldErrors) =>
       class:list={[inputClass, borderClass("guests")]}
     />
     <span class="mt-1 block text-xs text-ink-3">
-      Zajmą miejsca w składzie — inni zobaczą je jako „gość organizatora”.
+      Zarezerwujemy dla nich miejsca („?”). Po publikacji dostaniesz link — znajomi odpowiedzą „Będę” bez zakładania
+      konta.
     </span>
     {errors.guests && <span class="mt-1 block text-xs text-bad">{errors.guests}</span>}
   </label>

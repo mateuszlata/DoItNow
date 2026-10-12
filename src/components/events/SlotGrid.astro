@@ -19,8 +19,10 @@ interface Props {
   reserves: Participant[];
   /** Po odwołaniu przez organizatora oznaczamy osoby, które jeszcze nie odpowiedziały. */
   handover: boolean;
-  /** Goście organizatora (znajomi spoza Metando) — zajęte miejsca bez kont. */
+  /** Goście organizatora (znajomi spoza Metando) — zarezerwowane miejsca bez kont. */
   guests?: number;
+  /** Imiona zaproszonych, którzy odpowiedzieli „Będę” (pozostałe miejsca gości to „?”). */
+  guestNames?: string[];
   /** Dla gości: liczby zajętych miejsc bez nicków. */
   anonymous?: { taken: number; reserved: number };
   /** Id ogłoszenia, gdy ogląda organizator: przy osobach pojawia się przycisk „Usuń”. */
@@ -38,6 +40,7 @@ const {
   organizerKit,
   participants,
   guests = 0,
+  guestNames = [],
   reserveSpots,
   reserves,
   handover,
@@ -54,6 +57,8 @@ interface Slot {
   note?: string;
   captain?: boolean;
   guest?: boolean;
+  /** Zaproszony bez odpowiedzi („?”). */
+  pending?: boolean;
   mine?: boolean;
   participationId?: string;
 }
@@ -69,7 +74,12 @@ const taken: Slot[] = anonymous
         participationId: p.participation_id,
         note: handover && p.stay_confirmed == null ? "nie potwierdził(a)" : undefined,
       })),
-      ...Array.from({ length: guests }, () => ({ name: "gość organizatora", guest: true })),
+      ...guestNames.map((name) => ({ name: `${name} (gość)`, guest: true })),
+      ...Array.from({ length: Math.max(guests - guestNames.length, 0) }, () => ({
+        name: "zaproszony",
+        guest: true,
+        pending: true,
+      })),
     ].map((p, i) => ({ kind: "taken" as const, number: jerseyNumber(i), ...p }));
 const team: Slot[] = [
   ...taken,
@@ -104,13 +114,23 @@ const benchAll: Slot[] = [
       slot.kind === "taken" ? (
         <li
           class="relative flex flex-col items-center gap-1"
-          data-slot={slot.guest ? "guest" : "taken"}
-          title={slot.captain ? "organizator (kapitan)" : slot.guest ? "znajomy organizatora spoza Metando" : undefined}
+          data-slot={slot.pending ? "invited" : slot.guest ? "guest" : "taken"}
+          title={
+            slot.captain
+              ? "organizator (kapitan)"
+              : slot.pending
+                ? "zaproszony przez organizatora — jeszcze nie odpowiedział"
+                : slot.guest
+                  ? "znajomy organizatora spoza Metando"
+                  : undefined
+          }
         >
           {slot.kit ? (
             <span class:list={["rounded-2xl p-0.5", slot.mine && "bg-brand/30 ring-2 ring-brand"]}>
               <KitJersey kit={slot.kit} sport={sport} width={54} />
             </span>
+          ) : slot.pending ? (
+            <Jersey sport={sport} fill="#1F5444" trim="#FFC58F" numberColor="#FFC58F" label="?" />
           ) : slot.guest ? (
             <Jersey sport={sport} fill="#2B6553" trim="#F3EAD3" numberColor="#F3EAD3" label="G" />
           ) : (

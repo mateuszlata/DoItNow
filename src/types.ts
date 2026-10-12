@@ -100,6 +100,8 @@ export interface EventDetails extends EventRecord {
   organizer_name: string;
   organizer_kit: PlayerKit;
   organizer_position: string;
+  /** Odpowiedzi zaproszonych spoza Metando (widoczne dla członków spotkania). */
+  invites: { id: string; name: string; answer: "yes" | "no" }[];
   /** Zaakceptowani uczestnicy. */
   participants: Participant[];
   /** Lista rezerwowa w kolejności awansu. */

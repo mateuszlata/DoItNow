@@ -14,7 +14,7 @@ Produkcja: https://doitnow.doitnow-app.workers.dev
 - **Obiekty zarządców**: cennik za godzinę, godziny otwarcia, koszt spotkania dzielony na osobę, pilnowanie godzin otwarcia i kolizji terminów, **kalendarz rezerwacji** z potwierdzaniem i odrzucaniem terminów.
 - **Wyszukiwarka adresów** z podpowiedziami Google Places (przez serwer, w darmowej puli z budżetem kroczącym) i zapasowo OpenStreetMap.
 - **Usuwanie konta** przez użytkownika (RODO).
-- **Goście organizatora**: znajomi spoza Metando zajmują miejsca w składzie (koszulki „gość organizatora”), a limit, rezerwa i awanse dotyczą tylko miejsc do obsadzenia w aplikacji.
+- **Zaproszenia bez logowania**: organizator rezerwuje miejsca dla znajomych spoza Metando („?” w składzie) i wysyła jeden link; zaproszeni odpowiadają „Będę” / „Nie będę” z imieniem (Turnstile, ciasteczko urządzenia), odmowa zwalnia miejsce dla Metando, a nieodpowiedziane „?” zwalniają się 12 h przed startem.
 - **Składy na mecz** (piłka nożna, koszykówka, siatkówka, tenis, badminton, tenis stołowy): pionowe boisko, parkiet lub kort z graczami w ich barwach, ulubione pozycje w profilu osobno dla każdego sportu, podział na dwie drużyny według pozycji lub losowo z podpowiedziami przy konfliktach, ręczna zamiana graczy i animacja przefarbowania na kolory drużyn; ustawia organizator, widzą członkowie spotkania.
 - **Panel administratora** (`/admin`): użytkownicy i aktywność, spotkania i odsetek pełnych składów, wykresy z 30 dni, lejek i powroty, sporty, dni i godziny, mapa spotkań, obiekty, moderacja zgłoszeń i limit Google. Dostęp: konta z tabeli `admins`.
 - **Moje barwy**: kreator stroju (wzór, dwa kolory, numer albo inicjały) jako avatar w składzie, czacie i na górnym pasku; bez ustawienia — stały strój wyliczony z id konta.

@@ -11,6 +11,8 @@ import MatchLineup, { type LineupPlayerView } from "@/components/lineup/MatchLin
 import { getLineup, type SavedLineup } from "@/lib/services/lineups";
 import { supportsLineup } from "@/lib/lineup";
 import { eventVersion } from "@/lib/services/live";
+import InvitePanel from "@/components/events/InvitePanel.astro";
+import { getInviteToken, inviteErrorMessage, releaseStaleInvites } from "@/lib/services/invites";
 import { isChatOpen, listMessages } from "@/lib/services/chat";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -29,6 +31,8 @@ const backHere = safeNext(Astro.url.pathname);
 const id = Astro.params.id ?? "";
 
 const supabase = createClient(Astro.request.headers, Astro.cookies);
+// Nieodpowiedziane zaproszenia zwalniają się 12 h przed startem (przy okazji wejścia na stronę).
+if (supabase) await releaseStaleInvites(supabase);
 let details: EventDetails | null = null;
 let publicEvent: PublicEvent | null = null;
 if (supabase) {
@@ -88,7 +92,8 @@ const okMessage =
         : okKey === "stayed" && details?.organizer_id === user?.id
           ? "Zostajesz w spotkaniu i przejmujesz jego organizację."
           : SUCCESS_MESSAGES[okKey];
-const errorMessage = participationErrorMessage(Astro.url.searchParams.get("error"));
+const errorCode = Astro.url.searchParams.get("error");
+const errorMessage = participationErrorMessage(errorCode) ?? inviteErrorMessage(errorCode);
 
 // Podgląd linku przy udostępnianiu (Messenger, WhatsApp): sport, termin, okolica i ile osób brakuje.
 function missingPeople(count: number): string {
@@ -111,6 +116,7 @@ const organizerLeft = details?.status === "organizer_left";
 const isOpen = details !== null && !isPast && details.status === "active";
 
 const isOrganizer = details !== null && user !== null && details.organizer_id === user.id;
+const inviteToken = details && isOrganizer && isOpen && supabase ? await getInviteToken(supabase, details.id) : null;
 const myParticipation = details?.my_participation ?? null;
 const myStatus = myParticipation?.status ?? null;
 const mustAnswer = details !== null && needsAnswer(details, myStatus, myParticipation?.stay_confirmed ?? null);
@@ -501,11 +507,21 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               organizerKit={details.organizer_kit}
               participants={details.participants}
               guests={details.guest_count}
+              guestNames={details.invites.filter((i) => i.answer === "yes").map((i) => i.name)}
               reserveSpots={details.reserve_spots}
               reserves={details.reserves}
               handover={details.handover_at !== null}
               removeFor={isOrganizer && isOpen ? details.id : undefined}
               viewerId={user?.id}
+            />
+          )}
+          {details && isOrganizer && isOpen && (
+            <InvitePanel
+              eventId={details.id}
+              guestCount={details.guest_count}
+              token={inviteToken}
+              invites={details.invites}
+              origin={Astro.url.origin}
             />
           )}
           {details && lineupPlayers.length >= 2 && (
