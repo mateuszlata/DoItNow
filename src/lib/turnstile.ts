@@ -14,6 +14,8 @@ export async function verifyTurnstile(
   ip?: string | null,
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> {
+  // Sekret wklejony przez schowek (Get-Clipboard | wrangler secret put) może mieć doklejony koniec linii.
+  secret = secret?.trim();
   if (!secret) return true;
   if (typeof token !== "string" || token.length === 0 || token.length > 2048) {
     // eslint-disable-next-line no-console -- diagnostyka: formularz wysłany bez tokenu widgetu
@@ -28,11 +30,14 @@ export async function verifyTurnstile(
 
   try {
     const response = await fetchImpl(VERIFY_URL, { method: "POST", body });
-    if (!response.ok) return false;
+    // Cloudflare zwraca 400 m.in. przy błędnym sekrecie — treść odpowiedzi i tak zawiera kody błędów.
     const result = (await response.json()) as { success?: unknown; "error-codes"?: unknown; hostname?: unknown };
     if (result.success === true) return true;
     // eslint-disable-next-line no-console -- diagnostyka: powód odrzucenia według Cloudflare
-    console.warn("turnstile: rejected", JSON.stringify({ codes: result["error-codes"], hostname: result.hostname }));
+    console.warn(
+      "turnstile: rejected",
+      JSON.stringify({ status: response.status, codes: result["error-codes"], hostname: result.hostname }),
+    );
     return false;
   } catch (error) {
     // eslint-disable-next-line no-console -- diagnostyka: brak połączenia z Cloudflare
