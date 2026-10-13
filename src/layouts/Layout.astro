@@ -32,6 +32,26 @@ const imageUrl = new URL(image, Astro.url.origin).href;
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#0a2e23" />
+    <!-- Aplikacja na telefon (PWA): instalacja z przeglądarki, pełny ekran bez paska adresu. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Metando" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <script is:inline>
+      // Android/Chrome zgłasza gotowość do instalacji zaraz po wczytaniu — zapamiętujemy ją dla przycisku
+      // „Zainstaluj aplikację” (wyspa Reacta może się załadować później).
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        window.__metandoInstall = event;
+        window.dispatchEvent(new Event("metando-installable"));
+      });
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js").catch(() => {});
+        });
+      }
+    </script>
     <meta name="description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Metando" />

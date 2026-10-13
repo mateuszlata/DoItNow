@@ -12,6 +12,7 @@ import {
   nearestEvents,
 } from "@/lib/services/events";
 import NearbyPicker from "@/components/events/NearbyPicker";
+import InstallApp from "@/components/InstallApp";
 import WeatherBadge from "@/components/events/WeatherBadge";
 import { WEATHER_ATTRIBUTION } from "@/lib/weather";
 import { NEAR_COOKIE, NEAR_RADII, formatDistance, parseNear } from "@/lib/near";
@@ -198,6 +199,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
   <div class="bg-app min-h-screen p-4 pb-32">
     <div class="mx-auto max-w-3xl">
       <Topbar title="W co dziś|gramy?" />
+      <InstallApp client:only="react" />
 
       {deleted && (
         <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-4 py-2 text-sm font-semibold text-ok">

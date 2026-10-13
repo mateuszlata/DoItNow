@@ -81,6 +81,8 @@ const scriptsConfig = defineConfig({
 
 export default defineConfig(
   includeIgnoreFile(gitignorePath),
+  // Service worker działa poza aplikacją (własne globalne `self`, `caches`) — zwykły JS bez typów.
+  { ignores: ["public/sw.js"] },
   baseConfig,
   reactConfig,
   eslintPluginAstro.configs["flat/recommended"],

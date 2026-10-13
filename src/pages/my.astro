@@ -16,6 +16,7 @@ import { getDisplayName, getKit, getPositions } from "@/lib/services/profiles";
 import { POSITION_SPORTS, positionsFor } from "@/lib/lineup";
 import { defaultKit } from "@/lib/kit";
 import { isAdmin } from "@/lib/services/chat";
+import InstallApp from "@/components/InstallApp";
 
 // Trasa jest chroniona w middleware, więc użytkownik jest zalogowany.
 const user = Astro.locals.user;
@@ -221,6 +222,10 @@ const positionSport = Astro.url.searchParams.get("sport");
           })}
         </div>
       </section>
+
+      <div class="mt-8">
+        <InstallApp variant="section" client:only="react" />
+      </div>
 
       <section id="moje-sporty" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
         <h2 class="display text-2xl leading-none">Moje sporty</h2>
