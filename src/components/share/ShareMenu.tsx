@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { AtSign, Copy, Mail, MessageCircle, MessageSquareText, MessagesSquare, Send, Share2 } from "lucide-react";
+import {
+  AtSign,
+  Copy,
+  Link2,
+  Mail,
+  MessageCircle,
+  MessageSquareText,
+  MessagesSquare,
+  Send,
+  Share2,
+} from "lucide-react";
 import {
   MESSENGER_WEB,
   gmailLink,
@@ -11,8 +21,9 @@ import {
 } from "@/lib/share-links";
 import { cn } from "@/lib/utils";
 
-// Menu udostępniania: na telefonie od razu systemowe menu (WhatsApp, Messenger, SMS…),
-// na komputerze własna lista (WhatsApp, Messenger, Gmail, e-mail, Telegram, kopiuj, więcej).
+// Menu udostępniania z wyborem: gotowa wiadomość (opis spotkania + link) albo sam link.
+// Na telefonie: systemowe udostępnianie wiadomości lub samego linku i kopiowanie;
+// na komputerze: WhatsApp, Messenger, Gmail, e-mail, Telegram, kopiowanie wiadomości lub linku, więcej.
 
 interface Props {
   /** Pełna wiadomość z linkiem (src/lib/share.ts). */
@@ -33,7 +44,8 @@ interface Item {
   color: string;
   href?: (input: ShareInput) => string;
   action?: (input: ShareInput) => Promise<string | null>;
-  touchOnly?: boolean;
+  /** Gdzie pokazać: na telefonie z systemowym udostępnianiem („native”) albo w pozostałych przypadkach. */
+  only?: "native" | "fallback";
 }
 
 async function copy(text: string): Promise<boolean> {
@@ -45,10 +57,48 @@ async function copy(text: string): Promise<boolean> {
   }
 }
 
+/** Systemowe menu udostępniania; false, gdy przeglądarka go nie ma. */
+async function systemShare(data: ShareData): Promise<boolean> {
+  if (typeof navigator.share !== "function") return false;
+  try {
+    await navigator.share(data);
+  } catch {
+    // anulowane — nic nie robimy
+  }
+  return true;
+}
+
 const ITEMS: Item[] = [
-  { label: "WhatsApp", icon: <MessageCircle className="size-4" />, color: "#25D366", href: whatsappLink },
+  {
+    label: "Wyślij wiadomość",
+    icon: <Share2 className="size-4" />,
+    color: "#13261F",
+    only: "native",
+    action: async ({ text, subject }) => {
+      await systemShare({ title: subject, text });
+      return null;
+    },
+  },
+  {
+    label: "Wyślij sam link",
+    icon: <Link2 className="size-4" />,
+    color: "#3E5249",
+    only: "native",
+    action: async ({ url, subject }) => {
+      await systemShare({ title: subject, url });
+      return null;
+    },
+  },
+  {
+    label: "WhatsApp",
+    icon: <MessageCircle className="size-4" />,
+    color: "#25D366",
+    href: whatsappLink,
+    only: "fallback",
+  },
   {
     label: "Messenger",
+    only: "fallback",
     icon: <MessagesSquare className="size-4" />,
     color: "#0866FF",
     action: async ({ text }) => {
@@ -57,17 +107,30 @@ const ITEMS: Item[] = [
       return copied ? "Wiadomość skopiowana — wklej ją w rozmowie w Messengerze." : null;
     },
   },
-  { label: "Gmail", icon: <Mail className="size-4" />, color: "#EA4335", href: gmailLink },
-  { label: "E-mail", icon: <AtSign className="size-4" />, color: "#5B6B62", href: mailtoLink },
-  { label: "Telegram", icon: <Send className="size-4" />, color: "#229ED9", href: telegramLink },
-  { label: "SMS", icon: <MessageSquareText className="size-4" />, color: "#13261F", href: smsLink, touchOnly: true },
+  { label: "Gmail", icon: <Mail className="size-4" />, color: "#EA4335", href: gmailLink, only: "fallback" },
+  { label: "E-mail", icon: <AtSign className="size-4" />, color: "#5B6B62", href: mailtoLink, only: "fallback" },
+  { label: "Telegram", icon: <Send className="size-4" />, color: "#229ED9", href: telegramLink, only: "fallback" },
   {
     label: "Kopiuj wiadomość",
     icon: <Copy className="size-4" />,
     color: "#FF7A1A",
-    action: async ({ text }) => ((await copy(text)) ? "✓ Skopiowano — wklej wiadomość znajomym." : null),
+    action: async ({ text }) => ((await copy(text)) ? "✓ Skopiowano wiadomość z linkiem." : null),
+  },
+  {
+    label: "Kopiuj link",
+    icon: <Link2 className="size-4" />,
+    color: "#A84A00",
+    action: async ({ url }) => ((await copy(url)) ? "✓ Skopiowano sam link." : null),
   },
 ];
+
+const SMS_ITEM: Item = {
+  label: "SMS",
+  icon: <MessageSquareText className="size-4" />,
+  color: "#13261F",
+  href: smsLink,
+  only: "fallback",
+};
 
 function isTouch(): boolean {
   return window.matchMedia("(pointer: coarse)").matches;
@@ -111,30 +174,25 @@ export default function ShareMenu({
     return { text: edited === undefined || edited === "" ? text : edited, url, subject };
   };
 
-  async function nativeShare(): Promise<boolean> {
-    if (typeof navigator.share !== "function") return false;
-    try {
-      await navigator.share({ title: subject, text: input().text });
-    } catch {
-      // anulowane — nic nie robimy
-    }
-    return true;
-  }
-
-  async function onTrigger() {
+  function onTrigger() {
     setNote(null);
-    if (isTouch() && (await nativeShare())) return;
     setOpen((value) => !value);
   }
 
+  // Telefon z systemowym udostępnianiem: krótka lista (wiadomość / sam link / kopiowanie);
+  // komputer albo brak systemowego menu: lista serwisów (na telefonie bez niego także SMS).
   const touch = typeof window !== "undefined" && isTouch();
-  const items = ITEMS.filter((item) => !item.touchOnly || touch);
+  const hasSystemShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const native = touch && hasSystemShare;
+  const items = [...ITEMS, ...(touch && !native ? [SMS_ITEM] : [])].filter(
+    (item) => !item.only || (item.only === "native") === native,
+  );
 
   return (
     <div ref={root} className={cn("relative inline-block", className)}>
       <button
         type="button"
-        onClick={() => void onTrigger()}
+        onClick={onTrigger}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={variant === "icon" ? label : undefined}
@@ -206,14 +264,14 @@ export default function ShareMenu({
               </button>
             );
           })}
-          {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
+          {hasSystemShare && !native && (
             <button
               type="button"
               role="menuitem"
               className="hover:bg-card-2 text-ink-2 flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm font-bold"
               onClick={() => {
                 setOpen(false);
-                void nativeShare();
+                void systemShare({ title: subject, text: input().text });
               }}
             >
               <span className="bg-card-2 grid size-8 place-items-center rounded-full" aria-hidden="true">
