@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { useEventChat } from "@/components/hooks/useEventChat";
 import KitJersey from "@/components/KitJersey";
+import ShareMenu from "@/components/share/ShareMenu";
 import { kitFrom } from "@/lib/kit";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/types";
@@ -18,6 +19,8 @@ interface Props {
   initialSyncedAt: string;
   /** Gotowa wiadomość do udostępnienia (opis spotkania + link). */
   shareText?: string;
+  shareSubject?: string;
+  shareUrl?: string;
 }
 
 const timeFormat = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" });
@@ -38,25 +41,6 @@ function withLinks(text: string) {
   );
 }
 
-async function shareEvent(eventId: string, shareText?: string): Promise<string | null> {
-  const url = `${window.location.origin}/events/${eventId}`;
-  const text = shareText ?? url;
-  if (typeof navigator.share === "function") {
-    try {
-      await navigator.share({ title: "Dołącz do spotkania w Metando", text });
-      return null;
-    } catch {
-      // anulowane udostępnianie — próbujemy schowka
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(text);
-    return "Wiadomość z linkiem skopiowana — wklej ją znajomym.";
-  } catch {
-    return url;
-  }
-}
-
 function formatTime(iso: string): string {
   const date = new Date(iso);
   const today = dayFormat.format(new Date()) === dayFormat.format(date);
@@ -71,6 +55,8 @@ export default function EventChat({
   initialMessages,
   initialSyncedAt,
   shareText,
+  shareSubject,
+  shareUrl,
 }: Props) {
   const { messages, error, sending, send, act } = useEventChat(eventId, initialMessages, initialSyncedAt);
   const [draft, setDraft] = useState("");
@@ -108,17 +94,13 @@ export default function EventChat({
     <section className="bg-card text-ink rounded-[20px] p-4" data-testid="event-chat" aria-label="Czat spotkania">
       <div className="flex items-center justify-between gap-3">
         <h2 className="display text-2xl leading-none">Czat</h2>
-        <button
-          type="button"
-          className="bg-card-2 hover:bg-line rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors"
-          onClick={() => {
-            void shareEvent(eventId, shareText).then((message) => {
-              if (message) setNotice(message);
-            });
-          }}
-        >
-          Zaproś znajomych
-        </button>
+        <ShareMenu
+          variant="chip"
+          label="Zaproś znajomych"
+          text={shareText ?? shareUrl ?? ""}
+          url={shareUrl ?? ""}
+          subject={shareSubject ?? "Metando"}
+        />
       </div>
       <p className="text-ink-3 mt-1 text-xs">Widzą go organizator i osoby w składzie oraz na rezerwie.</p>
 
