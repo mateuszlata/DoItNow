@@ -21,6 +21,8 @@ interface Props {
   shareText?: string;
   shareSubject?: string;
   shareUrl?: string;
+  /** Gość bez konta czyta czat; zamiast pola wiadomości widzi zachętę do założenia konta. */
+  guestSignupHref?: string;
 }
 
 const timeFormat = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" });
@@ -57,7 +59,9 @@ export default function EventChat({
   shareText,
   shareSubject,
   shareUrl,
+  guestSignupHref,
 }: Props) {
+  const guest = guestSignupHref !== undefined;
   const { messages, error, sending, send, act } = useEventChat(eventId, initialMessages, initialSyncedAt);
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
@@ -102,7 +106,11 @@ export default function EventChat({
           subject={shareSubject ?? "Metando"}
         />
       </div>
-      <p className="text-ink-3 mt-1 text-xs">Widzą go organizator i osoby w składzie oraz na rezerwie.</p>
+      <p className="text-ink-3 mt-1 text-xs">
+        {guest
+          ? "Czytasz jako gość. Pisać mogą osoby z kontem w Metando."
+          : "Widzą go organizator i osoby w składzie oraz na rezerwie."}
+      </p>
 
       <div
         ref={list}
@@ -112,7 +120,9 @@ export default function EventChat({
         data-testid="chat-messages"
       >
         {messages.length === 0 && (
-          <p className="text-ink-3 my-auto py-6 text-center text-sm">Nikt jeszcze nie napisał. Przywitaj się!</p>
+          <p className="text-ink-3 my-auto py-6 text-center text-sm">
+            {guest ? "Nikt jeszcze nie napisał." : "Nikt jeszcze nie napisał. Przywitaj się!"}
+          </p>
         )}
         {messages.map((message) => {
           const mine = message.author_id === currentUserId;
@@ -138,7 +148,7 @@ export default function EventChat({
               >
                 {message.hidden ? "Wiadomość usunięta" : withLinks(message.body ?? "")}
               </p>
-              {!message.hidden && (
+              {!message.hidden && !guest && (
                 <span className="mt-0.5 flex gap-3 text-[11px]">
                   {(mine || isOrganizer) && (
                     <button
@@ -171,7 +181,18 @@ export default function EventChat({
         </p>
       )}
 
-      {open ? (
+      {guest ? (
+        <a
+          href={guestSignupHref}
+          className="bg-card-2 text-ink hover:bg-line mt-3 flex min-h-11 items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-sm transition-colors"
+          data-testid="chat-guest-cta"
+        >
+          <span>Chcesz coś napisać? Załóż darmowe konto — zajmie to 30 sekund.</span>
+          <span className="bg-brand text-on-brand shrink-0 rounded-full px-3 py-1 text-xs font-extrabold uppercase">
+            Załóż konto
+          </span>
+        </a>
+      ) : open ? (
         <form
           className="mt-3 flex items-end gap-2"
           onSubmit={(e) => {
@@ -212,7 +233,7 @@ export default function EventChat({
       ) : (
         <p className="text-ink-3 mt-3 text-xs">Czat jest zamknięty — można tylko czytać wiadomości.</p>
       )}
-      {open && draft.length > MAX_LENGTH - 100 && (
+      {open && !guest && draft.length > MAX_LENGTH - 100 && (
         <p className="text-ink-3 mt-1 text-right text-[11px]">
           {draft.length}/{MAX_LENGTH}
         </p>

@@ -152,14 +152,14 @@ test("joining without approval is instant and the organizer can remove a partici
   await organizer.waitForURL(/\/events\/[0-9a-f-]{36}$/);
   const eventUrl = organizer.url();
 
-  // Gość z udostępnionego linku: podgląd linku opisuje spotkanie, a przyciski prowadzą do rejestracji z powrotem tutaj.
+  // Gość z udostępnionego linku: podgląd linku opisuje spotkanie, może dołączyć bez konta albo zalogować się z powrotem tutaj.
   const guestContext = await browser.newContext();
   const guest = await guestContext.newPage();
   await guest.goto(eventUrl);
   await expect(guest.locator('meta[property="og:title"]')).toHaveAttribute("content", new RegExp(`Siatkówka.*${area}`));
   await expect(guest.locator('meta[property="og:description"]')).toHaveAttribute("content", /Brakuje 3 osób/);
   await expect(guest.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/og\/siatkowka\.png$/);
-  await expect(guest.getByTestId("guest-intro")).toBeVisible();
+  await expect(guest.getByTestId("guest-join")).toBeVisible();
   const eventPath = new URL(eventUrl).pathname;
   await guest.getByRole("link", { name: "Mam konto" }).click();
   await expect(guest).toHaveURL(`/auth/signin?next=${encodeURIComponent(eventPath)}`);
@@ -217,4 +217,40 @@ test("joining without approval is instant and the organizer can remove a partici
   await expect(participant.getByTestId("my-status")).toContainText("usunięte przez organizatora");
   await expect(participant.getByRole("button", { name: "Dołącz" })).toHaveCount(0);
   await expect(participant.getByTestId("event-chat")).toHaveCount(0);
+});
+
+test("a guest joins from a shared link without an account and reads the chat", async ({ browser }) => {
+  const organizerNick = `Org${runId}`;
+  const area = `Skwer ${runId}`;
+
+  const organizer = await signUpAndSignIn(browser, organizerNick);
+  await organizer.goto("/events/new");
+  await organizer.getByLabel("Sport").selectOption({ label: "Siatkówka" });
+  await organizer.getByLabel("Data i godzina").fill(inThreeDaysAt18());
+  await organizer.getByLabel("Okolica / dzielnica").fill(area);
+  await fillPlace(organizer, "Boisko gości E2E");
+  await organizer.getByLabel("Ile osób łącznie w składzie?").fill("6");
+  await organizer.getByRole("button", { name: "Opublikuj ogłoszenie" }).click();
+  await organizer.waitForURL(/\/events\/[0-9a-f-]{36}\?ok=created$/);
+  const eventUrl = organizer.url().replace("?ok=created", "");
+
+  // Gość bez konta: imię i „Będę” — od razu widzi skład, miejsce i czat (tylko do czytania).
+  const guestContext = await browser.newContext();
+  const guest = await guestContext.newPage();
+  await guest.goto(eventUrl);
+  const join = guest.getByTestId("guest-join");
+  await join.getByLabel("Twoje imię").fill("Gośka");
+  await join.getByRole("button", { name: "Będę" }).click();
+  await expect(guest.getByText("Jesteś w składzie! Organizator widzi Cię jako gościa.")).toBeVisible();
+  await expect(guest.getByTestId("guest-member")).toContainText("Gośka");
+  await expect(guest.getByText("Boisko gości E2E").first()).toBeVisible();
+  await expect(guest.getByTestId("chat-guest-cta")).toBeVisible();
+
+  await organizer.goto(eventUrl);
+  await expect(organizer.getByText("Gośka").first()).toBeVisible();
+
+  // Zmiana zdania: miejsce wraca, a strona znów proponuje dołączenie.
+  await guest.getByTestId("guest-member").getByRole("button", { name: "Nie będę" }).click();
+  await expect(guest.getByTestId("guest-join")).toBeVisible();
+  await guestContext.close();
 });

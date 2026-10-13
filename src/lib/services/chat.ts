@@ -47,6 +47,22 @@ export async function listMessages(
   return { ok: true, data: response.data as unknown as ChatMessage[] };
 }
 
+/** Czat do czytania dla gościa bez konta z „Będę” (rozpoznanego po urządzeniu). */
+export async function listGuestMessages(
+  supabase: SupabaseClient,
+  eventId: string,
+  device: string,
+  after?: string | null,
+): Promise<ChatResult<ChatMessage[]>> {
+  const response = await supabase.rpc("guest_event_messages", {
+    p_event_id: eventId,
+    p_device: device,
+    p_after: after ?? null,
+  });
+  if (response.error) return { ok: false, code: toCode(response.error) };
+  return { ok: true, data: response.data as unknown as ChatMessage[] };
+}
+
 export async function postMessage(
   supabase: SupabaseClient,
   eventId: string,

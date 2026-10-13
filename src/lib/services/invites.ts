@@ -24,6 +24,8 @@ export const INVITE_ERRORS = {
   INVALID_DEVICE: "Nie udało się rozpoznać urządzenia. Odśwież stronę i spróbuj ponownie.",
   RESPONSE_NOT_FOUND: "Nie znaleziono odpowiedzi.",
   BOT_CHECK: "Potwierdź, że nie jesteś botem, i spróbuj ponownie.",
+  APPROVAL_REQUIRED: "W tym spotkaniu organizator akceptuje zgłoszenia — załóż konto, żeby się zgłosić.",
+  GUEST_FULL: "Zostało ostatnie miejsce — załóż konto w Metando, żeby je zająć, albo zapisz się na rezerwę.",
 } as const;
 
 export type InviteErrorCode = keyof typeof INVITE_ERRORS | "UNKNOWN";
@@ -106,6 +108,20 @@ export async function respondToInvite(
 ): Promise<{ ok: true } | { ok: false; code: InviteErrorCode }> {
   const { error } = await supabase.rpc("respond_to_invite", {
     p_token: input.token,
+    p_device: input.device,
+    p_name: input.name,
+    p_answer: input.answer,
+  });
+  return error ? { ok: false, code: toCode(error) } : { ok: true };
+}
+
+/** Odpowiedź gościa bez konta prosto ze strony spotkania (bez osobistego linku). */
+export async function joinAsGuest(
+  supabase: SupabaseClient,
+  input: { eventId: string; device: string; name: string; answer: "yes" | "no" },
+): Promise<{ ok: true } | { ok: false; code: InviteErrorCode }> {
+  const { error } = await supabase.rpc("join_event_as_guest", {
+    p_event_id: input.eventId,
     p_device: input.device,
     p_name: input.name,
     p_answer: input.answer,

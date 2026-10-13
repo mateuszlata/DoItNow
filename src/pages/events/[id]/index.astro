@@ -12,16 +12,24 @@ import { getLineup, type SavedLineup } from "@/lib/services/lineups";
 import { supportsLineup } from "@/lib/lineup";
 import { eventVersion } from "@/lib/services/live";
 import InviteSection from "@/components/events/InviteSection.astro";
+import GuestAnswerForm from "@/components/events/GuestAnswerForm.astro";
+import { readDevice } from "@/lib/device";
 import ChanceMeter from "@/components/events/ChanceMeter.astro";
 import { chanceExplanation, chanceTips, meetingChance, type ChanceInput } from "@/lib/chance";
 import { eventShareText, inviteShareText } from "@/lib/share";
 import ShareMenu from "@/components/share/ShareMenu";
 import { getMyInvite, inviteErrorMessage, releaseStaleInvites } from "@/lib/services/invites";
-import { isChatOpen, listMessages } from "@/lib/services/chat";
+import { isChatOpen, listGuestMessages, listMessages } from "@/lib/services/chat";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
 import { createClient } from "@/lib/supabase";
-import { canEditEvent, getEventDetails, getPublicEvent, needsAnswer } from "@/lib/services/events";
+import {
+  canEditEvent,
+  getEventDetails,
+  getGuestEventDetails,
+  getPublicEvent,
+  needsAnswer,
+} from "@/lib/services/events";
 import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
 import { freeReserve, freeWord, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
 import { sportLabel } from "@/lib/sports";
@@ -39,13 +47,23 @@ const supabase = createClient(Astro.request.headers, Astro.cookies);
 if (supabase) await releaseStaleInvites(supabase);
 let details: EventDetails | null = null;
 let publicEvent: PublicEvent | null = null;
+// Gość bez konta, który powiedział „Będę” (rozpoznany po urządzeniu), widzi spotkanie jak członek składu.
+const device = user ? null : readDevice(Astro.cookies);
+let guestName: string | null = null;
 if (supabase) {
   if (user) {
     details = await getEventDetails(supabase, id, user.id);
   } else {
-    publicEvent = await getPublicEvent(supabase, id);
+    const guest = device ? await getGuestEventDetails(supabase, id, device) : null;
+    if (guest) {
+      details = guest.details;
+      guestName = guest.guestName;
+    } else {
+      publicEvent = await getPublicEvent(supabase, id);
+    }
   }
 }
+const isGuest = guestName !== null;
 
 if (!details && !publicEvent) {
   Astro.response.status = 404;
@@ -92,6 +110,8 @@ const SUCCESS_MESSAGES: Record<string, string> = {
   cancelled: "Spotkanie zostało odwołane.",
   stayed: "Zostajesz w spotkaniu.",
   left: "Rezygnacja przyjęta — nie grasz w tym spotkaniu.",
+  "guest-yes": "Jesteś w składzie! Organizator widzi Cię jako gościa.",
+  "guest-no": "Dzięki za odpowiedź — Twoje miejsce trafi do innych graczy.",
 };
 const okKey = Astro.url.searchParams.get("ok") ?? "";
 const okMessage =
@@ -154,7 +174,7 @@ const chanceInput: ChanceInput | null =
 const chance = chanceInput ? meetingChance(chanceInput) : null;
 const mustAnswer = details !== null && needsAnswer(details, myStatus, myParticipation?.stay_confirmed ?? null);
 
-const canJoin = isOpen && !isOrganizer && (myStatus === null || myStatus === "withdrawn");
+const canJoin = user !== null && isOpen && !isOrganizer && (myStatus === null || myStatus === "withdrawn");
 // Oczekujące zgłoszenie i rezerwa nie zajmują miejsca, więc można je wycofać do startu;
 // zaakceptowany uczestnik do 12 h przed — chyba że organizator odwołał spotkanie.
 const canWithdraw =
@@ -168,9 +188,12 @@ const canWithdraw =
 // Czat: organizator oraz osoby w składzie i na rezerwie (reguła is_event_member w bazie).
 const isChatMember = details !== null && (isOrganizer || myStatus === "accepted" || myStatus === "reserve");
 let chat: { messages: ChatMessage[]; syncedAt: string } | null = null;
-if (isChatMember && supabase && details) {
+if ((isChatMember || isGuest) && supabase && details) {
   const syncedAt = new Date(Date.now() - 5000).toISOString();
-  const result = await listMessages(supabase, details.id);
+  const result =
+    isGuest && device
+      ? await listGuestMessages(supabase, details.id, device)
+      : await listMessages(supabase, details.id);
   if (result.ok) chat = { messages: result.data, syncedAt };
 }
 
@@ -225,6 +248,9 @@ const joinLabel = summary?.requires_approval
   : free > 0
     ? `Dołącz · ${String(free)} ${freeWord(free)}`
     : "Dołącz na rezerwę";
+// Bez konta można dołączyć jako gość, gdy nie trzeba akceptacji, a zostaje miejsce poza ostatnim (to dla graczy z kontem).
+const guestCanJoin =
+  publicEvent !== null && !isPast && !publicEvent.requires_approval && free >= 1 && publicEvent.spots > 1;
 const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isOpen : true)));
 ---
 
@@ -573,10 +599,11 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               client:load
             />
           )}
-          {chat && details && user && (
+          {chat && details && (user !== null || isGuest) && (
             <EventChat
               eventId={details.id}
-              currentUserId={user.id}
+              currentUserId={user?.id ?? ""}
+              guestSignupHref={isGuest ? authHref("signup", backHere) : undefined}
               isOrganizer={isOrganizer}
               open={isChatOpen(details)}
               initialMessages={chat.messages}
@@ -606,13 +633,59 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
             />
           )}
 
-          {!user && (
-            <section class="rounded-[20px] bg-page-2 p-5 text-page-ink" data-testid="guest-intro">
+          {isGuest && details && (
+            <section id="dolacz" class="rounded-[20px] bg-card p-5 text-ink" data-testid="guest-member">
+              <h2 class="display text-2xl leading-none">Jesteś w składzie jako gość</h2>
+              <p class="mt-2 text-sm text-ink-2">
+                Grasz jako <strong class="text-ink">{guestName}</strong>. Zmieniły się plany? Daj znać, a miejsce trafi
+                do innych.
+              </p>
+              {isOpen && (
+                <div class="mt-3">
+                  <GuestAnswerForm action={`/api/events/${details.id}/guest`} name={guestName ?? ""} answered="yes" />
+                </div>
+              )}
+              <div class="mt-4 rounded-2xl bg-card-2 p-4 text-sm">
+                <p class="font-bold">Z kontem masz więcej</p>
+                <ul class="mt-1 list-disc pl-5 text-ink-2">
+                  <li>piszesz na czacie spotkania,</li>
+                  <li>masz własne barwy i numer w składzie,</li>
+                  <li>zapisujesz się na kolejne mecze jednym kliknięciem.</li>
+                </ul>
+                <a
+                  href={authHref("signup", backHere)}
+                  class="mt-3 inline-grid h-10 place-items-center rounded-full bg-brand px-4 text-xs font-extrabold tracking-wide text-on-brand uppercase"
+                >
+                  Załóż darmowe konto
+                </a>
+              </div>
+            </section>
+          )}
+
+          {!user && !isGuest && guestCanJoin && (
+            <section id="dolacz" class="rounded-[20px] bg-card p-5 text-ink" data-testid="guest-join">
+              <h2 class="display text-2xl leading-none">Dołącz bez zakładania konta</h2>
+              <p class="mt-2 mb-3 text-sm text-ink-2">
+                Podaj imię i kliknij „Będę” — organizator zobaczy Cię w składzie, a Ty dokładne miejsce i kto jeszcze
+                gra. Konto możesz założyć później, gdy zechcesz pisać na czacie.
+              </p>
+              <GuestAnswerForm action={`/api/events/${id}/guest`} showNo={false} />
+              <p class="mt-3 text-center text-xs text-ink-3">
+                Masz konto?{" "}
+                <a href={authHref("signin", backHere)} class="font-bold text-link underline">
+                  Zaloguj się
+                </a>
+              </p>
+            </section>
+          )}
+
+          {!user && !isGuest && !guestCanJoin && (
+            <section id="dolacz" class="rounded-[20px] bg-page-2 p-5 text-page-ink" data-testid="guest-intro">
               <h2 class="display text-2xl leading-none">Pierwszy raz w Metando?</h2>
               <p class="mt-2 text-sm text-page-ink-2">
-                Metando łączy ludzi, którzy chcą razem pograć — bez szukania po grupach i dzwonienia. Załóż darmowe
-                konto w 30 sekund, a wrócisz prosto do tego spotkania i dołączysz jednym kliknięciem. Dokładne miejsce i
-                skład zobaczysz po zalogowaniu.
+                {publicEvent?.requires_approval
+                  ? "W tym spotkaniu organizator akceptuje zgłoszenia, więc potrzebne jest konto. Załóż je w 30 sekund — wrócisz prosto tutaj."
+                  : "W składzie nie ma już wolnego miejsca dla gości. Załóż darmowe konto w 30 sekund, a zapiszesz się na ostatnie miejsce albo na rezerwę."}
               </p>
               <a
                 href={authHref("signup", backHere)}
@@ -636,12 +709,28 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
       <div class="mx-auto flex max-w-xl flex-wrap items-center gap-2.5 px-4 pt-3.5 pb-5">
         {!user && (
           <>
-            <a
-              href={authHref("signup", backHere)}
-              class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
-            >
-              Dołącz — załóż konto
-            </a>
+            {isGuest ? (
+              <a
+                href={authHref("signup", backHere)}
+                class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+              >
+                Załóż konto
+              </a>
+            ) : guestCanJoin ? (
+              <a
+                href="#dolacz"
+                class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+              >
+                Dołącz bez konta
+              </a>
+            ) : (
+              <a
+                href={authHref("signup", backHere)}
+                class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+              >
+                Dołącz — załóż konto
+              </a>
+            )}
             <a
               href={authHref("signin", backHere)}
               class="grid h-14 flex-1 place-items-center rounded-full bg-page-2 text-sm font-bold text-page-ink"

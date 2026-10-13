@@ -1,0 +1,103 @@
+---
+// Odpowiedź osoby bez konta: imię, weryfikacja Turnstile i „Będę” / „Nie będę”.
+// Wspólna dla osobistego zaproszenia (/i/…) i dołączania ze strony spotkania.
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
+import { TURNSTILE_SITE_KEY } from "astro:env/server";
+
+interface Props {
+  action: string;
+  name?: string;
+  answered?: "yes" | "no" | null;
+  /** „Nie będę” ma sens dla zaproszonych i dla tych, którzy już powiedzieli „Będę”. */
+  showNo?: boolean;
+  yesLabel?: string;
+}
+
+const { action, name = "", answered = null, showNo = true, yesLabel = "Będę" } = Astro.props;
+---
+
+<form
+  method="POST"
+  action={action}
+  class="flex flex-col gap-3"
+  data-guest-form
+  data-needs-check={TURNSTILE_SITE_KEY ? "" : undefined}
+>
+  <label class="text-sm text-ink-2">
+    Twoje imię
+    <input
+      type="text"
+      name="name"
+      required
+      maxlength="40"
+      autocomplete="given-name"
+      value={name}
+      placeholder="np. Kuba"
+      class="mt-1 w-full rounded-lg border border-line-strong bg-card px-3 py-2 text-ink focus:ring-2 focus:ring-brand focus:outline-none"
+    />
+  </label>
+  {TURNSTILE_SITE_KEY && <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} client:load />}
+  <p class="text-center text-xs text-ink-3" data-check-status hidden={!TURNSTILE_SITE_KEY}>
+    Sprawdzamy, czy nie jesteś botem — to potrwa chwilę…
+  </p>
+  <div class:list={["grid gap-2", showNo ? "grid-cols-2" : "grid-cols-1"]}>
+    <button
+      type="submit"
+      name="answer"
+      value="yes"
+      data-answer
+      class:list={[
+        "h-12 rounded-full text-sm font-extrabold tracking-wide uppercase",
+        answered === "yes" ? "bg-free text-white" : "bg-brand text-on-brand",
+      ]}
+    >
+      {answered === "yes" ? `✓ ${yesLabel}` : yesLabel}
+    </button>
+    {showNo && (
+      <button
+        type="submit"
+        name="answer"
+        value="no"
+        data-answer
+        class:list={[
+          "h-12 rounded-full text-sm font-bold",
+          answered === "no" ? "bg-ink text-card" : "bg-card-2 text-ink",
+        ]}
+      >
+        {answered === "no" ? "✓ Nie będę" : "Nie będę"}
+      </button>
+    )}
+  </div>
+</form>
+
+<script>
+  // Odpowiedź wysyłamy dopiero po weryfikacji Turnstile (inaczej serwer ją odrzuci jako bota).
+  document.querySelectorAll<HTMLFormElement>("form[data-guest-form][data-needs-check]").forEach((form) => {
+    const status = form.querySelector<HTMLElement>("[data-check-status]");
+    const buttons = form.querySelectorAll<HTMLButtonElement>("[data-answer]");
+    const setReady = (ready: boolean) => {
+      buttons.forEach((button) => {
+        button.disabled = !ready;
+        button.classList.toggle("opacity-50", !ready);
+      });
+    };
+    setReady(false);
+    form.addEventListener("turnstile-state", (event) => {
+      const state = (event as CustomEvent<string>).detail;
+      if (!status) return;
+      if (state === "ok") {
+        status.hidden = true;
+        setReady(true);
+      } else if (state === "expired") {
+        status.hidden = false;
+        status.textContent = "Weryfikacja wygasła — zaznacz ją ponownie.";
+        setReady(false);
+      } else {
+        status.hidden = false;
+        status.textContent =
+          "Nie udało się sprawdzić, że nie jesteś botem. Wyłącz blokowanie skryptów na tej stronie (np. tarcze w Brave) albo otwórz link w innej przeglądarce.";
+        setReady(false);
+      }
+    });
+  });
+</script>

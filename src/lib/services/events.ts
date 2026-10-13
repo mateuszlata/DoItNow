@@ -513,6 +513,44 @@ export async function getEventDetails(
   };
 }
 
+interface GuestViewRow {
+  event: EventRecord;
+  me: { name: string; inviter_id: string | null };
+  organizer: ({ display_name: string } & KitColumns) | null;
+  participations: ParticipationWithProfile[];
+  guest_groups: GuestGroup[];
+}
+
+/** Spotkanie dla gościa bez konta, który odpowiedział „Będę” (rozpoznany po urządzeniu); null dla innych. */
+export async function getGuestEventDetails(
+  supabase: SupabaseClient,
+  id: string,
+  device: string,
+): Promise<{ details: EventDetails; guestName: string } | null> {
+  if (!UUID_PATTERN.test(id)) return null;
+  const response = await supabase.rpc("guest_event_view", { p_event_id: id, p_device: device });
+  const row = response.data as GuestViewRow | null;
+  if (response.error || !row) return null;
+  const participants = row.participations.filter((r) => r.status === "accepted").map(toParticipant);
+  const reserves = row.participations.filter((r) => r.status === "reserve").map(toParticipant);
+  return {
+    guestName: row.me.name,
+    details: {
+      ...row.event,
+      organizer_name: row.organizer?.display_name ?? "Użytkownik",
+      organizer_kit: kitFrom(row.organizer, row.event.organizer_id),
+      organizer_position: "obojetnie",
+      invites: [],
+      guest_groups: row.guest_groups,
+      participants,
+      reserves,
+      pending: [],
+      my_participation: null,
+      free_spots: Math.max(row.event.spots - participants.length, 0),
+    },
+  };
+}
+
 type MyEventRow = EventRecord & { accepted_count: number; reserve_count: number };
 
 /**
