@@ -70,6 +70,9 @@ export type PublicEvent = Pick<
 > & {
   accepted_count: number;
   reserve_count: number;
+  /** Położenie zaokrąglone do ok. 1 km (pogoda, odległość) — dokładne miejsce widzą zalogowani. */
+  approx_lat?: number | null;
+  approx_lng?: number | null;
 };
 
 /** `removed`: organizator usunął osobę ze spotkania; nie może zgłosić się ponownie. */

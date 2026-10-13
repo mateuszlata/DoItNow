@@ -1,6 +1,6 @@
 // „W pobliżu” na liście spotkań: promień od okolicy oglądającego, dla zalogowanych i gości (lokalny Supabase).
 import { afterAll, describe, expect, it } from "vitest";
-import { listUpcomingEvents, nearestEvents } from "@/lib/services/events";
+import { countEventsBySport, listUpcomingEvents, nearestEvents } from "@/lib/services/events";
 import { HOUR, anonClient, cleanupTestUsers, newUser, type TestUser } from "./helpers";
 
 afterAll(cleanupTestUsers);
@@ -47,6 +47,10 @@ describe("events near the viewer", () => {
       // Ile spotkań czeka w każdym promieniu: 2 w 5 km, a z tym dalekim — 3 w 30 km.
       expect(byTime.radiusCounts?.[5]).toBe(2);
       expect(byTime.radiusCounts?.[30]).toBe(3);
+      expect(byTime.radiusSports?.[5]).toEqual(["koszykowka"]);
+      // Liczby przy kafelkach sportów: w 5 km dwa spotkania koszykówki, sport z filtra nie ma znaczenia.
+      const bySport = await countEventsBySport(client, { near, sports: ["tenis"] }, { authenticated });
+      expect(bySport).toEqual({ koszykowka: 2 });
       const byDistance = await listUpcomingEvents(client, { near, sort: "distance" }, { authenticated });
       expect(ours(byDistance.events.map((e) => e.id))).toEqual([closer, close]);
       const distance = byDistance.events.find((e) => e.id === closer)?.distance_km ?? 0;

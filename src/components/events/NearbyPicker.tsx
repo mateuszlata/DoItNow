@@ -3,6 +3,7 @@ import { Check, ChevronDown, LocateFixed, MapPin, X } from "lucide-react";
 import { DEFAULT_RADIUS_KM, NEAR_COOKIE, NEAR_RADII, serializeNear, type Near } from "@/lib/near";
 import type { PlaceSuggestion } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
+import { sportIcon, sportLabel } from "@/lib/sports";
 
 // Filtr „W pobliżu” na liście spotkań: okolica z GPS albo wpisana dzielnica i promień.
 // Zapisuje je tylko w ciasteczku tej przeglądarki (zaokrąglone do ok. 1 km) i przeładowuje listę.
@@ -11,6 +12,34 @@ interface Props {
   near: Pick<Near, "label" | "radiusKm"> | null;
   /** Ile spotkań (przy obecnych filtrach) jest w każdym promieniu — do listy wyboru. */
   counts?: Partial<Record<number, number>> | null;
+  /** Sporty spotkań w każdym promieniu, od najczęstszego. */
+  sports?: Partial<Record<number, string[]>> | null;
+}
+
+/** Małe ikony sportów (do 3) — co czeka w danym promieniu. */
+function SportHints({ ids }: { ids: string[] }) {
+  if (ids.length === 0) return null;
+  return (
+    <span className="flex items-center gap-0.5" aria-label={ids.map(sportLabel).join(", ")}>
+      {ids.slice(0, 3).map((id) => (
+        <svg
+          key={id}
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d={sportIcon(id)} />
+        </svg>
+      ))}
+      {ids.length > 3 && <span className="text-[11px] font-bold">+{ids.length - 3}</span>}
+    </span>
+  );
 }
 
 function save(near: Near | null) {
@@ -48,10 +77,12 @@ function eventsWord(count: number): string {
 function RadiusMenu({
   value,
   counts,
+  sports,
   onPick,
 }: {
   value: number;
   counts: Partial<Record<number, number>> | null;
+  sports: Partial<Record<number, string[]>> | null;
   onPick: (km: number) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -100,7 +131,7 @@ function RadiusMenu({
         <ul
           role="listbox"
           aria-label="Promień — liczba spotkań w zasięgu"
-          className="bg-card text-ink border-line absolute left-0 z-[1200] mt-2 w-60 rounded-2xl border p-1.5 shadow-xl"
+          className="bg-card text-ink border-line absolute left-0 z-[1200] mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border p-1.5 shadow-xl"
         >
           {NEAR_RADII.map((km) => {
             const selected = km === value;
@@ -122,17 +153,20 @@ function RadiusMenu({
                     <Check className={cn("size-4", !selected && "invisible")} aria-hidden="true" />
                     {km} km
                   </span>
-                  {counts && (
-                    <span
-                      className={cn(
-                        "text-xs",
-                        selected ? "text-card" : n === 0 ? "text-ink-3" : "text-ink-2",
-                        n > 0 && "font-bold",
-                      )}
-                    >
-                      {n === 0 ? "brak spotkań" : `${String(n)} ${eventsWord(n)}`}
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2.5">
+                    <SportHints ids={sports?.[km] ?? []} />
+                    {counts && (
+                      <span
+                        className={cn(
+                          "text-xs",
+                          selected ? "text-card" : n === 0 ? "text-ink-3" : "text-ink-2",
+                          n > 0 && "font-bold",
+                        )}
+                      >
+                        {n === 0 ? "brak spotkań" : `${String(n)} ${eventsWord(n)}`}
+                      </span>
+                    )}
+                  </span>
                 </button>
               </li>
             );
@@ -143,7 +177,7 @@ function RadiusMenu({
   );
 }
 
-export default function NearbyPicker({ near, counts }: Props) {
+export default function NearbyPicker({ near, counts, sports }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<PlaceSuggestion[]>([]);
@@ -220,7 +254,7 @@ export default function NearbyPicker({ near, counts }: Props) {
             <MapPin className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate">{near.label}</span>
           </button>
-          <RadiusMenu value={near.radiusKm} counts={counts ?? null} onPick={setRadius} />
+          <RadiusMenu value={near.radiusKm} counts={counts ?? null} sports={sports ?? null} onPick={setRadius} />
           <button
             type="button"
             onClick={() => {

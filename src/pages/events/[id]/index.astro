@@ -12,6 +12,8 @@ import { getLineup, type SavedLineup } from "@/lib/services/lineups";
 import { supportsLineup } from "@/lib/lineup";
 import { eventVersion } from "@/lib/services/live";
 import InviteSection from "@/components/events/InviteSection.astro";
+import WeatherBadge from "@/components/events/WeatherBadge";
+import { WEATHER_ATTRIBUTION } from "@/lib/weather";
 import GuestAnswerForm from "@/components/events/GuestAnswerForm.astro";
 import { readDevice } from "@/lib/device";
 import ChanceMeter from "@/components/events/ChanceMeter.astro";
@@ -237,6 +239,13 @@ const navigateHref =
     : null;
 
 const day = summary ? eventDayParts(summary.starts_at) : null;
+// Pogoda na godzinę spotkania: dokładne miejsce dla członków, przybliżone (ok. 1 km) dla pozostałych.
+const weatherPoint =
+  details?.lat != null && details.lng != null
+    ? { lat: details.lat, lng: details.lng }
+    : publicEvent?.approx_lat != null && publicEvent.approx_lng != null
+      ? { lat: publicEvent.approx_lat, lng: publicEvent.approx_lng }
+      : null;
 const team = summary ? teamSize(summary) : 0;
 const missing = summary ? missingToMinimum(summary) : null;
 // Numer koszulki oglądającego: kapitan (grający organizator) ma pierwszą, potem kolejność w składzie.
@@ -398,6 +407,18 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               {day.date} · {formatEventTime(summary.starts_at)}
             </h1>
             <Countdown startsAt={summary.starts_at} durationMinutes={summary.duration_minutes} large />
+            {weatherPoint && !isPast && (
+              <div class="flex items-center gap-2">
+                <WeatherBadge
+                  lat={weatherPoint.lat}
+                  lng={weatherPoint.lng}
+                  startsAt={summary.starts_at}
+                  size="large"
+                  client:idle
+                />
+                <span class="text-[11px] text-page-ink-2">{WEATHER_ATTRIBUTION}</span>
+              </div>
+            )}
             <p class="text-[15px] text-page-ink-2">
               {summary.area}
               {details && (

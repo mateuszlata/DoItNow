@@ -372,7 +372,13 @@ export async function listUpcomingEvents(
   supabase: SupabaseClient,
   filters: EventFilters,
   options: { authenticated: boolean; now?: Date; limit?: number },
-): Promise<{ events: EventListItem[]; hasMore: boolean; radiusCounts: Record<number, number> | null }> {
+): Promise<{
+  events: EventListItem[];
+  hasMore: boolean;
+  radiusCounts: Record<number, number> | null;
+  /** Sporty spotkań w każdym promieniu, od najczęstszego (podpowiedź w liście promieni). */
+  radiusSports: Record<number, string[]> | null;
+}> {
   const now = options.now ?? new Date();
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
@@ -425,16 +431,49 @@ export async function listUpcomingEvents(
   }
   let rows = data as unknown as EventListItem[];
   let radiusCounts: Record<number, number> | null = null;
+  let radiusSports: Record<number, string[]> | null = null;
   if (near) {
     const measured = withDistance(rows, near);
     // Ile spotkań (przy tych samych filtrach sportu i terminu) jest w każdym z oferowanych promieni.
     radiusCounts = Object.fromEntries(
       NEAR_RADII.map((km) => [km, measured.filter((event) => (event.distance_km ?? Infinity) <= km).length]),
     );
+    radiusSports = Object.fromEntries(
+      NEAR_RADII.map((km) => [
+        km,
+        Object.entries(tally(measured.filter((event) => (event.distance_km ?? Infinity) <= km)))
+          .sort((a, b) => b[1] - a[1])
+          .map(([sport]) => sport),
+      ]),
+    );
     rows = measured.filter((event) => (event.distance_km ?? Infinity) <= near.radiusKm);
     if (filters.sort === "distance") rows.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0));
   }
-  return { events: rows.slice(0, limit), hasMore: rows.length > limit, radiusCounts };
+  return { events: rows.slice(0, limit), hasMore: rows.length > limit, radiusCounts, radiusSports };
+}
+
+/** Liczba spotkań w każdym sporcie. */
+function tally(rows: EventListItem[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const event of rows) counts[event.sport] = (counts[event.sport] ?? 0) + 1;
+  return counts;
+}
+
+/**
+ * Ile spotkań czeka w każdym sporcie przy pozostałych filtrach (termin, okolica i promień) —
+ * liczby przy kafelkach sportów na liście.
+ */
+export async function countEventsBySport(
+  supabase: SupabaseClient,
+  filters: EventFilters,
+  options: { authenticated: boolean; now?: Date },
+): Promise<Record<string, number>> {
+  const { events } = await listUpcomingEvents(
+    supabase,
+    { ...filters, sport: undefined, sports: [] },
+    { ...options, limit: MAX_EVENTS_SHOWN },
+  );
+  return tally(events);
 }
 
 /**
@@ -464,7 +503,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   const { data, error } = await supabase
     .from("events_public")
     .select(
-      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed",
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng",
     )
     .eq("id", id)
     .maybeSingle<PublicEvent>();

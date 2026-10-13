@@ -4,8 +4,16 @@ import Topbar from "@/components/Topbar.astro";
 import Jersey from "@/components/Jersey.astro";
 import SportIcon from "@/components/SportIcon.astro";
 import { createClient } from "@/lib/supabase";
-import { EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN, listUpcomingEvents, nearestEvents } from "@/lib/services/events";
+import {
+  EVENTS_PAGE_SIZE,
+  MAX_EVENTS_SHOWN,
+  countEventsBySport,
+  listUpcomingEvents,
+  nearestEvents,
+} from "@/lib/services/events";
 import NearbyPicker from "@/components/events/NearbyPicker";
+import WeatherBadge from "@/components/events/WeatherBadge";
+import { WEATHER_ATTRIBUTION } from "@/lib/weather";
 import { NEAR_COOKIE, NEAR_RADII, formatDistance, parseNear } from "@/lib/near";
 import { SPORTS, sportLabel } from "@/lib/sports";
 import { WHEN_OPTIONS, formatEventDay, formatTimeRange } from "@/lib/time";
@@ -68,10 +76,13 @@ const sort = near && Astro.url.searchParams.get("sort") === "distance" ? "distan
 let events: EventListItem[] = [];
 let hasMore = false;
 let radiusCounts: Record<number, number> | null = null;
+let radiusSports: Record<number, string[]> | null = null;
+// Ile spotkań czeka w każdym sporcie przy wybranym terminie i okolicy (liczby przy kafelkach sportów).
+let sportCounts: Record<string, number> | null = null;
 let loadError = false;
 if (supabase) {
   try {
-    ({ events, hasMore, radiusCounts } = await listUpcomingEvents(
+    ({ events, hasMore, radiusCounts, radiusSports } = await listUpcomingEvents(
       supabase,
       { sports: selected, day, when, near, sort },
       { authenticated: Boolean(user), limit: show },
@@ -95,6 +106,22 @@ if (supabase && near && !loadError && events.length === 0) {
 /** Najmniejszy z oferowanych promieni, który obejmie najbliższe spotkanie. */
 const widerRadius =
   near && nearest.length > 0 ? (NEAR_RADII.find((km) => km >= (nearest[0].distance_km ?? Infinity)) ?? null) : null;
+
+if (supabase && !loadError) {
+  sportCounts = await countEventsBySport(supabase, { day, when, near }, { authenticated: Boolean(user) }).catch(
+    () => null,
+  );
+}
+const sportCount = (id: string) => sportCounts?.[id] ?? 0;
+const totalCount = sportCounts ? Object.values(sportCounts).reduce((sum, n) => sum + n, 0) : null;
+// Sporty ze spotkaniami (i wybrane) najpierw, puste na końcu — kolejność w obrębie grup jak w SPORTS.
+const orderedSports = sportCounts
+  ? [...SPORTS].sort(
+      (a, b) =>
+        Number(sportCount(b.id) > 0 || selected.includes(b.id)) -
+        Number(sportCount(a.id) > 0 || selected.includes(a.id)),
+    )
+  : SPORTS;
 
 /** Parametry adresu dla wybranych sportów: ulubione nie potrzebują parametru, „wszystkie” przy ulubionych — `all`. */
 function sportsQuery(list: string[]): Record<string, string> {
@@ -143,6 +170,13 @@ const WHEN_LABELS: Record<string, string> = {
   tomorrow: "Jutro",
   weekend: "Weekend",
 };
+
+/** Położenie do prognozy pogody: dokładne dla zalogowanych, przybliżone (ok. 1 km) dla gości. */
+function weatherSpot(event: EventListItem): { lat: number; lng: number } | null {
+  const lat = event.lat ?? event.approx_lat;
+  const lng = event.lng ?? event.approx_lng;
+  return lat != null && lng != null ? { lat, lng } : null;
+}
 
 /** Mini-koszulki składu na karcie (do 12 miejsc; większe składy pokazują pasek). */
 function seats(event: EventListItem): boolean[] | null {
@@ -223,9 +257,11 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         >
           <SportIcon />
           Wszystkie sporty
+          {totalCount !== null && <span class="text-xs opacity-70">{totalCount}</span>}
         </a>
-        {SPORTS.map((s) => {
+        {orderedSports.map((s) => {
           const on = selected.includes(s.id);
+          const n = sportCount(s.id);
           return (
             <a
               href={filterHref({ sports: toggleSport(s.id) })}
@@ -233,10 +269,23 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
               class:list={[
                 "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
                 on ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
+                sportCounts && n === 0 && !on && "opacity-60",
               ]}
+              title={sportCounts ? `Spotkań: ${String(n)}` : undefined}
             >
               <SportIcon sport={s.id} />
               {s.label}
+              {sportCounts && (
+                <span
+                  class:list={[
+                    "rounded-full px-1.5 text-xs leading-5",
+                    n > 0 ? (on ? "bg-brand text-on-brand" : "bg-page-deep text-page-ink") : "opacity-70",
+                  ]}
+                  data-testid="sport-count"
+                >
+                  {n}
+                </span>
+              )}
               {on && <span class="sr-only">(wybrany)</span>}
               {on && (
                 <svg
@@ -330,6 +379,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
       <NearbyPicker
         near={near ? { label: near.label, radiusKm: near.radiusKm } : null}
         counts={radiusCounts}
+        sports={radiusSports}
         client:load
       />
 
@@ -421,7 +471,15 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                 <div class="flex flex-col gap-1 text-[15px]">
                   <span class="flex flex-wrap items-center justify-between gap-2">
                     <span class="font-bold first-letter:uppercase">{formatEventDay(event.starts_at)}</span>
-                    <Countdown startsAt={event.starts_at} durationMinutes={event.duration_minutes} />
+                    <span class="flex items-center gap-1.5">
+                      {(() => {
+                        const spot = weatherSpot(event);
+                        return (
+                          spot && <WeatherBadge lat={spot.lat} lng={spot.lng} startsAt={event.starts_at} client:idle />
+                        );
+                      })()}
+                      <Countdown startsAt={event.starts_at} durationMinutes={event.duration_minutes} />
+                    </span>
                   </span>
                   <span class="text-ink-2">
                     {event.area}
@@ -568,6 +626,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         </span>
       </a>
       <p class="mt-6 text-center text-xs text-page-ink-2">
+        {WEATHER_ATTRIBUTION} ·{" "}
         <a href="/regulamin" class="hover:underline">
           Regulamin
         </a>{" "}
