@@ -160,5 +160,6 @@ export function formatTemp(temp: number): string {
   return `${String(Object.is(rounded, -0) ? 0 : rounded)}°`;
 }
 
-/** Szansę opadów pokazujemy od 20% — niżej to szum. */
-export const SHOW_RAIN_FROM = 20;
+/** Szansa opadów: poniżej 20% „raczej sucho” (wyciszona), od 60% „będzie padać” (wyróżniona). */
+export const RAIN_LIKELY_FROM = 20;
+export const RAIN_SURE_FROM = 60;

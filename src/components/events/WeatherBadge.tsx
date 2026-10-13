@@ -14,7 +14,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import {
-  SHOW_RAIN_FROM,
+  RAIN_LIKELY_FROM,
+  RAIN_SURE_FROM,
   forecastFor,
   formatTemp,
   weatherKind,
@@ -145,7 +146,7 @@ export default function WeatherBadge({ lat, lng, startsAt, durationMinutes, size
 
   const kind = weatherKind(match.code);
   const label = weatherLabel(match.code, match.start.day);
-  const chance = match.prob !== null && match.prob >= SHOW_RAIN_FROM ? match.prob : null;
+  const chance = match.prob;
   const rain = match.precip >= 0.1 ? mm(match.precip) : null;
   const feels =
     match.start.feels !== null && Math.abs(match.start.feels - match.start.temp) >= 3 ? match.start.feels : null;
@@ -199,7 +200,14 @@ export default function WeatherBadge({ lat, lng, startsAt, durationMinutes, size
       {formatTemp(match.start.temp)}
       <span className="hidden font-semibold sm:inline">{label}</span>
       {chance !== null && (
-        <span className="text-ok inline-flex items-center gap-0.5" data-testid="weather-rain">
+        <span
+          className={cn(
+            "inline-flex items-center gap-0.5",
+            chance < RAIN_LIKELY_FROM ? "font-semibold opacity-60" : "text-ok",
+            chance >= RAIN_SURE_FROM && "font-extrabold",
+          )}
+          data-testid="weather-rain"
+        >
           <Droplet className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
           {chance}%
         </span>
