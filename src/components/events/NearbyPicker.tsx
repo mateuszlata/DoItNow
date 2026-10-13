@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ChevronDown, LocateFixed, MapPin, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, LocateFixed, MapPin, X } from "lucide-react";
 import { DEFAULT_RADIUS_KM, NEAR_COOKIE, NEAR_RADII, serializeNear, type Near } from "@/lib/near";
 import type { PlaceSuggestion } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,112 @@ function readCookie(): Near | null {
 }
 
 const chip = "inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold whitespace-nowrap";
+
+function eventsWord(count: number): string {
+  if (count === 1) return "spotkanie";
+  const tens = count % 100;
+  const ones = count % 10;
+  return ones >= 2 && ones <= 4 && (tens < 12 || tens > 14) ? "spotkania" : "spotkań";
+}
+
+/** Wybór promienia: lista w stylu aplikacji z liczbą spotkań przy każdej odległości. */
+function RadiusMenu({
+  value,
+  counts,
+  onPick,
+}: {
+  value: number;
+  counts: Partial<Record<number, number>> | null;
+  onPick: (km: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  // Zamykanie: kliknięcie poza listą albo Esc.
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => {
+      if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const count = (km: number) => counts?.[km] ?? 0;
+
+  return (
+    <div ref={root} className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((v) => !v);
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="bg-page-deep text-page-ink hover:bg-page-2 inline-flex h-10 items-center gap-1.5 rounded-full pr-3 pl-4 text-sm font-bold transition-colors"
+        data-testid="near-radius"
+      >
+        <span className="text-page-ink-2 font-semibold">w promieniu</span>
+        {value} km
+        {counts && (
+          <span className="bg-brand text-on-brand rounded-full px-2 py-0.5 text-xs font-extrabold">{count(value)}</span>
+        )}
+        <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          aria-label="Promień — liczba spotkań w zasięgu"
+          className="bg-card text-ink border-line absolute left-0 z-[1200] mt-2 w-60 rounded-2xl border p-1.5 shadow-xl"
+        >
+          {NEAR_RADII.map((km) => {
+            const selected = km === value;
+            const n = count(km);
+            return (
+              <li key={km} role="option" aria-selected={selected}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    if (!selected) onPick(km);
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors",
+                    selected ? "bg-ink text-card" : "hover:bg-card-2",
+                  )}
+                >
+                  <span className="flex items-center gap-2 font-bold">
+                    <Check className={cn("size-4", !selected && "invisible")} aria-hidden="true" />
+                    {km} km
+                  </span>
+                  {counts && (
+                    <span
+                      className={cn(
+                        "text-xs",
+                        selected ? "text-card" : n === 0 ? "text-ink-3" : "text-ink-2",
+                        n > 0 && "font-bold",
+                      )}
+                    >
+                      {n === 0 ? "brak spotkań" : `${String(n)} ${eventsWord(n)}`}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default function NearbyPicker({ near, counts }: Props) {
   const [open, setOpen] = useState(false);
@@ -114,28 +220,7 @@ export default function NearbyPicker({ near, counts }: Props) {
             <MapPin className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate">{near.label}</span>
           </button>
-          <label className="bg-page-deep text-page-ink relative inline-flex h-10 items-center rounded-full pr-9 pl-4 text-sm font-bold">
-            <span className="text-page-ink-2 mr-1.5 font-semibold">w promieniu</span>
-            <select
-              value={near.radiusKm}
-              onChange={(e) => {
-                setRadius(Number(e.target.value));
-              }}
-              aria-label="Promień — w nawiasie liczba spotkań"
-              className="absolute inset-0 cursor-pointer opacity-0"
-              data-testid="near-radius"
-            >
-              {NEAR_RADII.map((km) => (
-                <option key={km} value={km}>
-                  {km} km{counts ? ` (${String(counts[km] ?? 0)})` : ""}
-                </option>
-              ))}
-            </select>
-            <span aria-hidden="true">
-              {near.radiusKm} km{counts ? ` (${String(counts[near.radiusKm] ?? 0)})` : ""}
-            </span>
-            <ChevronDown className="pointer-events-none absolute right-3 size-4" aria-hidden="true" />
-          </label>
+          <RadiusMenu value={near.radiusKm} counts={counts ?? null} onPick={setRadius} />
           <button
             type="button"
             onClick={() => {
