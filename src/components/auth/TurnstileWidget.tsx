@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
 // Widget Cloudflare Turnstile. Po przejściu sprawdzenia dodaje do formularza ukryte pole
-// „cf-turnstile-response”, które serwer weryfikuje w src/lib/turnstile.ts.
+// „cf-turnstile-response”, które serwer weryfikuje w src/lib/turnstile.ts. Stan weryfikacji ogłasza
+// zdarzeniem „turnstile-state” (ok / expired / error), żeby formularz mógł czekać na wynik.
 const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
 interface Turnstile {
@@ -35,6 +36,12 @@ function loadTurnstile(): Promise<Turnstile> {
   return scriptPromise;
 }
 
+export type TurnstileState = "ok" | "expired" | "error";
+
+function announce(element: HTMLElement | null, state: TurnstileState) {
+  element?.dispatchEvent(new CustomEvent<TurnstileState>("turnstile-state", { detail: state, bubbles: true }));
+}
+
 export function TurnstileWidget({ siteKey }: { siteKey: string }) {
   const container = useRef<HTMLDivElement>(null);
 
@@ -49,10 +56,20 @@ export function TurnstileWidget({ siteKey }: { siteKey: string }) {
           language: "pl",
           theme: "light",
           size: "flexible",
+          callback: () => {
+            announce(container.current, "ok");
+          },
+          "expired-callback": () => {
+            announce(container.current, "expired");
+          },
+          "error-callback": () => {
+            announce(container.current, "error");
+          },
         });
       })
       .catch(() => {
-        // Bez widgetu serwer odrzuci rejestrację z czytelnym komunikatem.
+        // Skrypt Cloudflare zablokowany (np. przez rozszerzenie) — formularz pokaże podpowiedź.
+        announce(container.current, "error");
       });
     return () => {
       cancelled = true;

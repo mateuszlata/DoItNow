@@ -15,7 +15,11 @@ export async function verifyTurnstile(
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> {
   if (!secret) return true;
-  if (typeof token !== "string" || token.length === 0 || token.length > 2048) return false;
+  if (typeof token !== "string" || token.length === 0 || token.length > 2048) {
+    // eslint-disable-next-line no-console -- diagnostyka: formularz wysłany bez tokenu widgetu
+    console.warn("turnstile: missing token");
+    return false;
+  }
 
   const body = new FormData();
   body.set("secret", secret);
@@ -25,9 +29,14 @@ export async function verifyTurnstile(
   try {
     const response = await fetchImpl(VERIFY_URL, { method: "POST", body });
     if (!response.ok) return false;
-    const result = (await response.json()) as unknown;
-    return typeof result === "object" && result !== null && "success" in result && result.success === true;
-  } catch {
+    const result = (await response.json()) as { success?: unknown; "error-codes"?: unknown; hostname?: unknown };
+    if (result.success === true) return true;
+    // eslint-disable-next-line no-console -- diagnostyka: powód odrzucenia według Cloudflare
+    console.warn("turnstile: rejected", JSON.stringify({ codes: result["error-codes"], hostname: result.hostname }));
+    return false;
+  } catch (error) {
+    // eslint-disable-next-line no-console -- diagnostyka: brak połączenia z Cloudflare
+    console.warn("turnstile: verify failed", String(error));
     return false;
   }
 }

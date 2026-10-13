@@ -71,7 +71,7 @@ const answered = card?.mine?.answer ?? null;
 
           {ok === "yes" && (
             <div class="mt-4 rounded-2xl bg-free-soft p-4 text-sm text-free" role="status">
-              <p class="font-bold">Super! Organizator wie, że będziesz.</p>
+              <p class="font-bold">Super! {card.organizer_name} wie, że będziesz.</p>
               <p class="mt-1 text-ink-2">
                 Załóż konto w 30 sekund, a dostaniesz dostęp do czatu spotkania i własne barwy w składzie.
               </p>
@@ -91,7 +91,13 @@ const answered = card?.mine?.answer ?? null;
           {error && <p class="mt-4 rounded-2xl bg-bad-soft p-3 text-sm text-bad">{error}</p>}
 
           {card.open ? (
-            <form method="POST" action={`/api/invites/${token}`} class="mt-5 flex flex-col gap-3">
+            <form
+              method="POST"
+              action={`/api/invites/${token}`}
+              class="mt-5 flex flex-col gap-3"
+              data-invite-form
+              data-needs-check={TURNSTILE_SITE_KEY ? "" : undefined}
+            >
               <label class="text-sm text-ink-2">
                 Twoje imię
                 <input
@@ -106,11 +112,15 @@ const answered = card?.mine?.answer ?? null;
                 />
               </label>
               {TURNSTILE_SITE_KEY && <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} client:load />}
+              <p class="text-center text-xs text-ink-3" data-check-status hidden={!TURNSTILE_SITE_KEY}>
+                Sprawdzamy, czy nie jesteś botem — to potrwa chwilę…
+              </p>
               <div class="grid grid-cols-2 gap-2">
                 <button
                   type="submit"
                   name="answer"
                   value="yes"
+                  data-answer
                   class:list={[
                     "h-12 rounded-full text-sm font-extrabold tracking-wide uppercase",
                     answered === "yes" ? "bg-free text-white" : "bg-brand text-on-brand",
@@ -122,6 +132,7 @@ const answered = card?.mine?.answer ?? null;
                   type="submit"
                   name="answer"
                   value="no"
+                  data-answer
 
                   class:list={[
                     "h-12 rounded-full text-sm font-bold",
@@ -150,3 +161,36 @@ const answered = card?.mine?.answer ?? null;
     </div>
   </div>
 </Layout>
+
+<script>
+  // Odpowiedź wysyłamy dopiero po weryfikacji Turnstile (inaczej serwer ją odrzuci jako bota).
+  const form = document.querySelector<HTMLFormElement>("form[data-invite-form][data-needs-check]");
+  if (form) {
+    const status = form.querySelector<HTMLElement>("[data-check-status]");
+    const buttons = form.querySelectorAll<HTMLButtonElement>("[data-answer]");
+    const setReady = (ready: boolean) => {
+      buttons.forEach((button) => {
+        button.disabled = !ready;
+        button.classList.toggle("opacity-50", !ready);
+      });
+    };
+    setReady(false);
+    form.addEventListener("turnstile-state", (event) => {
+      const state = (event as CustomEvent<string>).detail;
+      if (!status) return;
+      if (state === "ok") {
+        status.hidden = true;
+        setReady(true);
+      } else if (state === "expired") {
+        status.hidden = false;
+        status.textContent = "Weryfikacja wygasła — zaznacz ją ponownie.";
+        setReady(false);
+      } else {
+        status.hidden = false;
+        status.textContent =
+          "Nie udało się sprawdzić, że nie jesteś botem. Wyłącz blokowanie skryptów na tej stronie (np. tarcze w Brave) albo otwórz link w innej przeglądarce.";
+        setReady(false);
+      }
+    });
+  }
+</script>
