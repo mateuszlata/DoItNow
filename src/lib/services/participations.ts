@@ -44,8 +44,18 @@ function toResult(data: unknown, error: { message: string } | null): Participati
   return { ok: true, participation: data as ParticipationRecord };
 }
 
-export async function requestToJoin(supabase: SupabaseClient, eventId: string): Promise<ParticipationResult> {
-  const response = await supabase.rpc("request_to_join", { p_event_id: eventId });
+/**
+ * Zgłoszenie chęci udziału. Z identyfikatorem urządzenia: jeśli z tego urządzenia ktoś był już w składzie jako gość
+ * bez konta, jego miejsce gościa przechodzi na konto (zamiast zajmować drugie).
+ */
+export async function requestToJoin(
+  supabase: SupabaseClient,
+  eventId: string,
+  device?: string | null,
+): Promise<ParticipationResult> {
+  const response = device
+    ? await supabase.rpc("join_event_claiming_guest", { p_event_id: eventId, p_device: device })
+    : await supabase.rpc("request_to_join", { p_event_id: eventId });
   return toResult(response.data as unknown, response.error);
 }
 

@@ -48,7 +48,7 @@ if (supabase) await releaseStaleInvites(supabase);
 let details: EventDetails | null = null;
 let publicEvent: PublicEvent | null = null;
 // Gość bez konta, który powiedział „Będę” (rozpoznany po urządzeniu), widzi spotkanie jak członek składu.
-const device = user ? null : readDevice(Astro.cookies);
+const device = readDevice(Astro.cookies);
 let guestName: string | null = null;
 if (supabase) {
   if (user) {
@@ -175,6 +175,11 @@ const chance = chanceInput ? meetingChance(chanceInput) : null;
 const mustAnswer = details !== null && needsAnswer(details, myStatus, myParticipation?.stay_confirmed ?? null);
 
 const canJoin = user !== null && isOpen && !isOrganizer && (myStatus === null || myStatus === "withdrawn");
+// Zalogowany, który wcześniej z tego urządzenia powiedział „Będę” jako gość: „Dołącz” przejmie to miejsce.
+const myGuestName =
+  canJoin && device && supabase && !details?.requires_approval
+    ? ((await getGuestEventDetails(supabase, id, device))?.guestName ?? null)
+    : null;
 // Oczekujące zgłoszenie i rezerwa nie zajmują miejsca, więc można je wycofać do startu;
 // zaakceptowany uczestnik do 12 h przed — chyba że organizator odwołał spotkanie.
 const canWithdraw =
@@ -631,6 +636,15 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
                 reserved: publicEvent.reserve_count,
               }}
             />
+          )}
+
+          {myGuestName && (
+            <section class="rounded-[20px] bg-card p-4 text-sm text-ink" data-testid="claim-guest">
+              <p class="font-bold">Jesteś już w składzie jako gość „{myGuestName}”</p>
+              <p class="mt-1 text-ink-2">
+                Kliknij „Dołącz” na dole — Twoje miejsce gościa przejdzie na konto i odblokuje się pisanie na czacie.
+              </p>
+            </section>
           )}
 
           {isGuest && details && (

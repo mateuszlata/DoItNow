@@ -229,4 +229,24 @@ describe("joining without an account from the event page", () => {
     expect((await joinAsGuest(guest, { eventId, device: device(60), name: "Iza", answer: "no" })).ok).toBe(true);
     expect(await seats(organizer, eventId)).toEqual({ spots: 5, guest_count: 0, guest_confirmed: 0 });
   });
+
+  it("moves the guest seat to the account when the guest signs up and joins from the same device", async () => {
+    const organizer = await newUser("Org11 ZP");
+    const eventId = await event(organizer, 6);
+    const me = device(70);
+    expect((await joinAsGuest(anonClient(), { eventId, device: me, name: "Tomek", answer: "yes" })).ok).toBe(true);
+    expect(await seats(organizer, eventId)).toEqual({ spots: 4, guest_count: 1, guest_confirmed: 1 });
+
+    const tomek = await newUser("Tomek ZP");
+    const joined = await requestToJoin(tomek.client, eventId, me);
+    expect(joined.ok && joined.participation.status).toBe("accepted");
+    // Ta sama liczba osób w składzie: miejsce gościa zamieniło się w zwykłe miejsce w Metando.
+    expect(await seats(organizer, eventId)).toEqual({ spots: 5, guest_count: 0, guest_confirmed: 0 });
+    expect(await listInviteResponses(organizer.client, eventId)).toEqual([]);
+
+    // Inne urządzenie niczego nie przejmuje.
+    const other = await newUser("Inny ZP");
+    expect((await requestToJoin(other.client, eventId, device(71))).ok).toBe(true);
+    expect(await seats(organizer, eventId)).toEqual({ spots: 5, guest_count: 0, guest_confirmed: 0 });
+  });
 });

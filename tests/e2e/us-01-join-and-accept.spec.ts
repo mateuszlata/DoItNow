@@ -19,8 +19,8 @@ async function waitForHydration(page: Page): Promise<void> {
   await page.locator("astro-island:not([ssr])").first().waitFor({ state: "attached" });
 }
 
-async function signUpAndSignIn(browser: Browser, nick: string): Promise<Page> {
-  const page = await browser.newPage();
+async function signUpAndSignIn(browser: Browser, nick: string, existing?: Page): Promise<Page> {
+  const page = existing ?? (await browser.newPage());
   const email = `${emailPrefix}${nick.toLowerCase()}@example.com`;
 
   await page.goto("/auth/signup");
@@ -220,7 +220,9 @@ test("joining without approval is instant and the organizer can remove a partici
 });
 
 test("a guest joins from a shared link without an account and reads the chat", async ({ browser }) => {
-  const organizerNick = `Org${runId}`;
+  // Dwie rejestracje (organizator i gość, który zakłada konto) — dłużej niż domyślna minuta.
+  test.setTimeout(150_000);
+  const organizerNick = `Orc${runId}`;
   const area = `Skwer ${runId}`;
 
   const organizer = await signUpAndSignIn(browser, organizerNick);
@@ -252,5 +254,18 @@ test("a guest joins from a shared link without an account and reads the chat", a
   // Zmiana zdania: miejsce wraca, a strona znów proponuje dołączenie.
   await guest.getByTestId("guest-member").getByRole("button", { name: "Nie będę" }).click();
   await expect(guest.getByTestId("guest-join")).toBeVisible();
+
+  // Znowu „Będę”, potem konto w tej samej przeglądarce: „Dołącz” przejmuje miejsce gościa, czat się odblokowuje.
+  await guest.getByTestId("guest-join").getByLabel("Twoje imię").fill("Gośka");
+  await guest.getByTestId("guest-join").getByRole("button", { name: "Będę" }).click();
+  await expect(guest.getByTestId("free-spots")).toContainText(/4\s*wolne z 6/);
+  await signUpAndSignIn(browser, `Gos${runId}`, guest);
+  await guest.goto(eventUrl);
+  await expect(guest.getByTestId("claim-guest")).toContainText("Gośka");
+  await guest.getByRole("button", { name: "Dołącz" }).click();
+  await expect(guest.getByText("Jesteś w składzie!")).toBeVisible();
+  await expect(guest.getByTestId("free-spots")).toContainText(/4\s*wolne z 6/);
+  await expect(guest.getByTestId("claim-guest")).toHaveCount(0);
+  await expect(guest.getByLabel("Wiadomość", { exact: true })).toBeVisible();
   await guestContext.close();
 });

@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@/lib/supabase";
 import { requestToJoin } from "@/lib/services/participations";
+import { readDevice } from "@/lib/device";
 
 export const prerender = false;
 
@@ -12,6 +13,7 @@ export const POST: APIRoute = async (context) => {
   const supabase = createClient(context.request.headers, context.cookies);
   if (!supabase) return context.redirect(`/events/${eventId}?error=UNKNOWN`);
 
-  const result = await requestToJoin(supabase, eventId);
+  // Miejsce gościa z tego urządzenia (odpowiedź „Będę” przed założeniem konta) przechodzi na konto.
+  const result = await requestToJoin(supabase, eventId, readDevice(context.cookies));
   return context.redirect(result.ok ? `/events/${eventId}?ok=joined` : `/events/${eventId}?error=${result.code}`);
 };
