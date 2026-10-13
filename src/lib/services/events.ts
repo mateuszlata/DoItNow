@@ -4,7 +4,7 @@ import { isPosition, supportsLineup } from "@/lib/lineup";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
-import { boundingBox, distanceKm, type Near } from "@/lib/near";
+import { MAX_RADIUS_KM, NEAR_RADII, boundingBox, distanceKm, type Near } from "@/lib/near";
 import { canWithdrawAccepted } from "@/lib/services/participations";
 import { getVenue } from "@/lib/services/venues";
 import type {
@@ -372,7 +372,7 @@ export async function listUpcomingEvents(
   supabase: SupabaseClient,
   filters: EventFilters,
   options: { authenticated: boolean; now?: Date; limit?: number },
-): Promise<{ events: EventListItem[]; hasMore: boolean }> {
+): Promise<{ events: EventListItem[]; hasMore: boolean; radiusCounts: Record<number, number> | null }> {
   const now = options.now ?? new Date();
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
@@ -386,14 +386,15 @@ export async function listUpcomingEvents(
     : supabase.from("events_public").select(columns);
 
   // Jeden element ponad limit mówi, czy pokazać „Pokaż więcej”; id ustala kolejność przy tym samym terminie.
-  // Przy „W pobliżu” baza zawęża do prostokąta wokół okolicy, a dokładne koło, kolejność i stronę liczymy tutaj.
+  // Przy „W pobliżu” baza zawęża do prostokąta wokół okolicy (dla największego promienia — żeby policzyć,
+  // ile spotkań czeka w każdym), a dokładne koło, kolejność i stronę liczymy tutaj.
   query = query
     .gt("starts_at", now.toISOString())
     .order("starts_at", { ascending: true })
     .order("id", { ascending: true })
     .limit(near ? MAX_EVENTS_SHOWN + 1 : limit + 1);
   if (near) {
-    const box = boundingBox(near);
+    const box = boundingBox({ ...near, radiusKm: MAX_RADIUS_KM });
     const [latColumn, lngColumn] = options.authenticated ? ["lat", "lng"] : ["approx_lat", "approx_lng"];
     query = query
       .gte(latColumn, box.minLat)
@@ -423,11 +424,17 @@ export async function listUpcomingEvents(
     throw new Error(`Nie udało się pobrać ogłoszeń (HTTP ${String(status)}): ${JSON.stringify(error)}`);
   }
   let rows = data as unknown as EventListItem[];
+  let radiusCounts: Record<number, number> | null = null;
   if (near) {
-    rows = withDistance(rows, near).filter((event) => (event.distance_km ?? Infinity) <= near.radiusKm);
+    const measured = withDistance(rows, near);
+    // Ile spotkań (przy tych samych filtrach sportu i terminu) jest w każdym z oferowanych promieni.
+    radiusCounts = Object.fromEntries(
+      NEAR_RADII.map((km) => [km, measured.filter((event) => (event.distance_km ?? Infinity) <= km).length]),
+    );
+    rows = measured.filter((event) => (event.distance_km ?? Infinity) <= near.radiusKm);
     if (filters.sort === "distance") rows.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0));
   }
-  return { events: rows.slice(0, limit), hasMore: rows.length > limit };
+  return { events: rows.slice(0, limit), hasMore: rows.length > limit, radiusCounts };
 }
 
 /**

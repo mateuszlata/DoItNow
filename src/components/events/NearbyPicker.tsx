@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LocateFixed, MapPin, X } from "lucide-react";
+import { ChevronDown, LocateFixed, MapPin, X } from "lucide-react";
 import { DEFAULT_RADIUS_KM, NEAR_COOKIE, NEAR_RADII, serializeNear, type Near } from "@/lib/near";
 import type { PlaceSuggestion } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   near: Pick<Near, "label" | "radiusKm"> | null;
+  /** Ile spotkań (przy obecnych filtrach) jest w każdym promieniu — do listy wyboru. */
+  counts?: Partial<Record<number, number>> | null;
 }
 
 function save(near: Near | null) {
@@ -35,7 +37,7 @@ function readCookie(): Near | null {
 
 const chip = "inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold whitespace-nowrap";
 
-export default function NearbyPicker({ near }: Props) {
+export default function NearbyPicker({ near, counts }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<PlaceSuggestion[]>([]);
@@ -112,24 +114,28 @@ export default function NearbyPicker({ near }: Props) {
             <MapPin className="size-4 shrink-0" aria-hidden="true" />
             <span className="truncate">{near.label}</span>
           </button>
-          <div className="bg-page-deep flex gap-1 rounded-full p-1" role="group" aria-label="Promień">
-            {NEAR_RADII.map((km) => (
-              <button
-                key={km}
-                type="button"
-                aria-pressed={km === near.radiusKm}
-                onClick={() => {
-                  setRadius(km);
-                }}
-                className={cn(
-                  "h-8 rounded-full px-3 text-xs font-extrabold whitespace-nowrap",
-                  km === near.radiusKm ? "bg-card text-ink" : "text-page-ink-2 hover:text-page-ink",
-                )}
-              >
-                {km} km
-              </button>
-            ))}
-          </div>
+          <label className="bg-page-deep text-page-ink relative inline-flex h-10 items-center rounded-full pr-9 pl-4 text-sm font-bold">
+            <span className="text-page-ink-2 mr-1.5 font-semibold">w promieniu</span>
+            <select
+              value={near.radiusKm}
+              onChange={(e) => {
+                setRadius(Number(e.target.value));
+              }}
+              aria-label="Promień — w nawiasie liczba spotkań"
+              className="absolute inset-0 cursor-pointer opacity-0"
+              data-testid="near-radius"
+            >
+              {NEAR_RADII.map((km) => (
+                <option key={km} value={km}>
+                  {km} km{counts ? ` (${String(counts[km] ?? 0)})` : ""}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden="true">
+              {near.radiusKm} km{counts ? ` (${String(counts[near.radiusKm] ?? 0)})` : ""}
+            </span>
+            <ChevronDown className="pointer-events-none absolute right-3 size-4" aria-hidden="true" />
+          </label>
           <button
             type="button"
             onClick={() => {

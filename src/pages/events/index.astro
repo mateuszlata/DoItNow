@@ -67,10 +67,11 @@ const sort = near && Astro.url.searchParams.get("sort") === "distance" ? "distan
 
 let events: EventListItem[] = [];
 let hasMore = false;
+let radiusCounts: Record<number, number> | null = null;
 let loadError = false;
 if (supabase) {
   try {
-    ({ events, hasMore } = await listUpcomingEvents(
+    ({ events, hasMore, radiusCounts } = await listUpcomingEvents(
       supabase,
       { sports: selected, day, when, near, sort },
       { authenticated: Boolean(user), limit: show },
@@ -326,7 +327,11 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
           </span>
         )}
       </div>
-      <NearbyPicker near={near ? { label: near.label, radiusKm: near.radiusKm } : null} client:load />
+      <NearbyPicker
+        near={near ? { label: near.label, radiusKm: near.radiusKm } : null}
+        counts={radiusCounts}
+        client:load
+      />
 
       {day && (
         <p class="mb-4 text-sm text-page-ink-2">

@@ -2,7 +2,8 @@
 // Trzymamy je tylko w ciasteczku przeglądarki, z dokładnością do ok. 1 km — nie zapisujemy ich na serwerze.
 
 export const NEAR_COOKIE = "metando_near";
-export const NEAR_RADII = [2, 5, 10, 20] as const;
+export const NEAR_RADII = [1, 2, 3, 5, 7, 10, 15, 20, 30, 50] as const;
+export const MAX_RADIUS_KM = NEAR_RADII[NEAR_RADII.length - 1];
 export const DEFAULT_RADIUS_KM = 5;
 const LABEL_MAX = 60;
 

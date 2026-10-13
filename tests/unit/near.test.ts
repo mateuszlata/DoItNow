@@ -9,7 +9,7 @@ describe("near", () => {
 
   it("rejects broken values and radii outside the offered list", () => {
     expect(parseNear("abc")).toBeNull();
-    expect(parseNear("52.2|21.0|7|x")).toBeNull();
+    expect(parseNear("52.2|21.0|4|x")).toBeNull();
     expect(parseNear("95|21|5|x")).toBeNull();
     expect(parseNear("52.2|21.0|10|")).toMatchObject({ label: "Twoja okolica" });
   });

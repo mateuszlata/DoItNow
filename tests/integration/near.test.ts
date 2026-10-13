@@ -44,6 +44,9 @@ describe("events near the viewer", () => {
     ] as const) {
       const byTime = await listUpcomingEvents(client, { near }, { authenticated });
       expect(ours(byTime.events.map((e) => e.id))).toEqual([close, closer]);
+      // Ile spotkań czeka w każdym promieniu: 2 w 5 km, a z tym dalekim — 3 w 30 km.
+      expect(byTime.radiusCounts?.[5]).toBe(2);
+      expect(byTime.radiusCounts?.[30]).toBe(3);
       const byDistance = await listUpcomingEvents(client, { near, sort: "distance" }, { authenticated });
       expect(ours(byDistance.events.map((e) => e.id))).toEqual([closer, close]);
       const distance = byDistance.events.find((e) => e.id === closer)?.distance_km ?? 0;
