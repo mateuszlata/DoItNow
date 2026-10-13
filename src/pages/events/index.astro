@@ -475,7 +475,15 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                       {(() => {
                         const spot = weatherSpot(event);
                         return (
-                          spot && <WeatherBadge lat={spot.lat} lng={spot.lng} startsAt={event.starts_at} client:idle />
+                          spot && (
+                            <WeatherBadge
+                              lat={spot.lat}
+                              lng={spot.lng}
+                              startsAt={event.starts_at}
+                              durationMinutes={event.duration_minutes}
+                              client:idle
+                            />
+                          )
                         );
                       })()}
                       <Countdown startsAt={event.starts_at} durationMinutes={event.duration_minutes} />

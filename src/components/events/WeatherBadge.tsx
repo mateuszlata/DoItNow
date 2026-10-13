@@ -8,29 +8,32 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
+  Droplet,
   Moon,
   Sun,
   type LucideIcon,
 } from "lucide-react";
 import {
-  forecastAt,
+  SHOW_RAIN_FROM,
+  forecastFor,
   formatTemp,
-  isNight,
   weatherKind,
   weatherLabel,
+  type MatchWeather,
   type WeatherKind,
   type WeatherPoint,
 } from "@/lib/weather";
 import { cn } from "@/lib/utils";
 
-// Pogoda na godzinę spotkania (prognoza MET Norway przez /api/weather). Pokazuje się dopiero, gdy
-// termin mieści się w prognozie (ok. 9 dni) — wcześniej nic nie zajmuje miejsca na karcie.
+// Pogoda na czas spotkania (prognoza Open-Meteo przez /api/weather): najgorsze warunki, najwyższa szansa
+// opadów i suma opadu w godzinach meczu. Poza zasięgiem prognozy (16 dni) — data, od której się pojawi.
 
 interface Props {
   lat: number;
   lng: number;
   startsAt: string;
-  /** `card` — mała plakietka na liście; `large` — na stronie spotkania, z opisem i wiatrem. */
+  durationMinutes: number;
+  /** `card` — mała plakietka na liście; `large` — na stronie spotkania, z opisem, wiatrem i odczuwalną. */
   size?: "card" | "large";
 }
 
@@ -43,7 +46,8 @@ function loadPoints(lat: number, lng: number): Promise<WeatherPoint[]> {
   const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
   let request = requests.get(key);
   if (!request) {
-    request = fetch(`/api/weather?lat=${lat.toFixed(2)}&lng=${lng.toFixed(2)}`)
+    // `v=2`: nowy format (Open-Meteo) — omija odpowiedzi MET zapamiętane w przeglądarkach.
+    request = fetch(`/api/weather?v=2&lat=${lat.toFixed(2)}&lng=${lng.toFixed(2)}`)
       .then((r) => (r.ok ? (r.json() as Promise<{ points: WeatherPoint[] }>) : { points: [] }))
       .then((data) => data.points)
       .catch(() => []);
@@ -76,17 +80,31 @@ const TONES: Record<WeatherKind, string> = {
 };
 
 /** Ikona pogody (noc: księżyc zamiast słońca). */
-function WeatherIcon({ symbol, className, strokeWidth }: { symbol: string; className: string; strokeWidth: number }) {
-  const kind = weatherKind(symbol);
+function WeatherIcon({
+  code,
+  day,
+  className,
+  strokeWidth,
+}: {
+  code: number;
+  day: boolean;
+  className: string;
+  strokeWidth: number;
+}) {
+  const kind = weatherKind(code);
   const props = { className, strokeWidth, "aria-hidden": true } as const;
-  if (isNight(symbol) && kind === "clear") return <Moon {...props} />;
-  if (isNight(symbol) && kind === "partly") return <CloudMoon {...props} />;
+  if (!day && kind === "clear") return <Moon {...props} />;
+  if (!day && kind === "partly") return <CloudMoon {...props} />;
   const Icon = ICONS[kind];
   return <Icon {...props} />;
 }
 
-export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Props) {
-  const [point, setPoint] = useState<WeatherPoint | null>(null);
+function mm(value: number): string {
+  return `${value.toFixed(1).replace(".", ",")} mm`;
+}
+
+export default function WeatherBadge({ lat, lng, startsAt, durationMinutes, size = "card" }: Props) {
+  const [match, setMatch] = useState<MatchWeather | null>(null);
   // Termin poza zasięgiem prognozy: dzień, od którego prognoza obejmie spotkanie.
   const [availableFrom, setAvailableFrom] = useState<Date | null>(null);
 
@@ -95,9 +113,9 @@ export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Prop
     void loadPoints(lat, lng).then((points) => {
       if (cancelled) return;
       const at = new Date(startsAt);
-      setPoint(forecastAt(points, at));
+      setMatch(forecastFor(points, at, durationMinutes));
       const last = points.at(-1);
-      if (last && at.getTime() > new Date(last.t).getTime() + 3 * 3_600_000) {
+      if (last && at.getTime() > new Date(last.t).getTime()) {
         const horizon = new Date(last.t).getTime() - Date.now();
         setAvailableFrom(new Date(at.getTime() - horizon));
       }
@@ -105,9 +123,9 @@ export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Prop
     return () => {
       cancelled = true;
     };
-  }, [lat, lng, startsAt]);
+  }, [lat, lng, startsAt, durationMinutes]);
 
-  if (!point?.symbol) {
+  if (!match) {
     if (!availableFrom) return null;
     const from = dayFormat.format(availableFrom);
     return (
@@ -116,7 +134,7 @@ export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Prop
           "bg-card-2 text-ink-2 inline-flex items-center gap-1 rounded-full font-bold",
           size === "large" ? "px-3 py-1.5 text-xs" : "px-2 py-0.5 text-[12px]",
         )}
-        title={`Prognoza pogody na godzinę spotkania pojawi się ${from}.`}
+        title={`Prognoza pogody na czas spotkania pojawi się ${from}.`}
         data-testid="weather-later"
       >
         <CloudSun className="size-4" strokeWidth={2} aria-hidden="true" />
@@ -124,14 +142,22 @@ export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Prop
       </span>
     );
   }
-  const kind = weatherKind(point.symbol);
-  const label = weatherLabel(point.symbol);
-  const rain = point.precip !== null && point.precip >= 0.1 ? `${point.precip.toFixed(1).replace(".", ",")} mm` : null;
+
+  const kind = weatherKind(match.code);
+  const label = weatherLabel(match.code, match.start.day);
+  const chance = match.prob !== null && match.prob >= SHOW_RAIN_FROM ? match.prob : null;
+  const rain = match.precip >= 0.1 ? mm(match.precip) : null;
+  const feels =
+    match.start.feels !== null && Math.abs(match.start.feels - match.start.temp) >= 3 ? match.start.feels : null;
+  const gusty = match.gusts !== null && match.gusts >= 10 ? match.gusts : null;
   const title = [
     label,
-    `${formatTemp(point.temp)}C`,
+    `${formatTemp(match.start.temp)}C`,
+    feels !== null && `odczuwalna ${formatTemp(feels)}`,
+    `szansa opadów ${String(match.prob ?? 0)}%`,
     rain && `opad ${rain}`,
-    point.wind !== null && `wiatr ${String(Math.round(point.wind))} m/s`,
+    match.wind !== null && `wiatr ${String(Math.round(match.wind))} m/s`,
+    gusty !== null && `porywy ${String(Math.round(gusty))} m/s`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -143,14 +169,20 @@ export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Prop
         title={title}
         data-testid="weather"
       >
-        <WeatherIcon symbol={point.symbol} className="size-8 shrink-0" strokeWidth={1.9} />
+        <WeatherIcon code={match.code} day={match.start.day} className="size-8 shrink-0" strokeWidth={1.9} />
         <div className="leading-tight">
-          <p className="display text-3xl leading-none">{formatTemp(point.temp)}</p>
-          <p className="text-xs font-bold">
-            {label}
-            {rain && <> · {rain}</>}
-            {point.wind !== null && <> · wiatr {Math.round(point.wind)} m/s</>}
+          <p className="flex items-baseline gap-2">
+            <span className="display text-3xl leading-none">{formatTemp(match.start.temp)}</span>
+            {feels !== null && <span className="text-xs font-semibold">odczuwalna {formatTemp(feels)}</span>}
           </p>
+          <p className="text-xs font-bold">
+            {label} · szansa opadów {match.prob ?? 0}%{rain && <> · {rain}</>}
+          </p>
+          {match.wind !== null && (
+            <p className="text-xs font-semibold">
+              wiatr {Math.round(match.wind)} m/s{gusty !== null && <>, porywy do {Math.round(gusty)} m/s</>}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -160,13 +192,18 @@ export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Prop
     <span
       className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[13px] font-bold", TONES[kind])}
       title={title}
-      aria-label={`Prognoza na godzinę spotkania: ${title}`}
+      aria-label={`Prognoza na czas spotkania: ${title}`}
       data-testid="weather"
     >
-      <WeatherIcon symbol={point.symbol} className="size-4" strokeWidth={2.2} />
-      {formatTemp(point.temp)}
+      <WeatherIcon code={match.code} day={match.start.day} className="size-4" strokeWidth={2.2} />
+      {formatTemp(match.start.temp)}
       <span className="hidden font-semibold sm:inline">{label}</span>
-      {rain && <span className="font-semibold opacity-80">{rain}</span>}
+      {chance !== null && (
+        <span className="text-ok inline-flex items-center gap-0.5" data-testid="weather-rain">
+          <Droplet className="size-3.5" strokeWidth={2.4} aria-hidden="true" />
+          {chance}%
+        </span>
+      )}
     </span>
   );
 }

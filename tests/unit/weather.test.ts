@@ -1,52 +1,57 @@
 import { describe, expect, it } from "vitest";
-import { forecastAt, formatTemp, toWeatherPoints, weatherKind, weatherLabel } from "@/lib/weather";
+import { forecastFor, formatTemp, toWeatherPoints, weatherKind, weatherLabel } from "@/lib/weather";
 
 const response = {
-  properties: {
-    timeseries: [
-      {
-        time: "2026-10-18T16:00:00Z",
-        data: {
-          instant: { details: { air_temperature: 14.6, wind_speed: 3.2 } },
-          next_1_hours: { summary: { symbol_code: "lightrain" }, details: { precipitation_amount: 0.4 } },
-        },
-      },
-      {
-        time: "2026-10-18T17:00:00Z",
-        data: {
-          instant: { details: { air_temperature: 13.4, wind_speed: 2.1 } },
-          next_6_hours: { summary: { symbol_code: "partlycloudy_night" }, details: { precipitation_amount: 0 } },
-        },
-      },
-      { time: "2026-10-18T18:00:00Z", data: { instant: { details: {} } } },
-    ],
+  hourly: {
+    time: ["2026-10-18T16:00", "2026-10-18T17:00", "2026-10-18T18:00", "2026-10-18T19:00"],
+    temperature_2m: [14.6, 13.4, 12.1, null],
+    apparent_temperature: [12.9, 11.0, 9.8, null],
+    precipitation_probability: [10, 45, 70, null],
+    precipitation: [0, 0.2, 1.1, null],
+    weather_code: [2, 61, 63, null],
+    wind_speed_10m: [3.2, 4.1, 5.0, null],
+    wind_gusts_10m: [6, 9.5, 12.3, null],
+    is_day: [1, 0, 0, null],
   },
 };
 
 describe("weather", () => {
-  it("turns the MET response into compact points", () => {
-    expect(toWeatherPoints(response)).toEqual([
-      { t: "2026-10-18T16:00:00Z", temp: 14.6, symbol: "lightrain", precip: 0.4, wind: 3.2 },
-      { t: "2026-10-18T17:00:00Z", temp: 13.4, symbol: "partlycloudy_night", precip: 0, wind: 2.1 },
-    ]);
+  it("turns Open-Meteo columns into hourly points", () => {
+    const points = toWeatherPoints(response);
+    expect(points).toHaveLength(3);
+    expect(points[1]).toEqual({
+      t: "2026-10-18T17:00:00Z",
+      temp: 13.4,
+      feels: 11,
+      code: 61,
+      day: false,
+      precip: 0.2,
+      prob: 45,
+      wind: 4.1,
+      gusts: 9.5,
+    });
   });
 
-  it("picks the point closest to the start, but not further than 3 hours", () => {
+  it("sums up the whole match: worst weather, top rain chance and total rain", () => {
     const points = toWeatherPoints(response);
-    expect(forecastAt(points, new Date("2026-10-18T16:40:00Z"))?.symbol).toBe("partlycloudy_night");
-    expect(forecastAt(points, new Date("2026-10-18T19:30:00Z"))?.temp).toBe(13.4);
-    expect(forecastAt(points, new Date("2026-10-25T16:00:00Z"))).toBeNull();
+    const match = forecastFor(points, new Date("2026-10-18T16:30:00Z"), 90);
+    expect(match).toMatchObject({ code: 61, prob: 45, wind: 4.1, gusts: 9.5 });
+    expect(match?.start.temp).toBe(14.6);
+    expect(match?.precip).toBeCloseTo(0.2);
+    expect(forecastFor(points, new Date("2026-10-18T18:00:00Z"), 60)).toMatchObject({ code: 63, prob: 70 });
+    expect(forecastFor(points, new Date("2026-11-30T16:00:00Z"), 60)).toBeNull();
   });
 
   it("names the weather in Polish", () => {
-    expect(weatherKind("heavyrainshowersandthunder_day")).toBe("storm");
-    expect(weatherKind("lightsnow")).toBe("snow");
-    expect(weatherKind("lightrainshowers_day")).toBe("drizzle");
-    expect(weatherKind("fair_day")).toBe("partly");
-    expect(weatherLabel("clearsky_night")).toBe("Bezchmurnie");
-    expect(weatherLabel("clearsky_day")).toBe("Słonecznie");
-    expect(weatherLabel("sleet")).toBe("Deszcz ze śniegiem");
-    expect(weatherLabel("heavyrain")).toBe("Ulewa");
+    expect(weatherKind(96)).toBe("storm");
+    expect(weatherKind(73)).toBe("snow");
+    expect(weatherKind(51)).toBe("drizzle");
+    expect(weatherKind(63)).toBe("rain");
+    expect(weatherKind(2)).toBe("partly");
+    expect(weatherLabel(0, false)).toBe("Bezchmurnie");
+    expect(weatherLabel(0)).toBe("Słonecznie");
+    expect(weatherLabel(65)).toBe("Ulewa");
+    expect(weatherLabel(80)).toBe("Przelotny deszcz");
     expect(formatTemp(-0.4)).toBe("0°");
     expect(formatTemp(17.6)).toBe("18°");
   });

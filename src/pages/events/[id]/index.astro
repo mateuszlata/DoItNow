@@ -413,6 +413,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
                   lat={weatherPoint.lat}
                   lng={weatherPoint.lng}
                   startsAt={summary.starts_at}
+                  durationMinutes={summary.duration_minutes}
                   size="large"
                   client:idle
                 />
