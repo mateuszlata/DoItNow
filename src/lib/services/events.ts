@@ -10,6 +10,7 @@ import type {
   EventDetails,
   EventListItem,
   EventRecord,
+  GuestGroup,
   MyEventItem,
   Participant,
   ParticipationRecord,
@@ -57,7 +58,9 @@ export const createEventSchema = z.object({
     .min(1, "Skład musi mieć co najmniej 1 osobę.")
     .max(50, "Maksymalnie 50 osób."),
   organizerPlays: checkbox,
-  // Znajomi organizatora spoza Metando — zajmują miejsca w składzie (puste = brak).
+  // Uczestnicy mogą zapraszać znajomych spoza Metando (domyślnie tak).
+  membersCanInvite: checkbox,
+  // Goście spoza Metando w chwili otwarcia formularza (ukryte pole; pule zmienia pasek nad składem).
   guests: z.preprocess(
     (v) => (v === "" || v === undefined ? 0 : v),
     z.coerce
@@ -93,7 +96,10 @@ export const createEventSchema = z.object({
 
 export type EventFormField = keyof z.input<typeof createEventSchema>;
 /** Surowe wartości pól formularza, tak jak przychodzą z przeglądarki (`guests` może nie wystąpić). */
-export type EventFormValues = Record<Exclude<EventFormField, "guests">, string> & { guests?: string };
+export type EventFormValues = Record<Exclude<EventFormField, "guests" | "membersCanInvite">, string> & {
+  guests?: string;
+  membersCanInvite?: string;
+};
 export type FieldErrors = Partial<Record<EventFormField | "form", string>>;
 
 export type CreateEventResult = { ok: true; event: EventRecord } | { ok: false; errors: FieldErrors };
@@ -108,8 +114,9 @@ export interface ParsedEvent {
   venueId: string | null;
   /** Miejsca do obsadzenia przez Metando: skład minus organizator, jeśli gra, i jego goście. */
   spots: number;
-  /** Goście organizatora (znajomi spoza aplikacji). */
+  /** Goście spoza Metando w chwili otwarcia formularza (do przeliczenia miejsc przy edycji). */
   guestCount: number;
+  membersCanInvite: boolean;
   organizerPlays: boolean;
   requiresApproval: boolean;
   reserveSpots: number;
@@ -169,6 +176,7 @@ export function parseEventForm(
       venueId: data.venueId,
       spots,
       guestCount: data.guests,
+      membersCanInvite: data.membersCanInvite,
       organizerPlays: data.organizerPlays,
       requiresApproval: data.requiresApproval,
       reserveSpots: data.reserveSpots,
@@ -236,7 +244,7 @@ export async function createEvent(
       spots: data.spots,
       description: data.description,
       organizer_plays: data.organizerPlays,
-      guest_count: data.guestCount,
+      members_can_invite: data.membersCanInvite,
       lat: data.lat,
       lng: data.lng,
       reserve_spots: data.reserveSpots,
@@ -295,6 +303,7 @@ export async function updateEvent(
     p_description: data.description ?? "",
     p_organizer_plays: data.organizerPlays,
     p_guest_count: data.guestCount,
+    p_members_can_invite: data.membersCanInvite,
     p_lat: data.lat,
     p_lng: data.lng,
     p_reserve_spots: data.reserveSpots,
@@ -348,8 +357,8 @@ export async function listUpcomingEvents(
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
   const columns: string = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed";
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
@@ -394,7 +403,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   const { data, error } = await supabase
     .from("events_public")
     .select(
-      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count",
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed",
     )
     .eq("id", id)
     .maybeSingle<PublicEvent>();
@@ -481,9 +490,13 @@ export async function getEventDetails(
   }
   const { data: inviteRows } = await supabase
     .from("invite_responses")
-    .select("id, name, answer")
+    .select("id, name, answer, inviter_id")
     .eq("event_id", id)
     .order("created_at", { ascending: true });
+  // Pule zaproszeń w składzie (kto zaprosił, ile zarezerwował, kto potwierdził) — tylko dla członków spotkania.
+  const groupsResponse = await supabase.rpc("event_guest_groups", { p_event_id: id });
+  const groupRows: unknown = groupsResponse.data;
+  const guestGroups = (Array.isArray(groupRows) ? groupRows : []) as GuestGroup[];
   const withPosition = (p: Participant): Participant => ({ ...p, position: positions.get(p.user_id) ?? "obojetnie" });
   return {
     ...event,
@@ -491,6 +504,7 @@ export async function getEventDetails(
     organizer_kit: kitFrom(organizer, event.organizer_id),
     organizer_position: positions.get(event.organizer_id) ?? "obojetnie",
     invites: inviteRows ?? [],
+    guest_groups: guestGroups,
     participants: participants.map(withPosition),
     reserves: reserves.map(withPosition),
     pending: pending.map(withPosition),

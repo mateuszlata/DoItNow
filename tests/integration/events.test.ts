@@ -3,6 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cancelEvent, listUpcomingEvents, updateEvent, type EventFormValues } from "@/lib/services/events";
 import { decideParticipation, requestToJoin } from "@/lib/services/participations";
+import { setMyInvites } from "@/lib/services/invites";
 import { localDateTimeToDate, toLocalDateTime } from "@/lib/time";
 import { HOUR, cleanupTestUsers, anonClient, insertEvent, newUser, type TestUser } from "./helpers";
 
@@ -46,13 +47,20 @@ async function acceptParticipant(eventId: string, participant: TestUser): Promis
   if (!decision.ok) throw new Error(`accept failed: ${decision.code}`);
 }
 
-describe("goście organizatora", () => {
-  it("are saved on create and edit and keep the team size", async () => {
-    const eventId = await insertEvent(organizer, new Date(Date.now() + 96 * HOUR), 4);
-    const result = await updateEvent(organizer.client, eventId, editForm({ total: "8", guests: "2" }));
-    if (!result.ok) throw new Error(JSON.stringify(result.errors));
-    // 8 osób: grający organizator + 2 gości + 5 miejsc do obsadzenia w Metando
-    expect(result.event).toMatchObject({ spots: 5, guest_count: 2 });
+describe("goście spoza Metando przy edycji", () => {
+  it("keeps the team size the organizer typed, even if guests changed after the form was opened", async () => {
+    const eventId = await insertEvent(organizer, new Date(Date.now() + 96 * HOUR), 7);
+    expect((await setMyInvites(organizer.client, eventId, 2)).ok).toBe(true);
+
+    // Formularz otwarty po rezerwacji: 8 osób = grający organizator + 2 gości + 5 miejsc w Metando.
+    const fresh = await updateEvent(organizer.client, eventId, editForm({ total: "8", guests: "2" }));
+    if (!fresh.ok) throw new Error(JSON.stringify(fresh.errors));
+    expect(fresh.event).toMatchObject({ spots: 5, guest_count: 2 });
+
+    // Formularz otwarty przed rezerwacją (0 gości): baza odejmuje gości dodanych w międzyczasie.
+    const stale = await updateEvent(organizer.client, eventId, editForm({ total: "8", guests: "0" }));
+    if (!stale.ok) throw new Error(JSON.stringify(stale.errors));
+    expect(stale.event).toMatchObject({ spots: 5, guest_count: 2 });
 
     const { events } = await listUpcomingEvents(anonClient(), {}, { authenticated: false, limit: 500 });
     expect(events.find((e) => e.id === eventId)).toMatchObject({ guest_count: 2, spots: 5 });
@@ -115,6 +123,7 @@ describe("edycja ogłoszenia (FR-004)", () => {
       p_duration_minutes: 90,
       p_venue_id: null,
       p_guest_count: 0,
+      p_members_can_invite: true,
     });
     expect(error?.message).toBe("STARTS_IN_PAST");
   });
@@ -156,6 +165,7 @@ describe("skład i pinezka", () => {
       p_duration_minutes: 90,
       p_venue_id: null,
       p_guest_count: 0,
+      p_members_can_invite: true,
     });
     expect(error?.message).toBe("INVALID_DATA");
   });

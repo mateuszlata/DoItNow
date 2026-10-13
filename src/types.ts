@@ -26,8 +26,11 @@ export interface EventRecord {
   lng: number | null;
   /** Limit listy rezerwowej (0 = bez rezerwy). */
   reserve_spots: number;
-  /** Goście organizatora — znajomi spoza Metando zajmujący miejsca w składzie. */
+  /** Goście spoza Metando: zarezerwowane miejsca (potwierdzeni + „?”) i potwierdzeni. */
   guest_count: number;
+  guest_confirmed: number;
+  /** Uczestnicy mogą zapraszać znajomych spoza Metando. */
+  members_can_invite: boolean;
   /** Minimalna liczba osób w składzie (z grającym organizatorem), żeby spotkanie się odbyło. */
   min_people: number | null;
   /** Kiedy pierwotny organizator odwołał spotkanie z uczestnikami. */
@@ -63,6 +66,7 @@ export type PublicEvent = Pick<
   | "cost_cents"
   | "venue_status"
   | "guest_count"
+  | "guest_confirmed"
 > & {
   accepted_count: number;
   reserve_count: number;
@@ -101,7 +105,9 @@ export interface EventDetails extends EventRecord {
   organizer_kit: PlayerKit;
   organizer_position: string;
   /** Odpowiedzi zaproszonych spoza Metando (widoczne dla członków spotkania). */
-  invites: { id: string; name: string; answer: "yes" | "no" }[];
+  invites: { id: string; name: string; answer: "yes" | "no"; inviter_id: string | null }[];
+  /** Pule zaproszeń w składzie: kto zaprosił, ile zarezerwował, kto potwierdził. */
+  guest_groups: GuestGroup[];
   /** Zaakceptowani uczestnicy. */
   participants: Participant[];
   /** Lista rezerwowa w kolejności awansu. */
@@ -178,4 +184,14 @@ export interface MessageReport {
   report_count: number;
   reasons: string[];
   last_reported_at: string;
+}
+
+/** Pula zaproszeń jednego gracza w spotkaniu (funkcja event_guest_groups). */
+export interface GuestGroup {
+  inviter_id: string;
+  inviter_name: string;
+  reserved: number;
+  confirmed: string[];
+  /** Zapraszający nadal jest w składzie. */
+  in_squad: boolean;
 }

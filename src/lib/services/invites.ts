@@ -1,19 +1,25 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Zaproszenia bez logowania (supabase/migrations/*_event_invites.sql): organizer tworzy link,
-// zaproszeni odpowiadają „Będę” / „Nie będę”, a miejsca przelicza baza.
+// Zaproszenia bez logowania (supabase/migrations/*_member_invites.sql): każdy w składzie ma własny link
+// i pulę miejsc dla znajomych spoza Metando; zaproszeni odpowiadają „Będę” / „Nie będę”, miejsca przelicza baza.
 
 export const DEVICE_COOKIE = "metando_device";
 
 export const INVITE_ERRORS = {
   NOT_AUTHENTICATED: "Zaloguj się, aby to zrobić.",
   EVENT_NOT_FOUND: "Nie znaleziono spotkania.",
-  NOT_ORGANIZER: "Tylko organizator może zarządzać zaproszeniami.",
+  NOT_ORGANIZER: "Tylko organizator może to zrobić.",
+  NOT_ALLOWED: "Możesz zarządzać tylko swoimi zaproszeniami.",
+  NOT_IN_SQUAD: "Zapraszać mogą osoby w składzie.",
+  INVITES_DISABLED: "Organizator wyłączył zapraszanie znajomych w tym spotkaniu.",
+  INVALID_COUNT: "Nieprawidłowa liczba zaproszeń.",
+  BELOW_CONFIRMED: "Nie możesz zarezerwować mniej miejsc, niż potwierdziło Twoich znajomych.",
+  NO_FREE_SPOTS: "Brak wolnych miejsc w składzie — zostaw co najmniej jedno dla graczy z Metando.",
   EVENT_CLOSED: "To spotkanie już się odbyło albo zostało odwołane.",
   INVITE_NOT_FOUND: "Ten link zaproszenia jest nieaktualny.",
   INVITE_FULL: "Skład jest już pełny. Załóż konto w Metando i zapisz się na rezerwę.",
-  INVITE_LIMIT: "To zaproszenie zebrało już maksymalną liczbę odpowiedzi.",
-  NAME_REQUIRED: "Podaj swoje imię, żeby organizator wiedział, kto przyjdzie.",
+  INVITE_LIMIT: "To spotkanie zebrało już maksymalną liczbę odpowiedzi.",
+  NAME_REQUIRED: "Podaj swoje imię, żeby wiadomo było, kto przyjdzie.",
   INVALID_ANSWER: "Wybierz „Będę” albo „Nie będę”.",
   INVALID_DEVICE: "Nie udało się rozpoznać urządzenia. Odśwież stronę i spróbuj ponownie.",
   RESPONSE_NOT_FOUND: "Nie znaleziono odpowiedzi.",
@@ -39,6 +45,7 @@ export interface InviteCard {
   area: string;
   starts_at: string;
   duration_minutes: number;
+  /** Osoba, która wysłała link (organizator albo gracz ze składu). */
   organizer_name: string;
   team_size: number;
   taken: number;
@@ -52,27 +59,34 @@ export interface InviteResponse {
   id: string;
   name: string;
   answer: "yes" | "no";
+  inviter_id: string | null;
 }
 
-/** Link zaproszenia (tworzony przy pierwszym użyciu); tylko organizator. */
-export async function createInvite(
+/** Ustawia, ilu znajomych zaprasza zalogowany gracz; zwraca jego link (token). */
+export async function setMyInvites(
   supabase: SupabaseClient,
   eventId: string,
+  count: number,
 ): Promise<{ ok: true; token: string } | { ok: false; code: InviteErrorCode }> {
-  const response = await supabase.rpc("create_event_invite", { p_event_id: eventId });
+  const response = await supabase.rpc("set_my_invites", { p_event_id: eventId, p_count: count });
   if (response.error) return { ok: false, code: toCode(response.error) };
   const token: unknown = response.data;
   return typeof token === "string" ? { ok: true, token } : { ok: false, code: "UNKNOWN" };
 }
 
-/** Istniejący link zaproszenia (widoczny tylko dla organizatora przez RLS). */
-export async function getInviteToken(supabase: SupabaseClient, eventId: string): Promise<string | null> {
+/** Własna pula zaproszeń gracza w spotkaniu (link i liczba zarezerwowanych miejsc). */
+export async function getMyInvite(
+  supabase: SupabaseClient,
+  eventId: string,
+  userId: string,
+): Promise<{ token: string; reserved: number } | null> {
   const { data } = await supabase
-    .from("event_invites")
-    .select("token")
+    .from("guest_invites")
+    .select("token, reserved")
     .eq("event_id", eventId)
-    .maybeSingle<{ token: string }>();
-  return data?.token ?? null;
+    .eq("inviter_id", userId)
+    .maybeSingle<{ token: string; reserved: number }>();
+  return data;
 }
 
 export async function getInvite(
@@ -102,7 +116,7 @@ export async function respondToInvite(
 export async function listInviteResponses(supabase: SupabaseClient, eventId: string): Promise<InviteResponse[]> {
   const { data } = await supabase
     .from("invite_responses")
-    .select("id, name, answer")
+    .select("id, name, answer, inviter_id")
     .eq("event_id", eventId)
     .order("created_at", { ascending: true });
   return data ?? [];

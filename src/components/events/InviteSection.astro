@@ -1,0 +1,102 @@
+---
+// „Zaproś znajomych spoza Metando” nad składem: licznik i osobisty link dla każdego w składzie,
+// lista własnych gości, a dla organizatora — wszyscy goście pogrupowani według zapraszającego.
+import InviteStepper from "@/components/events/InviteStepper";
+import type { GuestGroup } from "@/types";
+
+interface Props {
+  eventId: string;
+  userId: string;
+  isOrganizer: boolean;
+  /** Oglądający jest w składzie (organizator albo przyjęty gracz). */
+  inSquad: boolean;
+  membersCanInvite: boolean;
+  my: { token: string; reserved: number } | null;
+  canAdd: number;
+  invites: { id: string; name: string; answer: "yes" | "no"; inviter_id: string | null }[];
+  groups: GuestGroup[];
+  origin: string;
+  messagePrefix: string;
+  subject: string;
+}
+
+const {
+  eventId,
+  userId,
+  isOrganizer,
+  inSquad,
+  membersCanInvite,
+  my,
+  canAdd,
+  invites,
+  groups,
+  origin,
+  messagePrefix,
+  subject,
+} = Astro.props;
+const canInvite = isOrganizer || (inSquad && membersCanInvite);
+const mine = invites.filter((i) => i.inviter_id === userId);
+const myConfirmed = mine.filter((i) => i.answer === "yes").length;
+const visible = isOrganizer ? invites : mine;
+const nameOf = (inviterId: string | null) =>
+  inviterId === userId ? "Ty" : (groups.find((g) => g.inviter_id === inviterId)?.inviter_name ?? "—");
+const byInviter = [...new Set(visible.map((i) => i.inviter_id))];
+---
+
+{(canInvite || visible.length > 0) && (
+  <section id="zaproszenia" class="scroll-mt-4 rounded-[20px] bg-card p-4 text-ink" data-testid="invite-section">
+    <h2 class="display text-2xl leading-none">Zaproś znajomych spoza Metando</h2>
+    <p class="mt-1 mb-3 text-xs text-ink-3">
+      Zarezerwuj miejsca i wyślij link — odpowiedzą „Będę” bez zakładania konta. Nieodpowiedziane miejsca zwolnią się 12
+      h przed startem.
+    </p>
+
+    {canInvite ? (
+      <InviteStepper
+        eventId={eventId}
+        reserved={my?.reserved ?? 0}
+        confirmed={myConfirmed}
+        canAdd={canAdd}
+        token={my?.token ?? null}
+        origin={origin}
+        messagePrefix={messagePrefix}
+        subject={subject}
+        client:load
+      />
+    ) : (
+      inSquad && <p class="text-sm text-ink-2">Organizator wyłączył zapraszanie znajomych w tym spotkaniu.</p>
+    )}
+
+    {visible.length > 0 && (
+      <div class="mt-4 flex flex-col gap-3" data-testid="invite-responses">
+        {byInviter.map((inviterId) => (
+          <div>
+            {isOrganizer && <p class="mb-1 text-xs font-bold text-ink-3">Od: {nameOf(inviterId)}</p>}
+            <ul class="flex flex-col gap-1.5">
+              {visible
+                .filter((i) => i.inviter_id === inviterId)
+                .map((invite) => (
+                  <li class="flex items-center justify-between gap-3 text-sm">
+                    <span>
+                      {invite.answer === "yes" ? "✓" : "✗"} {invite.name}
+                      <span class="text-ink-3"> · {invite.answer === "yes" ? "będzie" : "nie będzie"}</span>
+                    </span>
+                    <form
+                      method="POST"
+                      action={`/api/invites/responses/${invite.id}/remove`}
+                      onsubmit="return confirm('Usunąć tę odpowiedź? Potwierdzone miejsce wróci do graczy z Metando.')"
+                    >
+                      <input type="hidden" name="eventId" value={eventId} />
+                      <button type="submit" class="text-xs text-ink-3 underline hover:text-bad">
+                        Usuń
+                      </button>
+                    </form>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    )}
+  </section>
+)}

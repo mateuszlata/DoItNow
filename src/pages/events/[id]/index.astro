@@ -11,10 +11,12 @@ import MatchLineup, { type LineupPlayerView } from "@/components/lineup/MatchLin
 import { getLineup, type SavedLineup } from "@/lib/services/lineups";
 import { supportsLineup } from "@/lib/lineup";
 import { eventVersion } from "@/lib/services/live";
-import InvitePanel from "@/components/events/InvitePanel.astro";
+import InviteSection from "@/components/events/InviteSection.astro";
+import ChanceMeter from "@/components/events/ChanceMeter.astro";
+import { chanceExplanation, chanceTips, meetingChance, type ChanceInput } from "@/lib/chance";
 import { eventShareText, inviteShareText } from "@/lib/share";
 import ShareMenu from "@/components/share/ShareMenu";
-import { getInviteToken, inviteErrorMessage, releaseStaleInvites } from "@/lib/services/invites";
+import { getMyInvite, inviteErrorMessage, releaseStaleInvites } from "@/lib/services/invites";
 import { isChatOpen, listMessages } from "@/lib/services/chat";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -66,6 +68,7 @@ const summary = details
       cost_cents: details.cost_cents,
       venue_status: details.venue_status,
       guest_count: details.guest_count,
+      guest_confirmed: details.guest_confirmed,
     }
   : publicEvent;
 
@@ -125,10 +128,30 @@ const organizerLeft = details?.status === "organizer_left";
 const isOpen = details !== null && !isPast && details.status === "active";
 
 const isOrganizer = details !== null && user !== null && details.organizer_id === user.id;
-const inviteToken = details && isOrganizer && isOpen && supabase ? await getInviteToken(supabase, details.id) : null;
-const inviteText = details && inviteToken ? inviteShareText(details, `${Astro.url.origin}/i/${inviteToken}`) : "";
+// Zaproszenia znajomych spoza Metando: własna pula i link oglądającego.
+const myInvite = details && user && isOpen && supabase ? await getMyInvite(supabase, details.id, user.id) : null;
+const inviteMessagePrefix = details ? inviteShareText(details, "").trimEnd() : "";
 const myParticipation = details?.my_participation ?? null;
 const myStatus = myParticipation?.status ?? null;
+const inSquad = isOrganizer || myStatus === "accepted";
+// Ile miejsc oglądający może jeszcze zarezerwować dla znajomych (zawsze zostaje jedno dla Metando).
+const canAddInvites = details
+  ? Math.max(0, Math.min(details.spots - details.participants.length, details.spots - 1))
+  : 0;
+
+// Szansa, że mecz się odbędzie (tylko dla nadchodzących, aktywnych spotkań).
+const chanceInput: ChanceInput | null =
+  summary && !isPast && (details ? details.status === "active" : true)
+    ? {
+        teamSize: teamSize(summary),
+        minPeople: summary.min_people,
+        confirmed: summary.accepted_count + (summary.organizer_plays ? 1 : 0) + summary.guest_confirmed,
+        pendingInvites: Math.max(summary.guest_count - summary.guest_confirmed, 0),
+        freeSpots: Math.max(summary.spots - summary.accepted_count, 0),
+        hoursToStart: (new Date(summary.starts_at).getTime() - Date.now()) / 3_600_000,
+      }
+    : null;
+const chance = chanceInput ? meetingChance(chanceInput) : null;
 const mustAnswer = details !== null && needsAnswer(details, myStatus, myParticipation?.stay_confirmed ?? null);
 
 const canJoin = isOpen && !isOrganizer && (myStatus === null || myStatus === "withdrawn");
@@ -492,6 +515,38 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
             </section>
           )}
 
+          {chance && chanceInput && (
+            <ChanceMeter
+              chance={chance}
+              explanation={chanceExplanation(chanceInput, chance)}
+              tips={
+                details && isChatMember
+                  ? chanceTips(chanceInput, {
+                      isOrganizer,
+                      canInvite: isOpen && (isOrganizer || (inSquad && details.members_can_invite)),
+                      reserveSpots: details.reserve_spots,
+                    })
+                  : []
+              }
+              editHref={isOrganizer && details ? `/events/${details.id}/edit` : undefined}
+            />
+          )}
+          {details && user && isOpen && (
+            <InviteSection
+              eventId={details.id}
+              userId={user.id}
+              isOrganizer={isOrganizer}
+              inSquad={inSquad}
+              membersCanInvite={details.members_can_invite}
+              my={myInvite}
+              canAdd={canAddInvites}
+              invites={details.invites}
+              groups={details.guest_groups}
+              origin={Astro.url.origin}
+              messagePrefix={inviteMessagePrefix}
+              subject={`Zaproszenie: ${shareSubject.replace("Metando: ", "")}`}
+            />
+          )}
           {details && (
             <SlotGrid
               sport={details.sport}
@@ -499,24 +554,13 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               organizerName={details.organizer_plays && !organizerLeft ? details.organizer_name : null}
               organizerKit={details.organizer_kit}
               participants={details.participants}
-              guests={details.guest_count}
-              guestNames={details.invites.filter((i) => i.answer === "yes").map((i) => i.name)}
+              guestGroups={details.guest_groups}
+              organizerId={details.organizer_id}
               reserveSpots={details.reserve_spots}
               reserves={details.reserves}
               handover={details.handover_at !== null}
               removeFor={isOrganizer && isOpen ? details.id : undefined}
               viewerId={user?.id}
-            />
-          )}
-          {details && isOrganizer && isOpen && (
-            <InvitePanel
-              eventId={details.id}
-              guestCount={details.guest_count}
-              token={inviteToken}
-              invites={details.invites}
-              origin={Astro.url.origin}
-              message={inviteText}
-              subject={`Zaproszenie: ${shareSubject.replace("Metando: ", "")}`}
             />
           )}
           {details && lineupPlayers.length >= 2 && (

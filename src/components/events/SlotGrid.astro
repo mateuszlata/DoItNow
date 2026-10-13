@@ -6,7 +6,7 @@ import Jersey from "@/components/Jersey.astro";
 import KitJersey from "@/components/KitJersey";
 import type { PlayerKit } from "@/lib/kit";
 import { jerseyNumber } from "@/lib/jerseys";
-import type { Participant } from "@/types";
+import type { GuestGroup, Participant } from "@/types";
 
 interface Props {
   teamSize: number;
@@ -19,10 +19,9 @@ interface Props {
   reserves: Participant[];
   /** Po odwołaniu przez organizatora oznaczamy osoby, które jeszcze nie odpowiedziały. */
   handover: boolean;
-  /** Goście organizatora (znajomi spoza Metando) — zarezerwowane miejsca bez kont. */
-  guests?: number;
-  /** Imiona zaproszonych, którzy odpowiedzieli „Będę” (pozostałe miejsca gości to „?”). */
-  guestNames?: string[];
+  /** Pule zaproszeń znajomych spoza Metando — goście stoją przy osobie, która ich zaprosiła. */
+  guestGroups?: GuestGroup[];
+  organizerId?: string;
   /** Dla gości: liczby zajętych miejsc bez nicków. */
   anonymous?: { taken: number; reserved: number };
   /** Id ogłoszenia, gdy ogląda organizator: przy osobach pojawia się przycisk „Usuń”. */
@@ -39,8 +38,8 @@ const {
   organizerName,
   organizerKit,
   participants,
-  guests = 0,
-  guestNames = [],
+  guestGroups = [],
+  organizerId,
   reserveSpots,
   reserves,
   handover,
@@ -63,24 +62,56 @@ interface Slot {
   participationId?: string;
 }
 
+type Person = Omit<Slot, "kind" | "number"> & { userId?: string };
+
+/** Goście jednej puli: potwierdzeni z imieniem i „?” bez odpowiedzi, z podpisem, kto ich zaprosił. */
+function guestSlots(group: GuestGroup): Person[] {
+  // Imion nie odmieniamy automatycznie, więc „zaprasza: Kuba” zamiast „od Kuby”.
+  const from =
+    group.inviter_id === viewerId
+      ? "Twój gość"
+      : group.inviter_id === organizerId
+        ? `zaprasza: ${group.inviter_name} (organizator)`
+        : `zaprasza: ${group.inviter_name}${group.in_squad ? "" : " (zrezygnował/a)"}`;
+  return [
+    ...group.confirmed.map((name) => ({ name, note: from, guest: true })),
+    ...Array.from({ length: Math.max(group.reserved - group.confirmed.length, 0) }, () => ({
+      name: "zaproszony",
+      note: from,
+      guest: true,
+      pending: true,
+    })),
+  ];
+}
+
+const people: Person[] = [
+  ...(organizerName ? [{ name: organizerName, kit: organizerKit, captain: true, userId: organizerId }] : []),
+  ...participants.map((p) => ({
+    name: p.display_name,
+    kit: p.kit,
+    mine: p.user_id === viewerId,
+    participationId: p.participation_id,
+    note: handover && p.stay_confirmed == null ? "nie potwierdził(a)" : undefined,
+    userId: p.user_id,
+  })),
+];
+// Goście zaraz za osobą, która ich zaprosiła; pule osób spoza składu — na końcu.
+const placed = new Set<string>();
+const withGuests: Person[] = people.flatMap((person) => {
+  const group = guestGroups.find((g) => g.inviter_id === person.userId);
+  if (!group) return [person];
+  placed.add(group.inviter_id);
+  return [person, ...guestSlots(group)];
+});
+const others = guestGroups.filter((g) => !placed.has(g.inviter_id)).flatMap(guestSlots);
+
 const taken: Slot[] = anonymous
   ? Array.from({ length: anonymous.taken }, (_, i) => ({ kind: "taken" as const, number: jerseyNumber(i) }))
-  : [
-      ...(organizerName ? [{ name: organizerName, kit: organizerKit, captain: true }] : []),
-      ...participants.map((p) => ({
-        name: p.display_name,
-        kit: p.kit,
-        mine: p.user_id === viewerId,
-        participationId: p.participation_id,
-        note: handover && p.stay_confirmed == null ? "nie potwierdził(a)" : undefined,
-      })),
-      ...guestNames.map((name) => ({ name: `${name} (gość)`, guest: true })),
-      ...Array.from({ length: Math.max(guests - guestNames.length, 0) }, () => ({
-        name: "zaproszony",
-        guest: true,
-        pending: true,
-      })),
-    ].map((p, i) => ({ kind: "taken" as const, number: jerseyNumber(i), ...p }));
+  : [...withGuests, ...others].map(({ userId: _userId, ...p }, i) => ({
+      kind: "taken" as const,
+      number: jerseyNumber(i),
+      ...p,
+    }));
 const team: Slot[] = [
   ...taken,
   ...Array.from({ length: Math.max(teamSize - taken.length, 0) }, () => ({ kind: "free" as const, number: "+" })),

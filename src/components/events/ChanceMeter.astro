@@ -1,0 +1,63 @@
+---
+// „Szansa, że mecz się odbędzie” z wyjaśnieniem i podpowiedziami, co ją podniesie (src/lib/chance.ts).
+import type { Chance, ChanceTip } from "@/lib/chance";
+
+interface Props {
+  chance: Chance;
+  explanation: string;
+  /** Podpowiedzi tylko dla osób w spotkaniu (goście strony widzą sam wynik). */
+  tips: ChanceTip[];
+  /** Link do edycji (podpowiedzi „ustaw minimum”, „dodaj rezerwę”). */
+  editHref?: string;
+}
+
+const { chance, explanation, tips, editHref } = Astro.props;
+const LABEL = { high: "wysoka", medium: "średnia", low: "niska" } as const;
+const TONE = {
+  high: "bg-free text-white",
+  medium: "bg-bench text-page-deep",
+  low: "bg-bad text-white",
+} as const;
+---
+
+<section
+  class="rounded-[20px] bg-card p-4 text-ink"
+  data-testid="chance-meter"
+  aria-label="Szansa, że mecz się odbędzie"
+>
+  <div class="flex items-center gap-4">
+    <span
+      class:list={[
+        "display grid size-16 shrink-0 place-items-center rounded-2xl text-3xl leading-none",
+        TONE[chance.level],
+      ]}
+      data-testid="chance-percent"
+    >
+      {chance.percent}%
+    </span>
+    <div class="min-w-0">
+      <p class="text-sm font-bold">Szansa, że mecz się odbędzie: {LABEL[chance.level]}</p>
+      <p class="mt-0.5 text-xs text-ink-3">{explanation}</p>
+    </div>
+  </div>
+
+  {tips.length > 0 && (
+    <ul class="mt-3 flex flex-col gap-2 border-t border-line pt-3" data-testid="chance-tips">
+      {tips.map((tip) => (
+        <li class="flex items-start justify-between gap-3 text-sm">
+          <span>💡 {tip.text}</span>
+          {(tip.kind === "invite" || tip.kind === "remind") && (
+            <a href="#zaproszenia" class="shrink-0 text-xs font-bold text-link underline">
+              {tip.kind === "invite" ? "Zaproś" : "Przypomnij"}
+            </a>
+          )}
+          {(tip.kind === "minimum" || tip.kind === "reserve") && editHref && (
+            <a href={editHref} class="shrink-0 text-xs font-bold text-link underline">
+              Ustaw
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  )}
+</section>

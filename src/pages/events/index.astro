@@ -15,6 +15,24 @@ import VenueStatus from "@/components/events/VenueStatus.astro";
 import SportPicker from "@/components/SportPicker.astro";
 import { getFavoriteSports, normalizeSports, parseSportsParam } from "@/lib/services/preferences";
 import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, takenSpots, teamSize } from "@/lib/capacity";
+import { meetingChance, type Chance } from "@/lib/chance";
+
+/** Szansa, że mecz się odbędzie — plakietka na karcie (src/lib/chance.ts). */
+function cardChance(event: EventListItem): Chance {
+  return meetingChance({
+    teamSize: teamSize(event),
+    minPeople: event.min_people,
+    confirmed: event.accepted_count + (event.organizer_plays ? 1 : 0) + event.guest_confirmed,
+    pendingInvites: Math.max(event.guest_count - event.guest_confirmed, 0),
+    freeSpots: freeSpots(event),
+    hoursToStart: (new Date(event.starts_at).getTime() - Date.now()) / 3_600_000,
+  });
+}
+const CHANCE_TONE = {
+  high: "bg-free text-white",
+  medium: "bg-bench text-page-deep",
+  low: "bg-bad-soft text-bad",
+} as const;
 
 const { user } = Astro.locals;
 const day = Astro.url.searchParams.get("day") ?? "";
@@ -379,6 +397,18 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                         {missing === 0 ? "Minimum osiągnięte" : minimumLabel(event)}
                       </span>
                     )}
+                    {(() => {
+                      const chance = cardChance(event);
+                      return (
+                        <span
+                          class:list={["w-fit rounded-full px-2 py-0.5 text-xs font-bold", CHANCE_TONE[chance.level]]}
+                          title="Szansa, że mecz się odbędzie"
+                          data-testid="card-chance"
+                        >
+                          Szansa na mecz: {chance.percent}%
+                        </span>
+                      );
+                    })()}
                     <VenueStatus status={event.venue_status} compact />
                     {event.cost_cents != null && (
                       <span class="font-bold text-ink" data-testid="card-cost">
