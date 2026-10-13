@@ -34,6 +34,8 @@ interface Props {
   size?: "card" | "large";
 }
 
+const dayFormat = new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit", timeZone: "Europe/Warsaw" });
+
 // Jedno zapytanie na okolicę, wspólne dla wszystkich kart na stronie.
 const requests = new Map<string, Promise<WeatherPoint[]>>();
 
@@ -85,18 +87,43 @@ function WeatherIcon({ symbol, className, strokeWidth }: { symbol: string; class
 
 export default function WeatherBadge({ lat, lng, startsAt, size = "card" }: Props) {
   const [point, setPoint] = useState<WeatherPoint | null>(null);
+  // Termin poza zasięgiem prognozy: dzień, od którego prognoza obejmie spotkanie.
+  const [availableFrom, setAvailableFrom] = useState<Date | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void loadPoints(lat, lng).then((points) => {
-      if (!cancelled) setPoint(forecastAt(points, new Date(startsAt)));
+      if (cancelled) return;
+      const at = new Date(startsAt);
+      setPoint(forecastAt(points, at));
+      const last = points.at(-1);
+      if (last && at.getTime() > new Date(last.t).getTime() + 3 * 3_600_000) {
+        const horizon = new Date(last.t).getTime() - Date.now();
+        setAvailableFrom(new Date(at.getTime() - horizon));
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [lat, lng, startsAt]);
 
-  if (!point?.symbol) return null;
+  if (!point?.symbol) {
+    if (!availableFrom) return null;
+    const from = dayFormat.format(availableFrom);
+    return (
+      <span
+        className={cn(
+          "bg-card-2 text-ink-2 inline-flex items-center gap-1 rounded-full font-bold",
+          size === "large" ? "px-3 py-1.5 text-xs" : "px-2 py-0.5 text-[12px]",
+        )}
+        title={`Prognoza pogody na godzinę spotkania pojawi się ${from}.`}
+        data-testid="weather-later"
+      >
+        <CloudSun className="size-4" strokeWidth={2} aria-hidden="true" />
+        Pogoda od {from}
+      </span>
+    );
+  }
   const kind = weatherKind(point.symbol);
   const label = weatherLabel(point.symbol);
   const rain = point.precip !== null && point.precip >= 0.1 ? `${point.precip.toFixed(1).replace(".", ",")} mm` : null;
