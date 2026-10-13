@@ -4,6 +4,7 @@ import { isPosition, supportsLineup } from "@/lib/lineup";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
+import { boundingBox, distanceKm, type Near } from "@/lib/near";
 import { canWithdrawAccepted } from "@/lib/services/participations";
 import { getVenue } from "@/lib/services/venues";
 import type {
@@ -341,6 +342,25 @@ export interface EventFilters {
   day?: string;
   /** Szybki filtr terminu: today | tomorrow | weekend (ma pierwszeństwo przed `day`). */
   when?: string;
+  /** „W pobliżu”: tylko spotkania w promieniu od okolicy oglądającego. */
+  near?: Near | null;
+  /** Kolejność przy „W pobliżu”: najbliższe albo (domyślnie) najwcześniejsze. */
+  sort?: "time" | "distance";
+}
+
+/** Położenie spotkania na liście: dokładne dla zalogowanych, zaokrąglone z publicznego widoku dla gości. */
+function eventPoint(event: EventListItem): { lat: number; lng: number } | null {
+  const lat = event.lat ?? event.approx_lat;
+  const lng = event.lng ?? event.approx_lng;
+  return lat != null && lng != null ? { lat, lng } : null;
+}
+
+/** Dopisuje odległość od okolicy oglądającego (spotkania bez położenia odpadają). */
+function withDistance(rows: EventListItem[], near: Near): EventListItem[] {
+  return rows.flatMap((event) => {
+    const point = eventPoint(event);
+    return point ? [{ ...event, distance_km: distanceKm(near, point) }] : [];
+  });
 }
 
 /**
@@ -358,18 +378,29 @@ export async function listUpcomingEvents(
   // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
   const columns: string = options.authenticated
     ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed";
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng";
+  const near = filters.near ?? null;
 
   let query = options.authenticated
     ? supabase.from("events").select(columns).eq("status", "active")
     : supabase.from("events_public").select(columns);
 
   // Jeden element ponad limit mówi, czy pokazać „Pokaż więcej”; id ustala kolejność przy tym samym terminie.
+  // Przy „W pobliżu” baza zawęża do prostokąta wokół okolicy, a dokładne koło, kolejność i stronę liczymy tutaj.
   query = query
     .gt("starts_at", now.toISOString())
     .order("starts_at", { ascending: true })
     .order("id", { ascending: true })
-    .limit(limit + 1);
+    .limit(near ? MAX_EVENTS_SHOWN + 1 : limit + 1);
+  if (near) {
+    const box = boundingBox(near);
+    const [latColumn, lngColumn] = options.authenticated ? ["lat", "lng"] : ["approx_lat", "approx_lng"];
+    query = query
+      .gte(latColumn, box.minLat)
+      .lte(latColumn, box.maxLat)
+      .gte(lngColumn, box.minLng)
+      .lte(lngColumn, box.maxLng);
+  }
 
   const sports = (filters.sports ?? (filters.sport ? [filters.sport] : [])).filter((id) =>
     (SPORT_IDS as readonly string[]).includes(id),
@@ -391,8 +422,31 @@ export async function listUpcomingEvents(
   if (error) {
     throw new Error(`Nie udało się pobrać ogłoszeń (HTTP ${String(status)}): ${JSON.stringify(error)}`);
   }
-  const rows = data as unknown as EventListItem[];
+  let rows = data as unknown as EventListItem[];
+  if (near) {
+    rows = withDistance(rows, near).filter((event) => (event.distance_km ?? Infinity) <= near.radiusKm);
+    if (filters.sort === "distance") rows.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0));
+  }
   return { events: rows.slice(0, limit), hasMore: rows.length > limit };
+}
+
+/**
+ * Najbliższe spotkania poza promieniem — podpowiedź, gdy „W pobliżu” nic nie znalazło
+ * (te same filtry sportu i terminu, bez ograniczenia odległości).
+ */
+export async function nearestEvents(
+  supabase: SupabaseClient,
+  filters: EventFilters & { near: Near },
+  options: { authenticated: boolean; now?: Date; count?: number },
+): Promise<EventListItem[]> {
+  const { events } = await listUpcomingEvents(
+    supabase,
+    { ...filters, near: null },
+    { ...options, limit: MAX_EVENTS_SHOWN },
+  );
+  return withDistance(events, filters.near)
+    .sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0))
+    .slice(0, options.count ?? 3);
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

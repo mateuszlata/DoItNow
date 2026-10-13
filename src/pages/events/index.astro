@@ -4,7 +4,9 @@ import Topbar from "@/components/Topbar.astro";
 import Jersey from "@/components/Jersey.astro";
 import SportIcon from "@/components/SportIcon.astro";
 import { createClient } from "@/lib/supabase";
-import { EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN, listUpcomingEvents } from "@/lib/services/events";
+import { EVENTS_PAGE_SIZE, MAX_EVENTS_SHOWN, listUpcomingEvents, nearestEvents } from "@/lib/services/events";
+import NearbyPicker from "@/components/events/NearbyPicker";
+import { NEAR_COOKIE, NEAR_RADII, formatDistance, parseNear } from "@/lib/near";
 import { SPORTS, sportLabel } from "@/lib/sports";
 import { WHEN_OPTIONS, formatEventDay, formatTimeRange } from "@/lib/time";
 import Countdown from "@/components/events/Countdown.astro";
@@ -59,6 +61,9 @@ const selected: string[] = sportsParam ?? (usingFavorites ? favorites : []);
 // Pierwsze wejście zalogowanego: pytamy, w co gra.
 const askSports = user !== null && favorites === null;
 const okKey = Astro.url.searchParams.get("ok");
+// „W pobliżu”: okolica i promień z ciasteczka tej przeglądarki; kolejność „najbliżej” z adresu.
+const near = parseNear(Astro.cookies.get(NEAR_COOKIE)?.value);
+const sort = near && Astro.url.searchParams.get("sort") === "distance" ? "distance" : "time";
 
 let events: EventListItem[] = [];
 let hasMore = false;
@@ -67,7 +72,7 @@ if (supabase) {
   try {
     ({ events, hasMore } = await listUpcomingEvents(
       supabase,
-      { sports: selected, day, when },
+      { sports: selected, day, when, near, sort },
       { authenticated: Boolean(user), limit: show },
     ));
   } catch (error) {
@@ -76,6 +81,19 @@ if (supabase) {
     loadError = true;
   }
 }
+
+// Pusto w promieniu: podpowiadamy najbliższe spotkania dalej (te same sporty i termin).
+let nearest: Awaited<ReturnType<typeof nearestEvents>> = [];
+if (supabase && near && !loadError && events.length === 0) {
+  nearest = await nearestEvents(
+    supabase,
+    { sports: selected, day, when, near },
+    { authenticated: Boolean(user) },
+  ).catch(() => []);
+}
+/** Najmniejszy z oferowanych promieni, który obejmie najbliższe spotkanie. */
+const widerRadius =
+  near && nearest.length > 0 ? (NEAR_RADII.find((km) => km >= (nearest[0].distance_km ?? Infinity)) ?? null) : null;
 
 /** Parametry adresu dla wybranych sportów: ulubione nie potrzebują parametru, „wszystkie” przy ulubionych — `all`. */
 function sportsQuery(list: string[]): Record<string, string> {
@@ -90,12 +108,19 @@ function sportsQuery(list: string[]): Record<string, string> {
 }
 
 /** Link filtra z zachowaniem pozostałych filtrów; `null` usuwa parametr. */
-function filterHref(changes: { sports?: string[]; when?: string | null; day?: string | null }): string {
+function filterHref(changes: {
+  sports?: string[];
+  when?: string | null;
+  day?: string | null;
+  sort?: "time" | "distance";
+}): string {
   const params = new URLSearchParams(sportsQuery(changes.sports ?? selected));
   const nextWhen = changes.when === undefined ? when : changes.when;
   const nextDay = changes.day === undefined ? day : changes.day;
+  const nextSort = changes.sort ?? sort;
   if (nextWhen) params.set("when", nextWhen);
   if (nextDay) params.set("day", nextDay);
+  if (near && nextSort === "distance") params.set("sort", "distance");
   const query = params.toString();
   return query ? `/events?${query}` : "/events";
 }
@@ -280,6 +305,29 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         </label>
       </form>
 
+      <div class="mb-1.5 flex items-baseline justify-between gap-3">
+        <span class="text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Gdzie</span>
+        {near && (
+          <span class="flex gap-3 text-xs" data-testid="near-sort">
+            <a
+              href={filterHref({ sort: "time" })}
+              aria-current={sort === "time" ? "page" : undefined}
+              class:list={["font-semibold", sort === "time" ? "text-page-ink" : "text-page-link hover:underline"]}
+            >
+              Najwcześniej
+            </a>
+            <a
+              href={filterHref({ sort: "distance" })}
+              aria-current={sort === "distance" ? "page" : undefined}
+              class:list={["font-semibold", sort === "distance" ? "text-page-ink" : "text-page-link hover:underline"]}
+            >
+              Najbliżej
+            </a>
+          </span>
+        )}
+      </div>
+      <NearbyPicker near={near ? { label: near.label, radiusKm: near.radiusKm } : null} client:load />
+
       {day && (
         <p class="mb-4 text-sm text-page-ink-2">
           Spotkania w dniu <strong class="text-page-ink">{day.split("-").reverse().join(".")}</strong> ·{" "}
@@ -302,12 +350,44 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         <p class="rounded-2xl bg-bad-soft p-4 text-bad">Nie udało się wczytać ogłoszeń. Spróbuj odświeżyć stronę.</p>
       )}
 
-      {!loadError && events.length === 0 && (
+      {!loadError && events.length === 0 && near && nearest.length > 0 && (
+        <section class="mb-4 rounded-[20px] bg-page-2 p-5" data-testid="near-empty">
+          <p class="display text-2xl leading-none text-page-ink">W promieniu {near.radiusKm} km nic nie ma</p>
+          <p class="mt-2 text-sm text-page-ink-2">Najbliższe spotkania dalej:</p>
+          <ul class="mt-2 flex flex-col gap-1.5">
+            {nearest.map((event) => (
+              <li>
+                <a
+                  href={`/events/${event.id}`}
+                  class="flex items-center justify-between gap-3 rounded-2xl bg-card px-3.5 py-2.5 text-sm text-ink hover:bg-card-2"
+                >
+                  <span class="flex min-w-0 items-center gap-2">
+                    <SportIcon sport={event.sport} size={18} />
+                    <span class="truncate">
+                      <strong>{sportLabel(event.sport)}</strong> ·{" "}
+                      <span class="first-letter:uppercase">{formatEventDay(event.starts_at)}</span> · {event.area}
+                    </span>
+                  </span>
+                  <span class="shrink-0 font-bold">{formatDistance(event.distance_km ?? 0)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          {widerRadius && (
+            <p class="mt-3 text-sm text-page-ink-2">
+              Zwiększ promień do <strong class="text-page-ink">{widerRadius} km</strong> powyżej — albo wystaw własne
+              spotkanie w swojej okolicy.
+            </p>
+          )}
+        </section>
+      )}
+
+      {!loadError && events.length === 0 && !(near && nearest.length > 0) && (
         <div class="rounded-[20px] bg-page-2 p-6 text-center">
           <p class="display text-3xl text-page-ink">Pusto na boisku</p>
           <p class="mt-2 text-sm text-page-ink-2">
-            Brak nadchodzących spotkań{selected.length > 0 || day || when ? " dla wybranych filtrów" : ""}. Wystaw
-            własne — ktoś na pewno dołączy.
+            Brak nadchodzących spotkań{selected.length > 0 || day || when || near ? " dla wybranych filtrów" : ""}.
+            Wystaw własne — ktoś na pewno dołączy.
           </p>
         </div>
       )}
@@ -341,6 +421,13 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                   <span class="text-ink-2">
                     {event.area}
                     {event.place && <> · {event.place}</>}
+                    {event.distance_km !== undefined && (
+                      <strong class="text-ink" data-testid="card-distance">
+                        {" "}
+                        · {event.lat == null ? "ok. " : ""}
+                        {formatDistance(event.distance_km)} od Ciebie
+                      </strong>
+                    )}
                   </span>
                 </div>
 

@@ -121,7 +121,13 @@ export interface EventDetails extends EventRecord {
 
 /** Element listy: pełne dane dla zalogowanych, ograniczone dla gości. */
 export type EventListItem = PublicEvent &
-  Partial<Pick<EventRecord, "place" | "description" | "organizer_id" | "lat" | "lng">>;
+  Partial<Pick<EventRecord, "place" | "description" | "organizer_id" | "lat" | "lng">> & {
+    /** Położenie zaokrąglone do ok. 1 km (publiczny widok — dla niezalogowanych). */
+    approx_lat?: number | null;
+    approx_lng?: number | null;
+    /** Odległość od okolicy oglądającego, gdy ustawił „W pobliżu”. */
+    distance_km?: number;
+  };
 
 /** Spotkanie na stronie „Moje spotkania” (FR-009). */
 export interface MyEventItem extends EventRecord {

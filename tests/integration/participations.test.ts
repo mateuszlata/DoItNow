@@ -158,8 +158,11 @@ describe("widoczność (FR-001, FR-006)", () => {
       .select("*")
       .eq("id", eventId)
       .single<Record<string, unknown>>();
+    // Położenie tylko w przybliżeniu (ok. 1 km) — do filtra „W pobliżu”; dokładne miejsce widzą zalogowani.
     expect(Object.keys(publicEvent ?? {}).sort()).toEqual([
       "accepted_count",
+      "approx_lat",
+      "approx_lng",
       "area",
       "cost_cents",
       "duration_minutes",
