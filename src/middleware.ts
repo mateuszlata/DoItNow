@@ -29,5 +29,31 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  return next();
+  const response = await next();
+  return withSecurityHeaders(response);
 });
+
+// Nagłówki bezpieczeństwa dla każdej odpowiedzi: zakaz osadzania w ramkach (clickjacking), bez zgadywania
+// typów plików, tylko HTTPS i ograniczony Referer przy przejściu na inne strony.
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Frame-Options": "DENY",
+  "Content-Security-Policy": "frame-ancestors 'none'",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Strict-Transport-Security": "max-age=31536000",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(self)",
+};
+
+function withSecurityHeaders(response: Response): Response {
+  try {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      if (!response.headers.has(name)) response.headers.set(name, value);
+    }
+    return response;
+  } catch {
+    // Niezmienne nagłówki (np. odpowiedź przekazana z fetch) — kopiujemy odpowiedź.
+    const copy = new Response(response.body, response);
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) copy.headers.set(name, value);
+    return copy;
+  }
+}

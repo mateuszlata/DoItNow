@@ -30,8 +30,8 @@ import { cn } from "@/lib/utils";
 // opadów i suma opadu w godzinach meczu. Poza zasięgiem prognozy (16 dni) — data, od której się pojawi.
 
 interface Props {
-  lat: number;
-  lng: number;
+  /** Spotkanie — serwer bierze jego położenie z bazy (nie przyjmuje dowolnych współrzędnych). */
+  eventId: string;
   startsAt: string;
   durationMinutes: number;
   /** `card` — mała plakietka na liście; `large` — na stronie spotkania, z opisem, wiatrem i odczuwalną. */
@@ -40,19 +40,17 @@ interface Props {
 
 const dayFormat = new Intl.DateTimeFormat("pl-PL", { day: "2-digit", month: "2-digit", timeZone: "Europe/Warsaw" });
 
-// Jedno zapytanie na okolicę, wspólne dla wszystkich kart na stronie.
+// Jedno zapytanie na spotkanie (ta sama karta może się pojawić kilka razy, np. przy przeładowaniu wyspy).
 const requests = new Map<string, Promise<WeatherPoint[]>>();
 
-function loadPoints(lat: number, lng: number): Promise<WeatherPoint[]> {
-  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
-  let request = requests.get(key);
+function loadPoints(eventId: string): Promise<WeatherPoint[]> {
+  let request = requests.get(eventId);
   if (!request) {
-    // `v=2`: nowy format (Open-Meteo) — omija odpowiedzi MET zapamiętane w przeglądarkach.
-    request = fetch(`/api/weather?v=2&lat=${lat.toFixed(2)}&lng=${lng.toFixed(2)}`)
+    request = fetch(`/api/weather?event=${encodeURIComponent(eventId)}`)
       .then((r) => (r.ok ? (r.json() as Promise<{ points: WeatherPoint[] }>) : { points: [] }))
       .then((data) => data.points)
       .catch(() => []);
-    requests.set(key, request);
+    requests.set(eventId, request);
   }
   return request;
 }
@@ -104,14 +102,14 @@ function mm(value: number): string {
   return `${value.toFixed(1).replace(".", ",")} mm`;
 }
 
-export default function WeatherBadge({ lat, lng, startsAt, durationMinutes, size = "card" }: Props) {
+export default function WeatherBadge({ eventId, startsAt, durationMinutes, size = "card" }: Props) {
   const [match, setMatch] = useState<MatchWeather | null>(null);
   // Termin poza zasięgiem prognozy: dzień, od którego prognoza obejmie spotkanie.
   const [availableFrom, setAvailableFrom] = useState<Date | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void loadPoints(lat, lng).then((points) => {
+    void loadPoints(eventId).then((points) => {
       if (cancelled) return;
       const at = new Date(startsAt);
       setMatch(forecastFor(points, at, durationMinutes));
@@ -124,7 +122,7 @@ export default function WeatherBadge({ lat, lng, startsAt, durationMinutes, size
     return () => {
       cancelled = true;
     };
-  }, [lat, lng, startsAt, durationMinutes]);
+  }, [eventId, startsAt, durationMinutes]);
 
   if (!match) {
     if (!availableFrom) return null;

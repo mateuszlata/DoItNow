@@ -410,8 +410,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
             {weatherPoint && !isPast && (
               <div class="flex items-center gap-2">
                 <WeatherBadge
-                  lat={weatherPoint.lat}
-                  lng={weatherPoint.lng}
+                  eventId={id}
                   startsAt={summary.starts_at}
                   durationMinutes={summary.duration_minutes}
                   size="large"

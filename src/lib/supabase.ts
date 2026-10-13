@@ -10,6 +10,9 @@ export function createClient(requestHeaders: Headers, cookies: AstroCookies) {
     return null;
   }
   return createServerClient(url, key, {
+    // Sesję czyta tylko serwer (w przeglądarce nie ma klienta Supabase), więc ciasteczka są niedostępne
+    // dla skryptów i wysyłane wyłącznie przez HTTPS (localhost przeglądarki traktują jak bezpieczny).
+    cookieOptions: { httpOnly: true, secure: true, sameSite: "lax", path: "/" },
     cookies: {
       getAll() {
         return parseCookieHeader(requestHeaders.get("Cookie") ?? "");

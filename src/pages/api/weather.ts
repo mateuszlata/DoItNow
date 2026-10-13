@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { z } from "astro/zod";
+import { createClient } from "@/lib/supabase";
 import { toWeatherPoints, type OpenMeteoResponse } from "@/lib/weather";
 
 export const prerender = false;
@@ -18,10 +19,12 @@ const HOURLY = [
 const USER_AGENT = "Metando/1.0 https://metando.pl";
 const CACHE_SECONDS = 1800;
 
-const querySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
-});
+const querySchema = z.object({ event: z.uuid() });
+
+interface Point {
+  lat: number | null;
+  lng: number | null;
+}
 
 interface EdgeCache {
   match(key: Request): Promise<Response | undefined>;
@@ -34,13 +37,27 @@ function edgeCache(): EdgeCache | null {
   return caches?.default ?? null;
 }
 
-// Prognoza dla okolicy spotkania. Współrzędne zaokrąglamy do 0,01° (ok. 1 km) — wystarczy dla pogody,
-// a wiele spotkań w okolicy dzieli jedną odpowiedź z pamięci podręcznej (mniej zapytań do Open-Meteo).
+// Prognoza dla nadchodzącego spotkania. Przyjmujemy id spotkania, a nie dowolne współrzędne — położenie bierzemy
+// z bazy (dokładne dla zalogowanych, zaokrąglone z publicznego widoku dla gości), więc nie da się nami odpytywać
+// Open-Meteo o dowolne miejsca. Współrzędne zaokrąglamy do 0,01° (ok. 1 km): spotkania w okolicy dzielą jedną
+// odpowiedź z pamięci podręcznej.
 export const GET: APIRoute = async (context) => {
   const parsed = querySchema.safeParse(Object.fromEntries(context.url.searchParams));
   if (!parsed.success) return Response.json({ error: "INVALID_DATA" }, { status: 400 });
-  const lat = parsed.data.lat.toFixed(2);
-  const lng = parsed.data.lng.toFixed(2);
+  const supabase = createClient(context.request.headers, context.cookies);
+  if (!supabase) return Response.json({ points: [] }, { status: 503 });
+
+  const row = context.locals.user
+    ? await supabase.from("events").select("lat, lng").eq("id", parsed.data.event).maybeSingle<Point>()
+    : await supabase
+        .from("events_public")
+        .select("lat:approx_lat, lng:approx_lng")
+        .eq("id", parsed.data.event)
+        .maybeSingle<Point>();
+  const point = row.data;
+  if (point?.lat == null || point.lng == null) return Response.json({ points: [] }, { status: 404 });
+  const lat = point.lat.toFixed(2);
+  const lng = point.lng.toFixed(2);
 
   const cache = edgeCache();
   const key = new Request(`https://metando.pl/__weather/v2/${lat},${lng}`);

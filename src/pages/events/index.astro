@@ -479,8 +479,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                         return (
                           spot && (
                             <WeatherBadge
-                              lat={spot.lat}
-                              lng={spot.lng}
+                              eventId={event.id}
                               startsAt={event.starts_at}
                               durationMinutes={event.duration_minutes}
                               client:idle

@@ -1,6 +1,7 @@
 // Budżet zapytań do Google Places: przydział dnia z puli miesięcznej i limit na użytkownika
 // (lokalny Supabase: `npx supabase start`). Liczniki są wspólne, więc limity liczymy od bieżącego stanu.
-import { afterAll, describe, expect, it } from "vitest";
+import { createClient } from "@supabase/supabase-js";
+import { afterAll, describe, expect, inject, it } from "vitest";
 import { cleanupTestUsers, newUser } from "./helpers";
 
 afterAll(cleanupTestUsers);
@@ -14,8 +15,19 @@ interface Stats {
 }
 
 describe("consume_places_quota", () => {
+  it("shows usage stats only to admins", async () => {
+    const user = await newUser("Kwota PQ0");
+    const response = await user.client.rpc("places_quota_stats", { p_monthly_limit: 0 });
+    expect(response.data).toEqual([]);
+  });
+
   it("allows today's share of the remaining monthly pool and then stops for the day", async () => {
     const user = await newUser("Kwota PQ");
+    // Statystyki widzi tylko administrator.
+    const service = createClient("http://127.0.0.1:54321", inject("serviceRoleKey"), {
+      auth: { persistSession: false },
+    });
+    await service.from("admins").insert({ user_id: user.id });
     const response = await user.client.rpc("places_quota_stats", { p_monthly_limit: 0 });
     const rows: unknown = response.data;
     const stats = (rows as Stats[]).find((s) => s.api === "details");
