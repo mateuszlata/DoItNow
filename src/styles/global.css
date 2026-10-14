@@ -578,3 +578,23 @@
 .countdown[data-state="over"] {
   color: var(--ink-3);
 }
+
+/* Zajawka czatu: dymki wskakują po kolei (raz, przy wejściu); przy ograniczonym ruchu od razu widać całość. */
+@keyframes chat-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.chat-pop {
+  animation: chat-pop 0.35s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-pop {
+    animation: none;
+  }
+}

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ChatMessage, EventRecord, MessageReport } from "@/types";
+import type { ChatMessage, EventRecord, MessageReport, ChatPreviewMessage } from "@/types";
 
 // Czat w wydarzeniu. Reguły (kto czyta i pisze, limity, moderacja) pilnują funkcje bazy
 // z supabase/migrations/*_event_chat.sql; tu tylko je wywołujemy i tłumaczymy kody błędów.
@@ -47,20 +47,19 @@ export async function listMessages(
   return { ok: true, data: response.data as unknown as ChatMessage[] };
 }
 
-/** Czat do czytania dla gościa bez konta z „Będę” (rozpoznanego po urządzeniu). */
-export async function listGuestMessages(
+/**
+ * Zajawka czatu dla osób bez konta: kształt rozmowy (koszulki, godziny, długości) bez treści; gość ze składu
+ * (urządzenie z odpowiedzią „Będę”) widzi dodatkowo treść wiadomości organizatora.
+ */
+export async function getChatPreview(
   supabase: SupabaseClient,
   eventId: string,
-  device: string,
-  after?: string | null,
-): Promise<ChatResult<ChatMessage[]>> {
-  const response = await supabase.rpc("guest_event_messages", {
-    p_event_id: eventId,
-    p_device: device,
-    p_after: after ?? null,
-  });
-  if (response.error) return { ok: false, code: toCode(response.error) };
-  return { ok: true, data: response.data as unknown as ChatMessage[] };
+  device: string | null,
+): Promise<ChatPreviewMessage[]> {
+  const response = await supabase.rpc("event_chat_preview", { p_event_id: eventId, p_device: device });
+  if (response.error) return [];
+  const rows: unknown = response.data;
+  return rows as ChatPreviewMessage[];
 }
 
 export async function postMessage(

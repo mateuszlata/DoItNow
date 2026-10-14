@@ -183,6 +183,23 @@ export interface ChatMessage {
   kit_label: string | null;
 }
 
+/** Wiadomość w zajawce czatu dla osób bez konta: kto (numer i koszulka, bez nicku), kiedy, jak długa. */
+export interface ChatPreviewMessage {
+  id: string;
+  /** Numer osoby w rozmowie (1, 2, …) zamiast nicku i id konta. */
+  author_key: number;
+  from_organizer: boolean;
+  /** Treść tylko wiadomości organizatora dla gościa ze składu; w pozostałych przypadkach null. */
+  body: string | null;
+  length: number;
+  created_at: string;
+  hidden: boolean;
+  kit_pattern: string | null;
+  kit_primary: string | null;
+  kit_secondary: string | null;
+  kit_label: string | null;
+}
+
 /** Otwarte zgłoszenie wiadomości do moderacji (strona administratora). */
 export interface MessageReport {
   message_id: string;

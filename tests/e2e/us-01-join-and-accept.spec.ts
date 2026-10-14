@@ -231,7 +231,7 @@ test("joining without approval is instant and the organizer can remove a partici
   await expect(participant.getByTestId("event-chat")).toHaveCount(0);
 });
 
-test("a guest joins from a shared link without an account and reads the chat", async ({ browser }) => {
+test("a guest joins from a shared link without an account and later signs up", async ({ browser }) => {
   // Dwie rejestracje (organizator i gość, który zakłada konto) — dłużej niż domyślna minuta.
   test.setTimeout(150_000);
   const organizerNick = `Orc${runId}`;
@@ -258,7 +258,8 @@ test("a guest joins from a shared link without an account and reads the chat", a
   await expect(guest.getByText("Jesteś w składzie! Organizator widzi Cię jako gościa.")).toBeVisible();
   await expect(guest.getByTestId("guest-member")).toContainText("Gośka");
   await expect(guest.getByText("Boisko gości E2E").first()).toBeVisible();
-  await expect(guest.getByTestId("chat-guest-cta")).toBeVisible();
+  // Czatu bez wiadomości gość jeszcze nie widzi (zajawka pojawia się, gdy skład zacznie rozmawiać).
+  await expect(guest.getByTestId("chat-preview")).toHaveCount(0);
 
   await organizer.goto(eventUrl);
   await expect(organizer.getByText("Gośka").first()).toBeVisible();

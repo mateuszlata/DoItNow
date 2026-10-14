@@ -13,7 +13,7 @@ import {
   setMyInvites,
 } from "@/lib/services/invites";
 import { getGuestEventDetails } from "@/lib/services/events";
-import { listGuestMessages, postMessage } from "@/lib/services/chat";
+import { getChatPreview, postMessage } from "@/lib/services/chat";
 import { toLocalDateTime } from "@/lib/time";
 import { HOUR, anonClient, cleanupTestUsers, newUser, type TestUser } from "./helpers";
 
@@ -171,14 +171,13 @@ describe("invites from every player", () => {
 });
 
 describe("joining without an account from the event page", () => {
-  it("takes a free seat as the organizer's guest and opens the squad and a read-only chat", async () => {
+  it("takes a free seat as the organizer's guest and opens the squad and the organizer's chat messages", async () => {
     const organizer = await newUser("Org8 ZP");
     const eventId = await event(organizer, 6);
     const guest = anonClient();
     const me = device(40);
 
     expect(await getGuestEventDetails(guest, eventId, me)).toBeNull();
-    expect((await listGuestMessages(guest, eventId, me)).ok).toBe(false);
 
     expect(await joinAsGuest(guest, { eventId, device: me, name: "Marek", answer: "yes" })).toEqual({ ok: true });
     expect(await seats(organizer, eventId)).toEqual({ spots: 4, guest_count: 1, guest_confirmed: 1 });
@@ -190,8 +189,13 @@ describe("joining without an account from the event page", () => {
     expect(view?.details.guest_groups).toEqual([
       { inviter_id: organizer.id, inviter_name: "Org8 ZP", reserved: 1, confirmed: ["Marek"], in_squad: true },
     ]);
-    const chat = await listGuestMessages(guest, eventId, me);
-    expect(chat.ok && chat.data.map((m) => m.body)).toEqual(["Siema!"]);
+    // Zajawka czatu: gość ze składu czyta organizatora; przypadkowy odwiedzający widzi tylko kształt wiadomości.
+    expect((await getChatPreview(guest, eventId, me)).map((m) => [m.body, m.length, m.from_organizer])).toEqual([
+      ["Siema!", 6, true],
+    ]);
+    expect((await getChatPreview(anonClient(), eventId, device(99))).map((m) => [m.body, m.length])).toEqual([
+      [null, 6],
+    ]);
 
     // Zmiana zdania zwalnia miejsce; „Nie będę” bez wcześniejszego „Będę” niczego nie zmienia.
     expect((await joinAsGuest(guest, { eventId, device: me, name: "Marek", answer: "no" })).ok).toBe(true);

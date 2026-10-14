@@ -1,11 +1,9 @@
 import type { APIRoute } from "astro";
 import { z } from "astro/zod";
 import { createClient } from "@/lib/supabase";
-import { readDevice } from "@/lib/device";
 import {
   MESSAGE_MAX_LENGTH,
   chatErrorMessage,
-  listGuestMessages,
   listMessages,
   postMessage,
   type ChatErrorCode,
@@ -30,10 +28,9 @@ function failure(code: ChatErrorCode) {
 }
 
 // Wiadomości czatu wydarzenia; `after` zwraca tylko nowe i świeżo ukryte (odświeżanie).
-// Gość bez konta z „Będę” czyta czat po identyfikatorze urządzenia.
+// Osoby bez konta widzą tylko zajawkę rozmowy (event_chat_preview), więc tu potrzebne jest konto.
 export const GET: APIRoute = async (context) => {
-  const device = context.locals.user ? null : readDevice(context.cookies);
-  if (!context.locals.user && !device) return failure("NOT_AUTHENTICATED");
+  if (!context.locals.user) return failure("NOT_AUTHENTICATED");
   const id = idSchema.safeParse(context.params.id);
   const after = afterSchema.safeParse(context.url.searchParams.get("after") ?? undefined);
   if (!id.success || !after.success) return Response.json({ error: "INVALID_DATA" }, { status: 400 });
@@ -43,9 +40,7 @@ export const GET: APIRoute = async (context) => {
 
   // Znacznik do następnego odświeżenia, z 5 s zakładki na różnicę zegarów serwera i bazy (duplikaty scala klient).
   const syncedAt = new Date(Date.now() - 5000).toISOString();
-  const result = device
-    ? await listGuestMessages(supabase, id.data, device, after.data)
-    : await listMessages(supabase, id.data, after.data);
+  const result = await listMessages(supabase, id.data, after.data);
   if (!result.ok) return failure(result.code);
   return Response.json({ messages: result.data, syncedAt }, { headers: { "Cache-Control": "no-store" } });
 };

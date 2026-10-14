@@ -6,6 +6,7 @@ import ShareMenu from "@/components/share/ShareMenu";
 import { kitFrom } from "@/lib/kit";
 import { cn } from "@/lib/utils";
 import { chatLayout, dividerLabel, messageTime } from "@/lib/chat-layout";
+import { clearChatDraft, readChatDraft } from "@/lib/chat-draft";
 import type { ChatMessage } from "@/types";
 
 const MAX_LENGTH = 1000;
@@ -22,8 +23,6 @@ interface Props {
   shareText?: string;
   shareSubject?: string;
   shareUrl?: string;
-  /** Gość bez konta czyta czat; zamiast pola wiadomości widzi zachętę do założenia konta. */
-  guestSignupHref?: string;
 }
 
 const URL_PATTERN = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g;
@@ -72,11 +71,10 @@ export default function EventChat({
   shareText,
   shareSubject,
   shareUrl,
-  guestSignupHref,
 }: Props) {
-  const guest = guestSignupHref !== undefined;
   const { messages, error, sending, send, act } = useEventChat(eventId, initialMessages, initialSyncedAt);
-  const [draft, setDraft] = useState("");
+  // Wiadomość zaczęta przed założeniem konta (zajawka czatu) czeka w polu, gotowa do wysłania.
+  const [draft, setDraft] = useState(() => readChatDraft(eventId));
   const [notice, setNotice] = useState<string | null>(null);
   // Stuknięta wiadomość pokazuje godzinę i opcje (ukryj, zgłoś, usuń).
   const [active, setActive] = useState<string | null>(null);
@@ -95,7 +93,10 @@ export default function EventChat({
   async function submit() {
     const body = draft.trim();
     if (!body || sending) return;
-    if (await send(body)) setDraft("");
+    if (await send(body)) {
+      setDraft("");
+      clearChatDraft(eventId);
+    }
   }
 
   async function report(message: ChatMessage) {
@@ -121,11 +122,7 @@ export default function EventChat({
           subject={shareSubject ?? "Metando"}
         />
       </div>
-      <p className="text-ink-3 mt-1 text-xs">
-        {guest
-          ? "Czytasz jako gość. Pisać mogą osoby z kontem w Metando."
-          : "Widzą go organizator i osoby w składzie oraz na rezerwie."}
-      </p>
+      <p className="text-ink-3 mt-1 text-xs">Widzą go organizator i osoby w składzie oraz na rezerwie.</p>
 
       <div
         ref={list}
@@ -135,9 +132,7 @@ export default function EventChat({
         data-testid="chat-messages"
       >
         {messages.length === 0 && (
-          <p className="text-ink-3 my-auto py-6 text-center text-sm">
-            {guest ? "Nikt jeszcze nie napisał." : "Nikt jeszcze nie napisał. Przywitaj się!"}
-          </p>
+          <p className="text-ink-3 my-auto py-6 text-center text-sm">Nikt jeszcze nie napisał. Przywitaj się!</p>
         )}
         {(() => {
           const rows = chatLayout(messages);
@@ -146,8 +141,8 @@ export default function EventChat({
             const mine = message.author_id === currentUserId;
             const open = active === message.id;
             const big = !message.hidden && emojiOnly(message.body ?? "");
-            const canHide = !guest && (mine || isOrganizer);
-            const canReport = !guest && !mine;
+            const canHide = mine || isOrganizer;
+            const canReport = !mine;
             return (
               <div key={message.id} className={cn(first ? "mt-3" : "mt-0.5", i === 0 && "mt-0")}>
                 {divider && (
@@ -234,18 +229,7 @@ export default function EventChat({
         </p>
       )}
 
-      {guest ? (
-        <a
-          href={guestSignupHref}
-          className="bg-card-2 text-ink hover:bg-line mt-3 flex min-h-11 items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-sm transition-colors"
-          data-testid="chat-guest-cta"
-        >
-          <span>Chcesz coś napisać? Załóż darmowe konto — zajmie to 30 sekund.</span>
-          <span className="bg-brand text-on-brand shrink-0 rounded-full px-3 py-1 text-xs font-extrabold uppercase">
-            Załóż konto
-          </span>
-        </a>
-      ) : open ? (
+      {open ? (
         <form
           className="mt-3 flex items-end gap-2"
           onSubmit={(e) => {
@@ -261,6 +245,7 @@ export default function EventChat({
             rows={1}
             maxLength={MAX_LENGTH}
             value={draft}
+            suppressHydrationWarning
             onChange={(e) => {
               setDraft(e.target.value);
               setNotice(null);
@@ -286,7 +271,7 @@ export default function EventChat({
       ) : (
         <p className="text-ink-3 mt-3 text-xs">Czat jest zamknięty — można tylko czytać wiadomości.</p>
       )}
-      {open && !guest && draft.length > MAX_LENGTH - 100 && (
+      {open && draft.length > MAX_LENGTH - 100 && (
         <p className="text-ink-3 mt-1 text-right text-[11px]">
           {draft.length}/{MAX_LENGTH}
         </p>

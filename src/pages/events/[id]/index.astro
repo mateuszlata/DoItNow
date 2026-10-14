@@ -21,7 +21,8 @@ import { chanceExplanation, chanceTips, meetingChance, type ChanceInput } from "
 import { eventShareText, inviteShareText } from "@/lib/share";
 import ShareMenu from "@/components/share/ShareMenu";
 import { getMyInvite, inviteErrorMessage, releaseStaleInvites } from "@/lib/services/invites";
-import { isChatOpen, listGuestMessages, listMessages } from "@/lib/services/chat";
+import { getChatPreview, isChatOpen, listMessages } from "@/lib/services/chat";
+import ChatPreview from "@/components/chat/ChatPreview";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
 import { createClient } from "@/lib/supabase";
@@ -195,14 +196,13 @@ const lateWithdrawal = myStatus === "accepted" && details !== null && isLastMinu
 // Czat: organizator oraz osoby w składzie i na rezerwie (reguła is_event_member w bazie).
 const isChatMember = details !== null && (isOrganizer || myStatus === "accepted" || myStatus === "reserve");
 let chat: { messages: ChatMessage[]; syncedAt: string } | null = null;
-if ((isChatMember || isGuest) && supabase && details) {
+if (isChatMember && supabase && details) {
   const syncedAt = new Date(Date.now() - 5000).toISOString();
-  const result =
-    isGuest && device
-      ? await listGuestMessages(supabase, details.id, device)
-      : await listMessages(supabase, details.id);
+  const result = await listMessages(supabase, details.id);
   if (result.ok) chat = { messages: result.data, syncedAt };
 }
+// Bez konta: zajawka rozmowy składu (koszulki i kształt wiadomości; gość ze składu czyta organizatora).
+const chatPreview = !user && supabase && !isPast ? await getChatPreview(supabase, id, device) : [];
 
 // Składy na mecz (sporty z boiskiem lub kortem): grający organizator i przyjęci do składu — widzą je członkowie spotkania.
 let lineupPlayers: LineupPlayerView[] = [];
@@ -623,11 +623,10 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               client:load
             />
           )}
-          {chat && details && (user !== null || isGuest) && (
+          {chat && details && user !== null && (
             <EventChat
               eventId={details.id}
-              currentUserId={user?.id ?? ""}
-              guestSignupHref={isGuest ? authHref("signup", backHere) : undefined}
+              currentUserId={user.id}
               isOrganizer={isOrganizer}
               open={isChatOpen(details)}
               initialMessages={chat.messages}
@@ -636,6 +635,16 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               shareSubject={shareSubject}
               shareUrl={eventUrl}
               client:visible
+            />
+          )}
+          {!user && chatPreview.length > 0 && (
+            <ChatPreview
+              eventId={id}
+              messages={chatPreview}
+              guest={isGuest}
+              signupHref={authHref("signup", backHere)}
+              signinHref={authHref("signin", backHere)}
+              client:load
             />
           )}
           {details && !isChatMember && myStatus === "pending" && (
