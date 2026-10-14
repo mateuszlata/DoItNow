@@ -1,3 +1,4 @@
+import { isLevel, type Level } from "@/lib/levels";
 import { z } from "astro/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { KIT_COLUMNS, kitFrom, type KitColumns, type PlayerKit } from "@/lib/kit";
@@ -38,6 +39,32 @@ export async function getPositions(supabase: SupabaseClient, userId: string): Pr
     if (isPosition(row.sport, row.position)) result[row.sport] = row.position;
   }
   return result;
+}
+
+/** Zadeklarowane poziomy gracza: sport → 1…4. */
+export async function getLevels(supabase: SupabaseClient, userId: string): Promise<Partial<Record<string, Level>>> {
+  const { data } = await supabase.from("player_levels").select("sport, level").eq("user_id", userId);
+  const result: Partial<Record<string, Level>> = {};
+  for (const row of (data ?? []) as { sport: string; level: number }[]) {
+    if (isLevel(row.level)) result[row.sport] = row.level;
+  }
+  return result;
+}
+
+/** Zapis poziomu w sporcie; `null` usuwa deklarację. */
+export async function saveLevel(
+  supabase: SupabaseClient,
+  userId: string,
+  sport: string,
+  level: Level | null,
+): Promise<boolean> {
+  const { error } =
+    level === null
+      ? await supabase.from("player_levels").delete().eq("user_id", userId).eq("sport", sport)
+      : await supabase
+          .from("player_levels")
+          .upsert({ user_id: userId, sport, level, updated_at: new Date().toISOString() });
+  return !error;
 }
 
 export async function savePosition(

@@ -12,7 +12,9 @@ import { minimumLabel, takenSpots, teamSize } from "@/lib/capacity";
 import SportPicker from "@/components/SportPicker.astro";
 import { getFavoriteSports } from "@/lib/services/preferences";
 import KitCreator from "@/components/KitCreator";
-import { getDisplayName, getKit, getPositions } from "@/lib/services/profiles";
+import { getDisplayName, getKit, getLevels, getPositions } from "@/lib/services/profiles";
+import { LEVELS, LEVEL_LABELS, levelHint } from "@/lib/levels";
+import { SPORTS } from "@/lib/sports";
 import { POSITION_SPORTS, positionsFor } from "@/lib/lineup";
 import { defaultKit } from "@/lib/kit";
 import { isAdmin } from "@/lib/services/chat";
@@ -45,6 +47,11 @@ const admin = supabase ? await isAdmin(supabase) : false;
 const positions = supabase && user ? await getPositions(supabase, user.id) : {};
 const positionStatus = Astro.url.searchParams.get("ok");
 const positionSport = Astro.url.searchParams.get("sport");
+// Mój poziom: przy ulubionych sportach (albo przy wszystkich, gdy ulubionych brak) i tych, w których już go podano.
+const levels = supabase && user ? await getLevels(supabase, user.id) : {};
+const levelSports = SPORTS.map((s) => s.id).filter(
+  (id) => (favorites && favorites.length > 0 ? favorites.includes(id) : true) || levels[id] !== undefined,
+);
 const notificationSettings =
   supabase && user ? await getNotificationSettings(supabase, user.id) : DEFAULT_NOTIFICATION_SETTINGS;
 const notificationsSaved = Astro.url.searchParams.get("ok") === "notifications-saved";
@@ -181,6 +188,70 @@ const notificationsFailed = Astro.url.searchParams.get("error") === "notificatio
           <p class="mb-3 text-sm font-semibold text-bad">Nie udało się zapisać stroju. Spróbuj ponownie.</p>
         )}
         <KitCreator initialKit={kit} nick={nick} saved={kitStatus === "kit-saved"} client:load />
+      </section>
+
+      <section id="moj-poziom" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">
+        <h2 class="display text-2xl leading-none">Mój poziom</h2>
+        <p class="mt-1 mb-3 text-sm text-ink-2">
+          Organizatorzy podają poziom spotkania — dzięki temu trafisz do ekipy, z którą dobrze się gra.
+        </p>
+        {positionStatus === "level-failed" && (
+          <p class="mb-3 text-sm font-semibold text-bad">Nie udało się zapisać poziomu. Spróbuj ponownie.</p>
+        )}
+        <div class="flex flex-col gap-2">
+          {levelSports.map((sport) => {
+            const current = levels[sport];
+            const saved = positionStatus === "level-saved" && positionSport === sport;
+            return (
+              <details class="group rounded-2xl bg-card-2" open={saved || undefined}>
+                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+                  <span class="text-sm font-bold">{sportLabel(sport)}</span>
+                  <span class:list={["text-sm", current === undefined ? "text-ink-3" : "font-semibold text-ink"]}>
+                    {saved ? "✓ " : ""}
+                    {current === undefined ? "nie podano" : LEVEL_LABELS[current]}
+                    <span class="ml-1 inline-block transition-transform group-open:rotate-180" aria-hidden="true">
+                      ▾
+                    </span>
+                  </span>
+                </summary>
+                <form method="POST" action="/api/profile/level" class="flex flex-col gap-2 px-4 pb-4" data-level-form>
+                  <input type="hidden" name="sport" value={sport} />
+                  <div class="grid gap-1.5 sm:grid-cols-2">
+                    {LEVELS.map((level) => (
+                      <label class="flex cursor-pointer flex-col rounded-2xl border border-line-strong bg-card px-3.5 py-2 transition-colors has-checked:border-ink has-checked:bg-ink has-checked:text-card has-focus-visible:ring-2 has-focus-visible:ring-brand">
+                        <input
+                          type="radio"
+                          name="level"
+                          value={String(level)}
+                          checked={current === level}
+                          class="sr-only"
+                        />
+                        <span class="text-sm font-bold">{LEVEL_LABELS[level]}</span>
+                        <span class="text-xs opacity-80">{levelHint(sport, level)}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <button
+                      type="submit"
+                      class:list={[
+                        "h-9 rounded-full px-4 text-xs font-extrabold tracking-wide uppercase transition-colors",
+                        saved ? "bg-free text-white" : "bg-brand text-on-brand hover:bg-brand-hover",
+                      ]}
+                    >
+                      {saved ? "✓ Zapisano" : "Zapisz"}
+                    </button>
+                    {current !== undefined && (
+                      <button type="submit" name="level" value="" class="text-xs font-semibold text-ink-3 underline">
+                        Nie podawaj
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </details>
+            );
+          })}
+        </div>
       </section>
 
       <section id="moja-pozycja" class="mt-8 scroll-mt-4 rounded-[20px] bg-card p-5 text-ink">

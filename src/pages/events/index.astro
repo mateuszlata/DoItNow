@@ -28,6 +28,7 @@ import { getFavoriteSports, normalizeSports, parseSportsParam } from "@/lib/serv
 import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, takenSpots, teamSize } from "@/lib/capacity";
 import { meetingChance, type Chance } from "@/lib/chance";
 import { myStatusesFor } from "@/lib/services/participations";
+import { levelRangeLabel } from "@/lib/levels";
 import type { ParticipationStatus } from "@/types";
 
 /** Szansa, że mecz się odbędzie — plakietka na karcie (src/lib/chance.ts). */
@@ -600,6 +601,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                         ? `Rezerwa ${String(event.reserve_count)} z ${String(event.reserve_spots)}`
                         : "Bez rezerwy"}
                       {event.organizer_plays && " · organizator gra"}
+                      {event.level_min !== null && ` · ${levelRangeLabel(event.level_min, event.level_max)}`}
                     </span>
                   </div>
                   <a

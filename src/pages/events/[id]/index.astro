@@ -22,6 +22,8 @@ import { eventShareText, inviteShareText } from "@/lib/share";
 import ShareMenu from "@/components/share/ShareMenu";
 import { getMyInvite, inviteErrorMessage, releaseStaleInvites } from "@/lib/services/invites";
 import { getChatPreview, isChatOpen, listMessages } from "@/lib/services/chat";
+import { fitsLevel, levelMixLabel, levelRangeLabel, LEVEL_LABELS, type Level } from "@/lib/levels";
+import { getLevels } from "@/lib/services/profiles";
 import ChatPreview from "@/components/chat/ChatPreview";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -30,6 +32,7 @@ import {
   canEditEvent,
   getEventDetails,
   getGuestEventDetails,
+  getLevelMix,
   getPublicEvent,
   needsAnswer,
 } from "@/lib/services/events";
@@ -90,6 +93,8 @@ const summary = details
       venue_status: details.venue_status,
       guest_count: details.guest_count,
       guest_confirmed: details.guest_confirmed,
+      level_min: details.level_min,
+      level_max: details.level_max,
     }
   : publicEvent;
 
@@ -201,6 +206,11 @@ if (isChatMember && supabase && details) {
   const result = await listMessages(supabase, details.id);
   if (result.ok) chat = { messages: result.data, syncedAt };
 }
+// Poziom: zakres spotkania, rozkład zadeklarowanych poziomów w składzie i — dla chętnego — czy jego poziom pasuje.
+const levelMix = supabase && summary && !isPast ? await getLevelMix(supabase, id) : [];
+const myLevel: Level | null =
+  user && supabase && summary && canJoin ? ((await getLevels(supabase, user.id))[summary.sport] ?? null) : null;
+const levelMismatch = summary !== null && !fitsLevel(myLevel, summary.level_min, summary.level_max);
 // Bez konta: zajawka rozmowy składu (koszulki i kształt wiadomości; gość ze składu czyta organizatora).
 const chatPreview = !user && supabase && !isPast ? await getChatPreview(supabase, id, device) : [];
 
@@ -502,6 +512,10 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
           <p class="-mt-2 text-[13px] text-page-ink-2" data-testid="join-mode">
             Dołączanie: {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
             {summary.organizer_plays && " · organizator gra w składzie"}
+          </p>
+          <p class="-mt-2 text-[13px] text-page-ink" data-testid="event-level">
+            <strong>{levelRangeLabel(summary.level_min, summary.level_max)}</strong>
+            {levelMix.length > 0 && <span class="text-page-ink-2"> · w składzie: {levelMixLabel(levelMix)}</span>}
           </p>
 
           {details?.description && (
@@ -837,7 +851,16 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               </span>
             )}
             {canJoin && (
-              <form method="POST" action={`/api/events/${details.id}/join`} class="flex flex-1">
+              <form
+                method="POST"
+                action={`/api/events/${details.id}/join`}
+                class="flex flex-1"
+                onsubmit={
+                  levelMismatch && myLevel !== null
+                    ? `return confirm('${levelRangeLabel(summary.level_min, summary.level_max)}, a Twój poziom w tym sporcie to: ${LEVEL_LABELS[myLevel].toLowerCase()}. Na pewno dołączasz?')`
+                    : undefined
+                }
+              >
                 <button
                   type="submit"
                   class="h-14 flex-1 rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"

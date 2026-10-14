@@ -4,6 +4,7 @@ import { isPosition, supportsLineup } from "@/lib/lineup";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
+import { parseLevelRange } from "@/lib/levels";
 import { MAX_RADIUS_KM, NEAR_RADII, boundingBox, distanceKm, type Near } from "@/lib/near";
 import { isLastMinute } from "@/lib/services/participations";
 import { getVenue } from "@/lib/services/venues";
@@ -93,13 +94,19 @@ export const createEventSchema = z.object({
   lat: coordinate(-90, 90),
   lng: coordinate(-180, 180),
   description: z.string().trim().max(1000, "Opis może mieć maks. 1000 znaków.").optional(),
+  // Zakres poziomu „min-max” (puste = dla każdego).
+  levelRange: z
+    .string()
+    .optional()
+    .refine((v) => v === undefined || v === "" || parseLevelRange(v) !== null, "Wybierz poziom z listy."),
 });
 
 export type EventFormField = keyof z.input<typeof createEventSchema>;
 /** Surowe wartości pól formularza, tak jak przychodzą z przeglądarki (`guests` może nie wystąpić). */
-export type EventFormValues = Record<Exclude<EventFormField, "guests" | "membersCanInvite">, string> & {
+export type EventFormValues = Record<Exclude<EventFormField, "guests" | "membersCanInvite" | "levelRange">, string> & {
   guests?: string;
   membersCanInvite?: string;
+  levelRange?: string;
 };
 export type FieldErrors = Partial<Record<EventFormField | "form", string>>;
 
@@ -125,6 +132,8 @@ export interface ParsedEvent {
   lat: number | null;
   lng: number | null;
   description: string | null;
+  levelMin: number | null;
+  levelMax: number | null;
 }
 
 /**
@@ -186,6 +195,8 @@ export function parseEventForm(
       lng: data.lng,
       // puste pole opisu zapisujemy jako brak opisu
       description: data.description === "" ? null : (data.description ?? null),
+      levelMin: parseLevelRange(data.levelRange)?.min ?? null,
+      levelMax: parseLevelRange(data.levelRange)?.max ?? null,
     },
   };
 }
@@ -253,6 +264,8 @@ export async function createEvent(
       requires_approval: data.requiresApproval,
       duration_minutes: data.durationMinutes,
       venue_id: data.venueId,
+      level_min: data.levelMin,
+      level_max: data.levelMax,
     })
     .select()
     .single<EventRecord>();
@@ -318,7 +331,14 @@ export async function updateEvent(
     const known = Object.hasOwn(UPDATE_ERRORS, code) ? UPDATE_ERRORS[code] : venueError(response.error);
     return { ok: false, errors: known ?? { form: "Nie udało się zapisać zmian. Spróbuj ponownie." } };
   }
-  return { ok: true, event: response.data as unknown as EventRecord };
+  const level = await supabase.rpc("set_event_level", {
+    p_event_id: eventId,
+    p_min: data.levelMin,
+    p_max: data.levelMax,
+  });
+  if (level.error) return { ok: false, errors: { levelRange: "Nie udało się zapisać poziomu." } };
+  const event = response.data as unknown as EventRecord;
+  return { ok: true, event: { ...event, level_min: data.levelMin, level_max: data.levelMax } };
 }
 
 /** Odwołanie ogłoszenia przez organizatora w dowolnej chwili przed startem (FR-004). */
@@ -383,8 +403,8 @@ export async function listUpcomingEvents(
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
   const columns: string = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, level_min, level_max"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng, level_min, level_max";
   const near = filters.near ?? null;
 
   let query = options.authenticated
@@ -503,7 +523,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   const { data, error } = await supabase
     .from("events_public")
     .select(
-      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng",
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng, level_min, level_max",
     )
     .eq("id", id)
     .maybeSingle<PublicEvent>();
@@ -649,6 +669,16 @@ export async function getGuestEventDetails(
       free_spots: Math.max(row.event.spots - participants.length, 0),
     },
   };
+}
+
+/** Rozkład zadeklarowanych poziomów w składzie (same liczby — dostępne także bez konta). */
+export async function getLevelMix(
+  supabase: SupabaseClient,
+  eventId: string,
+): Promise<{ level: number; players: number }[]> {
+  const response = await supabase.rpc("event_level_mix", { p_event_id: eventId });
+  const rows: unknown = response.data;
+  return response.error || !Array.isArray(rows) ? [] : (rows as { level: number; players: number }[]);
 }
 
 type MyEventRow = EventRecord & { accepted_count: number; reserve_count: number };

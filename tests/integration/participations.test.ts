@@ -170,6 +170,8 @@ describe("widoczność (FR-001, FR-006)", () => {
       "guest_confirmed",
       "guest_count",
       "id",
+      "level_max",
+      "level_min",
       "min_people",
       "organizer_plays",
       "requires_approval",

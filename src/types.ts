@@ -46,6 +46,9 @@ export interface EventRecord {
   venue_decided_at: string | null;
   /** Uzasadnienie zarządcy, np. powód odrzucenia. */
   venue_note: string | null;
+  /** Zakres poziomu spotkania (1 rekreacyjnie … 4 wyczynowo); null = dla każdego. */
+  level_min: number | null;
+  level_max: number | null;
 }
 
 export type VenueBookingStatus = "pending" | "approved" | "rejected";
@@ -67,6 +70,8 @@ export type PublicEvent = Pick<
   | "venue_status"
   | "guest_count"
   | "guest_confirmed"
+  | "level_min"
+  | "level_max"
 > & {
   accepted_count: number;
   reserve_count: number;

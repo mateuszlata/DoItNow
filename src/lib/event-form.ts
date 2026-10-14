@@ -21,6 +21,7 @@ export const EMPTY_EVENT_FORM: EventFormValues = {
   lat: "",
   lng: "",
   description: "",
+  levelRange: "",
 };
 
 /** Wartości formularza edycji z zapisanego ogłoszenia. */
@@ -42,6 +43,10 @@ export function eventToForm(event: EventRecord): EventFormValues {
     lat: event.lat === null ? "" : String(event.lat),
     lng: event.lng === null ? "" : String(event.lng),
     description: event.description ?? "",
+    levelRange:
+      event.level_min !== null && event.level_max !== null
+        ? `${String(event.level_min)}-${String(event.level_max)}`
+        : "",
   };
 }
 
@@ -69,5 +74,6 @@ export async function readEventForm(request: Request): Promise<EventFormValues> 
     lat: field("lat"),
     lng: field("lng"),
     description: field("description"),
+    levelRange: field("levelRange"),
   };
 }
