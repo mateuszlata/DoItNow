@@ -244,70 +244,74 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
           </a>
         )}
       </div>
-      <nav
-        class="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:[mask-image:none]"
-        aria-label="Sport"
-        data-testid="sport-chips"
-      >
-        <a
-          href={filterHref({ sports: [] })}
-          aria-current={selected.length === 0 ? "page" : undefined}
-          class:list={[
-            "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
-            selected.length === 0 ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
-          ]}
+      <!-- Pasek sportów przewija się w poziomie wewnątrz siebie; zewnętrzny kontener twardo obcina nadmiar,
+           bo Chrome na telefonach potrafił potraktować rząd kafelków jak szerokość strony i ją pomniejszyć. -->
+      <div class="-mx-4 mb-4 overflow-hidden sm:mx-0">
+        <nav
+          class="flex w-full gap-2 overflow-x-auto px-4 py-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] sm:flex-wrap sm:px-0 sm:[mask-image:none]"
+          aria-label="Sport"
+          data-testid="sport-chips"
         >
-          <SportIcon />
-          Wszystkie sporty
-          {totalCount !== null && <span class="text-xs opacity-70">{totalCount}</span>}
-        </a>
-        {orderedSports.map((s) => {
-          const on = selected.includes(s.id);
-          const n = sportCount(s.id);
-          return (
-            <a
-              href={filterHref({ sports: toggleSport(s.id) })}
-              data-selected={on ? "" : undefined}
-              class:list={[
-                "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
-                on ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
-                sportCounts && n === 0 && !on && "opacity-60",
-              ]}
-              title={sportCounts ? `Spotkań: ${String(n)}` : undefined}
-            >
-              <SportIcon sport={s.id} />
-              {s.label}
-              {sportCounts && (
-                <span
-                  class:list={[
-                    "rounded-full px-1.5 text-xs leading-5",
-                    n > 0 ? (on ? "bg-brand text-on-brand" : "bg-page-deep text-page-ink") : "opacity-70",
-                  ]}
-                  data-testid="sport-count"
-                >
-                  {n}
-                </span>
-              )}
-              {on && <span class="sr-only">(wybrany)</span>}
-              {on && (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M5 12l5 5L20 7"></path>
-                </svg>
-              )}
-            </a>
-          );
-        })}
-      </nav>
+          <a
+            href={filterHref({ sports: [] })}
+            aria-current={selected.length === 0 ? "page" : undefined}
+            class:list={[
+              "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
+              selected.length === 0 ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
+            ]}
+          >
+            <SportIcon />
+            Wszystkie sporty
+            {totalCount !== null && <span class="text-xs opacity-70">{totalCount}</span>}
+          </a>
+          {orderedSports.map((s) => {
+            const on = selected.includes(s.id);
+            const n = sportCount(s.id);
+            return (
+              <a
+                href={filterHref({ sports: toggleSport(s.id) })}
+                data-selected={on ? "" : undefined}
+                class:list={[
+                  "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
+                  on ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
+                  sportCounts && n === 0 && !on && "opacity-60",
+                ]}
+                title={sportCounts ? `Spotkań: ${String(n)}` : undefined}
+              >
+                <SportIcon sport={s.id} />
+                {s.label}
+                {sportCounts && (
+                  <span
+                    class:list={[
+                      "rounded-full px-1.5 text-xs leading-5",
+                      n > 0 ? (on ? "bg-brand text-on-brand" : "bg-page-deep text-page-ink") : "opacity-70",
+                    ]}
+                    data-testid="sport-count"
+                  >
+                    {n}
+                  </span>
+                )}
+                {on && <span class="sr-only">(wybrany)</span>}
+                {on && (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 12l5 5L20 7"></path>
+                  </svg>
+                )}
+              </a>
+            );
+          })}
+        </nav>
+      </div>
 
       <span class="mb-1.5 block text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Kiedy</span>
       <form method="GET" class="mb-5 flex gap-1.5 rounded-full bg-page-deep p-1" aria-label="Termin">

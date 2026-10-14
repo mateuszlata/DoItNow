@@ -81,6 +81,67 @@ const imageUrl = new URL(image, Astro.url.origin).href;
       </Banner>
     ))}
     <slot />
+    <script is:inline>
+      // Diagnostyka układu na telefonach: ?diag=1 pokazuje rozmiary ekranu i elementy wystające poza stronę.
+      if (new URLSearchParams(location.search).has("diag")) {
+        window.addEventListener("load", () => {
+          setTimeout(() => {
+            const W = document.documentElement.clientWidth;
+            const H = document.documentElement.scrollHeight;
+            const name = (el) => {
+              const cls = String(
+                el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className || "",
+              );
+              return el.tagName.toLowerCase() + (cls ? "." + cls.split(" ").slice(0, 3).join(".") : "");
+            };
+            const inFixed = (el) => {
+              for (let p = el; p; p = p.parentElement) if (getComputedStyle(p).position === "fixed") return true;
+              return false;
+            };
+            const found = [];
+            for (const el of document.querySelectorAll("body *")) {
+              const r = el.getBoundingClientRect();
+              if (r.width === 0 || r.right <= W + 1 || inFixed(el)) continue;
+              const path = [];
+              for (let p = el.parentElement, i = 0; p && i < 3; p = p.parentElement, i++) path.push(name(p));
+              found.push({
+                right: r.right,
+                text: Math.round(r.right) + " W" + Math.round(r.width) + " " + name(el) + "  <  " + path.join(" < "),
+              });
+            }
+            found.sort((a, b) => b.right - a.right);
+            const rows = found.slice(0, 12).map((f) => f.text);
+            const box = document.createElement("pre");
+            box.style.cssText =
+              "position:fixed;left:4px;right:4px;bottom:70px;z-index:99999;max-height:45vh;overflow:auto;margin:0;padding:8px;background:#fff;color:#000;font:11px/1.35 monospace;white-space:pre-wrap;border:2px solid #f00";
+            box.textContent =
+              "inner " +
+              innerWidth +
+              "x" +
+              innerHeight +
+              " client " +
+              W +
+              " scrollW " +
+              document.documentElement.scrollWidth +
+              " scrollH " +
+              H +
+              " dpr " +
+              devicePixelRatio +
+              " vv " +
+              (window.visualViewport
+                ? visualViewport.width.toFixed(0) +
+                  "x" +
+                  visualViewport.height.toFixed(0) +
+                  " s" +
+                  visualViewport.scale.toFixed(2)
+                : "-") +
+              "\n" +
+              (rows.slice(0, 25).join("\n") || "brak wystających elementów");
+            document.body.appendChild(box);
+          }, 2500);
+        });
+      }
+    </script>
   </body>
 </html>
 
