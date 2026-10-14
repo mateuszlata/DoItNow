@@ -107,7 +107,7 @@ export default function SignInForm({ serverError, next, turnstileSiteKey }: Prop
             ? "Nie udało się sprawdzić, że nie jesteś botem. Wyłącz blokowanie skryptów na tej stronie albo użyj innej przeglądarki."
             : check === "expired"
               ? "Weryfikacja wygasła — zaznacz ją ponownie."
-              : "Sprawdzamy, czy nie jesteś botem — to potrwa chwilę…"}
+              : "Sprawdzamy, czy nie jesteś botem. Jeśli powyżej pojawi się pole do zaznaczenia — zaznacz je."}
         </p>
       )}
 

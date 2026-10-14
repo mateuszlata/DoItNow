@@ -38,7 +38,7 @@ const { action, name = "", answered = null, showNo = true, yesLabel = "Będę" }
   </label>
   {TURNSTILE_SITE_KEY && <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} client:load />}
   <p class="text-center text-xs text-ink-3" data-check-status hidden={!TURNSTILE_SITE_KEY}>
-    Sprawdzamy, czy nie jesteś botem — to potrwa chwilę…
+    Sprawdzamy, czy nie jesteś botem. Jeśli powyżej pojawi się pole do zaznaczenia — zaznacz je.
   </p>
   <div class:list={["grid gap-2", showNo ? "grid-cols-2" : "grid-cols-1"]}>
     <button
