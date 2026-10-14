@@ -1,0 +1,94 @@
+---
+// Ustawienia powiadomień w „Moje”: główny wyłącznik i tabela rodzaj × sposób (e-mail, telefon).
+import { NOTIFICATION_CATEGORIES, type NotificationSettings } from "@/lib/services/notifications";
+
+interface Props {
+  settings: NotificationSettings;
+  saved?: boolean;
+}
+
+const { settings, saved = false } = Astro.props;
+const checkbox = "size-5 shrink-0 cursor-pointer rounded accent-[var(--brand)]";
+---
+
+<form method="POST" action="/api/profile/notifications" class="[color-scheme:light]" data-notification-settings>
+  <label
+    for="notifications-enabled"
+    aria-label="Powiadomienia włączone"
+    class="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-card-2 px-4 py-3"
+  >
+    <span>
+      <span class="block text-sm font-bold">Powiadomienia włączone</span>
+      <span class="block text-xs text-ink-2">Wyłącz, a nie wyślemy Ci żadnych powiadomień.</span>
+    </span>
+    <input
+      id="notifications-enabled"
+      type="checkbox"
+      name="enabled"
+      checked={settings.enabled}
+      class:list={[checkbox]}
+      data-master
+    />
+  </label>
+
+  <div class="mt-3" data-categories>
+    <div class="grid grid-cols-[1fr_auto_auto] items-end gap-x-4 px-1 pb-1 text-[11px] font-extrabold tracking-wider text-ink-2 uppercase">
+      <span>Rodzaj</span>
+      <span class="w-14 text-center">E-mail</span>
+      <span class="w-14 text-center">Telefon</span>
+    </div>
+    <ul class="divide-y divide-line">
+      {NOTIFICATION_CATEGORIES.map((category) => (
+        <li class="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-1 py-2.5">
+          <span>
+            <span class="block text-sm font-bold">{category.label}</span>
+            <span class="block text-xs text-ink-2">{category.hint}</span>
+          </span>
+          <span class="grid w-14 place-items-center">
+            <input
+              type="checkbox"
+              name={`${category.id}_email`}
+              checked={settings[`${category.id}_email`]}
+              class:list={[checkbox]}
+              aria-label={`${category.label}: e-mail`}
+            />
+          </span>
+          <span class="grid w-14 place-items-center">
+            <input
+              type="checkbox"
+              name={`${category.id}_push`}
+              checked={settings[`${category.id}_push`]}
+              class:list={[checkbox]}
+              aria-label={`${category.label}: telefon`}
+            />
+          </span>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <p class="mt-3 text-xs text-ink-2">
+    Wysyłka ruszy w najbliższych dniach — ustawienia zapisujemy już teraz. Powiadomienia na telefon włączysz dodatkowo
+    na każdym urządzeniu.
+  </p>
+
+  <button
+    type="submit"
+    class="mt-3 h-11 rounded-full bg-brand px-5 text-sm font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
+  >
+    {saved ? "✓ Zapisano" : "Zapisz"}
+  </button>
+</form>
+
+<script>
+  // Po wyłączeniu głównego przełącznika szczegółowe ustawienia są wyszarzone (ale zachowują wartości).
+  document.querySelectorAll<HTMLFormElement>("form[data-notification-settings]").forEach((form) => {
+    const master = form.querySelector<HTMLInputElement>("[data-master]");
+    const categories = form.querySelector<HTMLElement>("[data-categories]");
+    const sync = () => {
+      categories?.classList.toggle("opacity-40", !master?.checked);
+    };
+    master?.addEventListener("change", sync);
+    sync();
+  });
+</script>
