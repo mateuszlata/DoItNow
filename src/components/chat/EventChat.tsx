@@ -5,6 +5,7 @@ import KitJersey from "@/components/KitJersey";
 import ShareMenu from "@/components/share/ShareMenu";
 import { kitFrom } from "@/lib/kit";
 import { cn } from "@/lib/utils";
+import { chatLayout, dividerLabel, messageTime } from "@/lib/chat-layout";
 import type { ChatMessage } from "@/types";
 
 const MAX_LENGTH = 1000;
@@ -25,9 +26,6 @@ interface Props {
   guestSignupHref?: string;
 }
 
-const timeFormat = new Intl.DateTimeFormat("pl-PL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Warsaw" });
-const dayFormat = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "short", timeZone: "Europe/Warsaw" });
-
 const URL_PATTERN = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/g;
 
 /** Tekst wiadomości z klikalnymi linkami (tylko http/https; reszta jako zwykły tekst). */
@@ -43,10 +41,25 @@ function withLinks(text: string) {
   );
 }
 
-function formatTime(iso: string): string {
-  const date = new Date(iso);
-  const today = dayFormat.format(new Date()) === dayFormat.format(date);
-  return today ? timeFormat.format(date) : `${dayFormat.format(date)}, ${timeFormat.format(date)}`;
+/** Same emoji (kilka znaków) — większe i bez dymka, jak w komunikatorach. */
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f|\s){1,12}$/u;
+function emojiOnly(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.length > 0 && !/[0-9#*]/.test(trimmed) && EMOJI_ONLY.test(trimmed);
+}
+
+/** Zaokrąglenia dymków w grupie: ciasno przy sąsiednich wiadomościach tej samej osoby. */
+function bubbleShape(mine: boolean, first: boolean, last: boolean): string {
+  if (first && last) return "rounded-2xl";
+  if (mine)
+    return cn(
+      "rounded-l-2xl",
+      first ? "rounded-tr-2xl rounded-br-md" : last ? "rounded-tr-md rounded-br-2xl" : "rounded-r-md",
+    );
+  return cn(
+    "rounded-r-2xl",
+    first ? "rounded-tl-2xl rounded-bl-md" : last ? "rounded-tl-md rounded-bl-2xl" : "rounded-l-md",
+  );
 }
 
 export default function EventChat({
@@ -65,6 +78,8 @@ export default function EventChat({
   const { messages, error, sending, send, act } = useEventChat(eventId, initialMessages, initialSyncedAt);
   const [draft, setDraft] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  // Stuknięta wiadomość pokazuje godzinę i opcje (ukryj, zgłoś, usuń).
+  const [active, setActive] = useState<string | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
 
@@ -114,7 +129,7 @@ export default function EventChat({
 
       <div
         ref={list}
-        className="mt-3 flex max-h-[420px] min-h-24 flex-col gap-2.5 overflow-y-auto pr-1"
+        className="mt-3 flex max-h-[420px] min-h-24 flex-col overflow-y-auto pr-1"
         role="log"
         aria-live="polite"
         data-testid="chat-messages"
@@ -124,55 +139,93 @@ export default function EventChat({
             {guest ? "Nikt jeszcze nie napisał." : "Nikt jeszcze nie napisał. Przywitaj się!"}
           </p>
         )}
-        {messages.map((message) => {
-          const mine = message.author_id === currentUserId;
-          return (
-            <div
-              key={message.id}
-              className={cn("flex max-w-[85%] flex-col", mine ? "items-end self-end" : "items-start")}
-            >
-              <span className="text-ink-3 mb-0.5 flex items-center gap-1.5 text-[11px]">
-                <KitJersey kit={kitFrom(message, message.author_id)} width={20} />
-                {mine ? "Ty" : message.author_name} · {formatTime(message.created_at)}
-              </span>
-              <p
-                className={cn(
-                  "rounded-2xl px-3.5 py-2 text-sm break-words whitespace-pre-wrap",
-                  message.hidden
-                    ? "text-ink-3 border-line border italic"
-                    : mine
-                      ? "bg-brand text-on-brand"
-                      : "bg-card-2",
+        {(() => {
+          const rows = chatLayout(messages);
+          return messages.map((message, i) => {
+            const { divider, first, last } = rows[i];
+            const mine = message.author_id === currentUserId;
+            const open = active === message.id;
+            const big = !message.hidden && emojiOnly(message.body ?? "");
+            const canHide = !guest && (mine || isOrganizer);
+            const canReport = !guest && !mine;
+            return (
+              <div key={message.id} className={cn(first ? "mt-3" : "mt-0.5", i === 0 && "mt-0")}>
+                {divider && (
+                  <p className="text-ink-3 mb-2 text-center text-[11px] font-semibold" data-testid="chat-divider">
+                    {dividerLabel(message.created_at)}
+                  </p>
                 )}
-                data-testid="chat-message"
-              >
-                {message.hidden ? "Wiadomość usunięta" : withLinks(message.body ?? "")}
-              </p>
-              {!message.hidden && !guest && (
-                <span className="mt-0.5 flex gap-3 text-[11px]">
-                  {(mine || isOrganizer) && (
-                    <button
-                      type="button"
-                      className="text-ink-3 hover:text-ink underline-offset-2 hover:underline"
-                      onClick={() => void hide(message, mine)}
-                    >
-                      {mine ? "Usuń" : "Ukryj"}
-                    </button>
-                  )}
+                {first && !mine && <p className="text-ink-3 mb-0.5 pl-9 text-[11px]">{message.author_name}</p>}
+                <div className={cn("flex items-end gap-1.5", mine && "justify-end")}>
                   {!mine && (
-                    <button
-                      type="button"
-                      className="text-ink-3 hover:text-ink underline-offset-2 hover:underline"
-                      onClick={() => void report(message)}
-                    >
-                      Zgłoś
-                    </button>
+                    <span className="w-7 shrink-0" aria-hidden="true">
+                      {last && <KitJersey kit={kitFrom(message, message.author_id)} width={28} />}
+                    </span>
                   )}
-                </span>
-              )}
-            </div>
-          );
-        })}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={open}
+                    aria-label={`${mine ? "Twoja wiadomość" : message.author_name}, ${messageTime(message.created_at)} — pokaż opcje`}
+                    title={messageTime(message.created_at)}
+                    onClick={() => {
+                      setActive(open ? null : message.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setActive(open ? null : message.id);
+                      }
+                    }}
+                    className={cn(
+                      "max-w-[80%] cursor-pointer text-sm break-words whitespace-pre-wrap",
+                      big
+                        ? "px-1 text-4xl leading-tight"
+                        : cn(
+                            "px-3.5 py-2",
+                            bubbleShape(mine, first, last),
+                            message.hidden
+                              ? "text-ink-3 border-line border italic"
+                              : mine
+                                ? "bg-brand text-on-brand"
+                                : "bg-card-2",
+                          ),
+                    )}
+                    data-testid="chat-message"
+                  >
+                    {message.hidden ? "Wiadomość usunięta" : withLinks(message.body ?? "")}
+                  </div>
+                </div>
+                {open && (
+                  <p
+                    className={cn("text-ink-3 mt-1 flex gap-3 text-[11px]", mine ? "justify-end" : "pl-9")}
+                    data-testid="chat-message-details"
+                  >
+                    <span>{messageTime(message.created_at)}</span>
+                    {!message.hidden && canHide && (
+                      <button
+                        type="button"
+                        className="hover:text-ink font-semibold underline-offset-2 hover:underline"
+                        onClick={() => void hide(message, mine)}
+                      >
+                        {mine ? "Usuń" : "Ukryj"}
+                      </button>
+                    )}
+                    {!message.hidden && canReport && (
+                      <button
+                        type="button"
+                        className="hover:text-ink font-semibold underline-offset-2 hover:underline"
+                        onClick={() => void report(message)}
+                      >
+                        Zgłoś
+                      </button>
+                    )}
+                  </p>
+                )}
+              </div>
+            );
+          });
+        })()}
       </div>
 
       {(error ?? notice) && (
