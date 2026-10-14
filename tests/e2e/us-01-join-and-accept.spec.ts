@@ -183,6 +183,18 @@ test("joining without approval is instant and the organizer can remove a partici
   await participant.getByRole("button", { name: "Dołącz" }).click();
   await expect(participant.getByText("Jesteś w składzie!")).toBeVisible();
   await expect(participant.getByTestId("participants")).toContainText(participantNick);
+
+  // Na liście karta pokazuje mój stan zamiast „Dołącz”: uczestnik — w składzie, organizator — organizuje.
+  await participant.goto("/events");
+  await expect(
+    participant.getByRole("listitem").filter({ hasText: area }).getByRole("link", { name: "✓ W składzie" }),
+  ).toBeVisible();
+  await organizer.goto("/events");
+  await expect(
+    organizer.getByRole("listitem").filter({ hasText: area }).getByRole("link", { name: "Organizujesz" }),
+  ).toBeVisible();
+  await organizer.goto(eventUrl);
+  await participant.goto(eventUrl);
   await expect(participant.getByTestId("free-spots")).toContainText(/2\s*wolne z 4/);
 
   // Czat: uczestnik pisze, organizator widzi wiadomość i odpowiada; po usunięciu ze składu czat znika.

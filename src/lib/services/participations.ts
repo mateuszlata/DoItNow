@@ -108,6 +108,24 @@ export function isLastMinute(startsAt: string | Date, now: Date = new Date()): b
   return now.getTime() > new Date(startsAt).getTime() - LAST_MINUTE_MS;
 }
 
+/** Zgłoszenia oglądającego w spotkaniach z listy (do przycisków na kartach): id spotkania → status. */
+export async function myStatusesFor(
+  supabase: SupabaseClient,
+  userId: string,
+  eventIds: string[],
+): Promise<Map<string, ParticipationStatus>> {
+  if (eventIds.length === 0) return new Map();
+  const { data } = await supabase
+    .from("participations")
+    .select("event_id, status")
+    .eq("user_id", userId)
+    .in("event_id", eventIds)
+    .in("status", ["pending", "accepted", "reserve"]);
+  return new Map(
+    (data ?? []).map((row: { event_id: string; status: ParticipationStatus }) => [row.event_id, row.status]),
+  );
+}
+
 export const STATUS_LABELS: Record<ParticipationStatus, string> = {
   pending: "oczekuje na akceptację",
   accepted: "jesteś w składzie",

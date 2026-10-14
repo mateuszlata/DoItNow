@@ -27,6 +27,8 @@ import SportPicker from "@/components/SportPicker.astro";
 import { getFavoriteSports, normalizeSports, parseSportsParam } from "@/lib/services/preferences";
 import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, takenSpots, teamSize } from "@/lib/capacity";
 import { meetingChance, type Chance } from "@/lib/chance";
+import { myStatusesFor } from "@/lib/services/participations";
+import type { ParticipationStatus } from "@/types";
 
 /** Szansa, że mecz się odbędzie — plakietka na karcie (src/lib/chance.ts). */
 function cardChance(event: EventListItem): Chance {
@@ -108,6 +110,16 @@ if (supabase && near && !loadError && events.length === 0) {
 const widerRadius =
   near && nearest.length > 0 ? (NEAR_RADII.find((km) => km >= (nearest[0].distance_km ?? Infinity)) ?? null) : null;
 
+// Moje zgłoszenia w spotkaniach z listy — karta pokazuje wtedy mój stan zamiast „Dołącz”.
+const myStatuses: Map<string, ParticipationStatus> =
+  user && supabase && !loadError
+    ? await myStatusesFor(
+        supabase,
+        user.id,
+        events.map((e) => e.id),
+      )
+    : new Map<string, ParticipationStatus>();
+
 if (supabase && !loadError) {
   sportCounts = await countEventsBySport(supabase, { day, when, near }, { authenticated: Boolean(user) }).catch(
     () => null,
@@ -188,7 +200,13 @@ function seats(event: EventListItem): boolean[] | null {
 }
 
 /** Wezwanie do działania na karcie, zależnie od wolnych miejsc i rezerwy. */
-function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "muted" } {
+function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "muted" | "mine" } {
+  // Własne spotkanie albo już złożone zgłoszenie: zamiast „Dołącz” — mój stan (przycisk prowadzi do spotkania).
+  if (user && event.organizer_id === user.id) return { label: "Organizujesz", tone: "dark" };
+  const mine = myStatuses.get(event.id);
+  if (mine === "accepted") return { label: "✓ W składzie", tone: "mine" };
+  if (mine === "reserve") return { label: "Na rezerwie", tone: "mine" };
+  if (mine === "pending") return { label: "Zgłoszono", tone: "mine" };
   if (freeSpots(event) > 0) return { label: event.requires_approval ? "Zgłoś się" : "Dołącz", tone: "brand" };
   if (freeReserve(event) > 0) return { label: "Na rezerwę", tone: "dark" };
   return { label: "Komplet", tone: "muted" };
@@ -591,6 +609,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                       action.tone === "brand" && "bg-brand text-on-brand hover:bg-brand-hover",
                       action.tone === "dark" && "bg-ink text-card",
                       action.tone === "muted" && "bg-card-2 text-ink-3",
+                      action.tone === "mine" && "bg-ok-soft text-ok",
                     ]}
                   >
                     {action.label}
