@@ -269,3 +269,17 @@ test("a guest joins from a shared link without an account and reads the chat", a
   await expect(guest.getByLabel("Wiadomość", { exact: true })).toBeVisible();
   await guestContext.close();
 });
+
+test("the event list never gets wider than a phone screen, also with selected sports", async ({ page }) => {
+  // Ukryte napisy „(wybrany)” przy zaznaczonych sportach (sr-only, position: absolute) wychodziły kiedyś poza
+  // przewijany pasek i rozpychały stronę — telefon pomniejszał wtedy cały widok.
+  await page.goto("/events?sports=inne,tenis-stolowy,squash");
+  await page.waitForLoadState("networkidle");
+  const { inner, client, scroll } = await page.evaluate(() => ({
+    inner: window.innerWidth,
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }));
+  expect(scroll).toBe(client);
+  expect(inner).toBe(client);
+});
