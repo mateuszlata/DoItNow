@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
 import { MAX_RADIUS_KM, NEAR_RADII, boundingBox, distanceKm, type Near } from "@/lib/near";
-import { canWithdrawAccepted } from "@/lib/services/participations";
+import { isLastMinute } from "@/lib/services/participations";
 import { getVenue } from "@/lib/services/venues";
 import type {
   EventDetails,
@@ -728,7 +728,7 @@ export function needsAnswer(
   );
 }
 
-/** Czy organizator może jeszcze edytować ogłoszenie — ta sama granica 12 h co przy rezygnacji (PRD: Business Logic). */
+/** Czy organizator może jeszcze edytować ogłoszenie — najpóźniej 12 h przed spotkaniem (PRD: Business Logic). */
 export function canEditEvent(startsAt: string | Date, now: Date = new Date()): boolean {
-  return canWithdrawAccepted(startsAt, now);
+  return !isLastMinute(startsAt, now);
 }

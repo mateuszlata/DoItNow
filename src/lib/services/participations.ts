@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ParticipationRecord, ParticipationStatus } from "@/types";
 
-/** Granica rezygnacji zaakceptowanego uczestnika: 12 h przed wydarzeniem (FR-008). */
-export const WITHDRAW_CUTOFF_MS = 12 * 60 * 60 * 1000;
+/** „Ostatnia chwila”: mniej niż 12 h do spotkania — po tej granicy organizator nie edytuje spotkania,
+ *  a rezygnacja (nadal możliwa) wymaga potwierdzenia. */
+export const LAST_MINUTE_MS = 12 * 60 * 60 * 1000;
 
 /** Kody błędów zgłaszane przez funkcje bazy (supabase/migrations/*_create_participations.sql). */
 export const PARTICIPATION_ERRORS = {
@@ -19,7 +20,6 @@ export const PARTICIPATION_ERRORS = {
   NOT_PENDING: "To zgłoszenie zostało już rozpatrzone.",
   EVENT_FULL: "Brak wolnych miejsc w składzie i na liście rezerwowej.",
   NOT_PARTICIPATING: "Nie masz aktywnego zgłoszenia na to spotkanie.",
-  WITHDRAW_DEADLINE_PASSED: "Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.",
   NO_HANDOVER: "Organizator nie odwołał tego spotkania.",
   NOT_ASKED: "Twoja odpowiedź nie jest potrzebna albo została już przekazana.",
 } as const;
@@ -103,9 +103,9 @@ export async function respondToCancellation(
   return { ok: true };
 }
 
-/** Czy zaakceptowany uczestnik może jeszcze zrezygnować (ta sama reguła co w bazie). */
-export function canWithdrawAccepted(startsAt: string | Date, now: Date = new Date()): boolean {
-  return now.getTime() <= new Date(startsAt).getTime() - WITHDRAW_CUTOFF_MS;
+/** Czy do spotkania zostało mniej niż 12 h (rezygnacja na ostatnią chwilę, koniec edycji). */
+export function isLastMinute(startsAt: string | Date, now: Date = new Date()): boolean {
+  return now.getTime() > new Date(startsAt).getTime() - LAST_MINUTE_MS;
 }
 
 export const STATUS_LABELS: Record<ParticipationStatus, string> = {

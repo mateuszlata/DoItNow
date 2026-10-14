@@ -32,7 +32,7 @@ import {
   getPublicEvent,
   needsAnswer,
 } from "@/lib/services/events";
-import { STATUS_LABELS, canWithdrawAccepted, participationErrorMessage } from "@/lib/services/participations";
+import { STATUS_LABELS, isLastMinute, participationErrorMessage } from "@/lib/services/participations";
 import { freeReserve, freeWord, minimumLabel, missingToMinimum, teamSize } from "@/lib/capacity";
 import { sportLabel } from "@/lib/sports";
 import { eventDayParts, formatEventDay, formatEventTime, formatTimeRange } from "@/lib/time";
@@ -189,9 +189,9 @@ const canWithdraw =
   !isPast &&
   !isCancelled &&
   !mustAnswer &&
-  (myStatus === "pending" ||
-    myStatus === "reserve" ||
-    (myStatus === "accepted" && (details.handover_at !== null || canWithdrawAccepted(details.starts_at))));
+  (myStatus === "pending" || myStatus === "reserve" || myStatus === "accepted");
+// Rezygnacja zawsze możliwa; na ostatnią chwilę (< 12 h) z potwierdzeniem — zwolnione miejsce zajmie rezerwa.
+const lateWithdrawal = myStatus === "accepted" && details !== null && isLastMinute(details.starts_at);
 // Czat: organizator oraz osoby w składzie i na rezerwie (reguła is_event_member w bazie).
 const isChatMember = details !== null && (isOrganizer || myStatus === "accepted" || myStatus === "reserve");
 let chat: { messages: ChatMessage[]; syncedAt: string } | null = null;
@@ -223,8 +223,6 @@ if (details && supabase && supportsLineup(details.sport) && isChatMember) {
   ];
   savedLineup = lineupPlayers.length >= 2 ? await getLineup(supabase, details.id) : null;
 }
-
-const withdrawLocked = isOpen && myStatus === "accepted" && !canWithdraw && !mustAnswer;
 
 const free = details
   ? details.free_spots
@@ -840,7 +838,15 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
               </form>
             )}
             {canWithdraw && (
-              <form method="POST" action={`/api/events/${details.id}/withdraw`}>
+              <form
+                method="POST"
+                action={`/api/events/${details.id}/withdraw`}
+                onsubmit={
+                  lateWithdrawal
+                    ? "return confirm('Do spotkania zostało mniej niż 12 h. Na pewno rezygnujesz? Organizator dostanie powiadomienie, a Twoje miejsce zajmie ktoś z rezerwy.')"
+                    : undefined
+                }
+              >
                 <button type="submit" class="h-14 rounded-full bg-card px-5 text-[15px] font-bold text-ink">
                   {myStatus === "accepted"
                     ? "Zrezygnuj"
@@ -849,9 +855,6 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
                       : "Wycofaj zgłoszenie"}
                 </button>
               </form>
-            )}
-            {withdrawLocked && (
-              <p class="w-full text-xs text-page-ink-2">Rezygnacja jest możliwa najpóźniej 12 h przed spotkaniem.</p>
             )}
             {!isOpen && !myStatus && <p class="w-full text-sm text-page-ink-2">Zapisy na to spotkanie są zamknięte.</p>}
           </>
