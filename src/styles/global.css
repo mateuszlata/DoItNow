@@ -265,8 +265,24 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Tło boiska także pod stroną: przy „odbiciu” przewijania na iPhonie i przy pomniejszeniu na Androidzie
+     widać zieleń, a nie białe pasy. */
+  html {
+    background-color: var(--page-deep);
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: var(--page);
+    /* Nic nie może poszerzyć strony w poziomie — inaczej telefon ją pomniejsza. `clip` nie psuje `sticky`. */
+    overflow-x: clip;
+  }
+  /* iPhone powiększa stronę po stuknięciu w pole z czcionką poniżej 16 px — na telefonach pola mają 16 px. */
+  @media (max-width: 639px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
 }
 
