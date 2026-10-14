@@ -25,6 +25,7 @@ export const INVITE_ERRORS = {
   RESPONSE_NOT_FOUND: "Nie znaleziono odpowiedzi.",
   BOT_CHECK: "Potwierdź, że nie jesteś botem, i spróbuj ponownie.",
   APPROVAL_REQUIRED: "W tym spotkaniu organizator akceptuje zgłoszenia — załóż konto, żeby się zgłosić.",
+  GUEST_RATE_LIMIT: "Za dużo nowych odpowiedzi w krótkim czasie. Spróbuj ponownie za kilkanaście minut.",
   GUEST_FULL: "Zostało ostatnie miejsce — załóż konto w Metando, żeby je zająć, albo zapisz się na rezerwę.",
 } as const;
 

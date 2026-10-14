@@ -3,6 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import Logo from "@/components/Logo.astro";
 import SignInForm from "@/components/auth/SignInForm";
 import { authHref, safeNext } from "@/lib/next-path";
+import { TURNSTILE_SITE_KEY } from "astro:env/server";
 
 const error = Astro.url.searchParams.get("error");
 // Cel powrotu po zalogowaniu (np. spotkanie z udostępnionego linku).
@@ -18,7 +19,7 @@ const info = Astro.url.searchParams.get("info");
       </a>
       <h1 class="display mb-6 text-ink text-center text-2xl font-bold">Zaloguj się</h1>
       {info && <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-3 py-2 text-sm text-ok">{info}</p>}
-      <SignInForm serverError={error} next={next} client:load />
+      <SignInForm serverError={error} next={next} turnstileSiteKey={TURNSTILE_SITE_KEY} client:load />
       <p class="mt-4 text-center text-sm text-ink-3">
         Nie masz konta?{" "}
         <a href={authHref("signup", next)} class="text-link hover:underline">

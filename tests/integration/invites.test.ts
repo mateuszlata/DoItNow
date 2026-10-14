@@ -250,3 +250,52 @@ describe("joining without an account from the event page", () => {
     expect(await seats(organizer, eventId)).toEqual({ spots: 5, guest_count: 0, guest_confirmed: 0 });
   });
 });
+
+describe("protection against flooding", () => {
+  it("accepts at most 30 new guest answers per event per hour, but still lets people change theirs", async () => {
+    const organizer = await newUser("Org12 ZP");
+    const eventId = await event(organizer, 50);
+    const token = await invite(organizer, eventId, 0);
+    const guest = anonClient();
+    for (let i = 0; i < 30; i++) {
+      const result = await respondToInvite(guest, {
+        token,
+        device: device(100 + i),
+        name: `G${String(i)}`,
+        answer: "no",
+      });
+      expect(result.ok).toBe(true);
+    }
+    expect(await respondToInvite(guest, { token, device: device(200), name: "Bot", answer: "no" })).toEqual({
+      ok: false,
+      code: "GUEST_RATE_LIMIT",
+    });
+    expect(await joinAsGuest(guest, { eventId, device: device(201), name: "Bot2", answer: "yes" })).toEqual({
+      ok: false,
+      code: "GUEST_RATE_LIMIT",
+    });
+    // Ktoś, kto już odpowiedział, nadal może zmienić zdanie.
+    expect((await respondToInvite(guest, { token, device: device(100), name: "G0", answer: "yes" })).ok).toBe(true);
+  });
+
+  it("starts every new event clean even when inserted directly", async () => {
+    const organizer = await newUser("Org13 ZP");
+    const { data, error } = await organizer.client
+      .from("events")
+      .insert({
+        organizer_id: organizer.id,
+        sport: "koszykowka",
+        area: "Test",
+        place: "Hala",
+        starts_at: new Date(Date.now() + 48 * HOUR).toISOString(),
+        spots: 4,
+        status: "cancelled",
+        guest_count: 10,
+        guest_confirmed: 999,
+      })
+      .select("status, guest_count, guest_confirmed")
+      .single();
+    expect(error).toBeNull();
+    expect(data).toEqual({ status: "active", guest_count: 0, guest_confirmed: 0 });
+  });
+});
