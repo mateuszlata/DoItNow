@@ -5,7 +5,6 @@ import {
   questionErrorMessage,
   type EventQuestion,
 } from "@/lib/services/questions";
-import EventAssistant from "@/components/events/EventAssistant";
 
 interface Props {
   eventId: string;
@@ -15,11 +14,12 @@ interface Props {
   canAsk: boolean;
   /** Link do logowania z powrotem na to spotkanie (dla osób bez konta). */
   signinHref: string | null;
-  /** Pokazać asystenta AI (klucz API ustawiony, spotkanie nadchodzące). */
-  assistant?: boolean;
+  /** Nick organizatora przy odpowiedziach (dla zalogowanych; osoby bez konta nie widzą nicków). */
+  organizerName?: string | null;
 }
 
-const { eventId, questions, isOrganizer, canAsk, signinHref, assistant = false } = Astro.props;
+const { eventId, questions, isOrganizer, canAsk, signinHref, organizerName = null } = Astro.props;
+const organizerLabel = organizerName ? `Organizator · ${organizerName}` : "Organizator";
 const ok = Astro.url.searchParams.get("question-ok");
 const errorCode = Astro.url.searchParams.get("question-error");
 const draft = Astro.url.searchParams.get("question-draft") ?? "";
@@ -43,121 +43,143 @@ const button =
   "h-10 rounded-full bg-brand px-4 text-xs font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover";
 ---
 
-{(questions.length > 0 || canAsk || signinHref) && (
-  <section id="pytania" class="scroll-mt-4 rounded-[20px] bg-card p-4 text-ink" data-testid="event-questions">
-    <h2 class="display text-2xl leading-none">Pytania do organizatora</h2>
-    <p class="mt-1 text-xs text-ink-3">
-      {isOrganizer
-        ? "Twoje odpowiedzi widzą wszyscy oglądający spotkanie — bez nicku pytającego."
-        : canAsk
-          ? "Odpowiedzi organizatora widzą wszyscy. Twoje pytanie bez odpowiedzi widzisz tylko Ty i organizator."
-          : "Odpowiedzi organizatora na pytania chętnych."}
-    </p>
-
-    {assistant && !isOrganizer && (
-      <EventAssistant eventId={eventId} canAskOrganizer={canAsk} signinHref={signinHref} client:visible />
-    )}
-
-    {ok && okText[ok] && <p class="mt-3 rounded-2xl bg-ok-soft px-3 py-2 text-sm text-ok">{okText[ok]}</p>}
-    {errorCode && (
-      <p class="mt-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{questionErrorMessage(errorCode)}</p>
-    )}
-
-    {waiting.length > 0 && (
-      <ul class="mt-3 grid gap-2">
-        {waiting.map((q) => (
-          <li class="rounded-2xl border border-dashed border-line-strong px-3.5 py-2.5" data-testid="question-waiting">
-            <p class="text-sm font-bold whitespace-pre-line">{q.body}</p>
-            <p class="mt-0.5 text-xs text-ink-3">
-              {when.format(new Date(q.created_at))} · {isOrganizer ? "czeka na Twoją odpowiedź" : "czeka na odpowiedź"}
-            </p>
-            {isOrganizer && (
-              <form method="POST" action="/api/questions" class="mt-2 grid gap-2">
-                <input type="hidden" name="action" value="answer" />
-                <input type="hidden" name="eventId" value={eventId} />
-                <input type="hidden" name="questionId" value={q.id} />
-                <textarea
-                  name="answer"
-                  rows="2"
-                  required
-                  maxlength={ANSWER_MAX_LENGTH}
-                  placeholder="Twoja odpowiedź…"
-                  class:list={textarea}
-                ></textarea>
-                <div class="flex items-center gap-3">
-                  <button type="submit" class:list={button}>
-                    Odpowiedz
-                  </button>
-                  <button
-                    type="submit"
-                    formnovalidate
-                    name="action"
-                    value="hide"
-                    class="text-xs font-semibold text-ink-3 underline"
-                  >
-                    Ukryj pytanie
-                  </button>
-                </div>
-              </form>
-            )}
-          </li>
-        ))}
-      </ul>
-    )}
-
-    {answered.length > 0 && (
-      <ul class="mt-3 grid gap-2">
-        {answered.map((q) => (
-          <li class="rounded-2xl bg-card-2 px-3.5 py-2.5" data-testid="question-answered">
-            <p class="text-sm font-bold whitespace-pre-line">{q.body}</p>
-            <p class="mt-1 text-sm whitespace-pre-line text-ink-2">
-              <span class="font-bold text-ink">Organizator: </span>
-              {q.answer}
-            </p>
-            {(isOrganizer || q.mine) && (
-              <form method="POST" action="/api/questions" class="mt-1">
-                <input type="hidden" name="action" value="hide" />
-                <input type="hidden" name="eventId" value={eventId} />
-                <input type="hidden" name="questionId" value={q.id} />
-                <button type="submit" class="text-xs font-semibold text-ink-3 underline">
-                  Ukryj
-                </button>
-              </form>
-            )}
-          </li>
-        ))}
-      </ul>
-    )}
-
-    {canAsk && (
-      <form method="POST" action="/api/questions" class="mt-3 grid gap-2">
-        <input type="hidden" name="action" value="ask" />
-        <input type="hidden" name="eventId" value={eventId} />
-        <label for="question-body" class="sr-only">
-          Twoje pytanie
-        </label>
-        <textarea
-          id="question-body"
-          name="body"
-          rows="2"
-          required
-          minlength="3"
-          maxlength={QUESTION_MAX_LENGTH}
-          placeholder="Np. czy jest parking? Czy mogę przyjść z dzieckiem?"
-          class:list={textarea}
-        >{draft}</textarea>
-        <button type="submit" class:list={[button, "justify-self-start"]}>
-          Zapytaj organizatora
-        </button>
-      </form>
-    )}
-    {signinHref && (
-      <p class="mt-3 text-sm text-ink-2">
-        <a href={signinHref} class="font-bold text-link underline">
-          Zaloguj się
-        </a>
-        , aby zapytać organizatora.
+<div id="pytania" class="grid scroll-mt-4 gap-5">
+  {(questions.length > 0 || canAsk || signinHref) && (
+    <section class="rounded-[20px] bg-card p-4 text-ink" data-testid="event-questions">
+      <div class="flex items-center gap-2">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"></path>
+        </svg>
+        <h2 class="display text-2xl leading-none">Pytania do organizatora</h2>
+      </div>
+      <p class="mt-1 text-xs text-ink-3">
+        {isOrganizer
+          ? "Twoje odpowiedzi widzą wszyscy oglądający spotkanie — bez nicku pytającego."
+          : canAsk
+            ? "Odpowiada człowiek — organizator spotkania. Jego odpowiedzi widzą wszyscy, Twoje pytanie bez odpowiedzi tylko Ty i on."
+            : "Odpowiada człowiek — organizator spotkania."}
       </p>
-    )}
-  </section>
-)}
+
+      {ok && okText[ok] && <p class="mt-3 rounded-2xl bg-ok-soft px-3 py-2 text-sm text-ok">{okText[ok]}</p>}
+      {errorCode && (
+        <p class="mt-3 rounded-2xl bg-bad-soft px-3 py-2 text-sm text-bad">{questionErrorMessage(errorCode)}</p>
+      )}
+
+      {waiting.length > 0 && (
+        <ul class="mt-3 grid gap-2">
+          {waiting.map((q) => (
+            <li
+              class="rounded-2xl border border-dashed border-line-strong px-3.5 py-2.5"
+              data-testid="question-waiting"
+            >
+              <p class="text-sm font-bold whitespace-pre-line">{q.body}</p>
+              <p class="mt-0.5 text-xs text-ink-3">
+                {when.format(new Date(q.created_at))} ·{" "}
+                {isOrganizer ? "czeka na Twoją odpowiedź" : "czeka na odpowiedź"}
+              </p>
+              {isOrganizer && (
+                <form method="POST" action="/api/questions" class="mt-2 grid gap-2">
+                  <input type="hidden" name="action" value="answer" />
+                  <input type="hidden" name="eventId" value={eventId} />
+                  <input type="hidden" name="questionId" value={q.id} />
+                  <textarea
+                    name="answer"
+                    rows="2"
+                    required
+                    maxlength={ANSWER_MAX_LENGTH}
+                    placeholder="Twoja odpowiedź…"
+                    class:list={textarea}
+                  ></textarea>
+                  <div class="flex items-center gap-3">
+                    <button type="submit" class:list={button}>
+                      Odpowiedz
+                    </button>
+                    <button
+                      type="submit"
+                      formnovalidate
+                      name="action"
+                      value="hide"
+                      class="text-xs font-semibold text-ink-3 underline"
+                    >
+                      Ukryj pytanie
+                    </button>
+                  </div>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {answered.length > 0 && (
+        <ul class="mt-3 grid gap-2">
+          {answered.map((q) => (
+            <li class="rounded-2xl bg-card-2 px-3.5 py-2.5" data-testid="question-answered">
+              <p class="text-sm font-bold whitespace-pre-line">{q.body}</p>
+              <div class="mt-1.5 rounded-xl bg-card px-3 py-2">
+                <p class="text-[11px] font-bold tracking-wide text-ink-3 uppercase">{organizerLabel}</p>
+                <p class="text-sm whitespace-pre-line">{q.answer}</p>
+              </div>
+              {(isOrganizer || q.mine) && (
+                <form method="POST" action="/api/questions" class="mt-1">
+                  <input type="hidden" name="action" value="hide" />
+                  <input type="hidden" name="eventId" value={eventId} />
+                  <input type="hidden" name="questionId" value={q.id} />
+                  <button type="submit" class="text-xs font-semibold text-ink-3 underline">
+                    Ukryj
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {canAsk && (
+        <details id="zapytaj-organizatora" class="group mt-3" open={Boolean(draft || errorCode)}>
+          <summary class:list={[button, "inline-grid cursor-pointer list-none place-items-center group-open:hidden"]}>
+            Zapytaj organizatora
+          </summary>
+          <form method="POST" action="/api/questions" class="grid gap-2">
+            <input type="hidden" name="action" value="ask" />
+            <input type="hidden" name="eventId" value={eventId} />
+            <label for="question-body" class="sr-only">
+              Twoje pytanie
+            </label>
+            <textarea
+              id="question-body"
+              name="body"
+              rows="2"
+              required
+              minlength="3"
+              maxlength={QUESTION_MAX_LENGTH}
+              placeholder="Np. czy jest parking? Czy mogę przyjść z dzieckiem?"
+              class:list={textarea}
+            >{draft}</textarea>
+            <button type="submit" class:list={[button, "justify-self-start"]}>
+              Wyślij do organizatora
+            </button>
+          </form>
+        </details>
+      )}
+      {signinHref && (
+        <p class="mt-3 text-sm text-ink-2">
+          <a href={signinHref} class="font-bold text-link underline">
+            Zaloguj się
+          </a>
+          , aby zapytać organizatora.
+        </p>
+      )}
+    </section>
+  )}
+</div>

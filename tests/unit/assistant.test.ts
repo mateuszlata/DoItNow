@@ -51,14 +51,14 @@ describe("assistant context", () => {
 describe("askAssistant", () => {
   it("returns the model's structured answer", async () => {
     const client = fakeClient({ stop_reason: "end_turn", parsed_output: { known: true, answer: "20 zł na osobę." } });
-    expect(await askAssistant("key", "kontekst", "Ile kosztuje?", client)).toEqual({
+    expect(await askAssistant("key", { question: "Ile kosztuje?", eventContext: "kontekst" }, client)).toEqual({
       known: true,
       answer: "20 zł na osobę.",
     });
   });
 
-  it("falls back to asking the organizer when the model declines", async () => {
+  it("falls back to a human when the model declines", async () => {
     const client = fakeClient({ stop_reason: "refusal", parsed_output: null });
-    expect((await askAssistant("key", "kontekst", "?", client)).known).toBe(false);
+    expect((await askAssistant("key", { question: "?" }, client)).known).toBe(false);
   });
 });

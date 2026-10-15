@@ -2,6 +2,8 @@
 import "../styles/global.css";
 import Banner from "@/components/Banner.astro";
 import { missingConfigs } from "@/lib/config-status";
+import AdvisorBubble from "@/components/AdvisorBubble";
+import { ANTHROPIC_API_KEY } from "astro:env/server";
 
 interface Props {
   title?: string;
@@ -81,6 +83,7 @@ const imageUrl = new URL(image, Astro.url.origin).href;
       </Banner>
     ))}
     <slot />
+    {ANTHROPIC_API_KEY && <AdvisorBubble client:only="react" />}
   </body>
 </html>
 

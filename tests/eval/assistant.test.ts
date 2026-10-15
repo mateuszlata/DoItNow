@@ -44,8 +44,17 @@ const ride = eventContext(
   [],
 );
 
-// [kontekst, pytanie, czy odpowiedź jest w danych (null — obojętne), fragment, który musi paść (opcjonalnie)]
-const CASES: [string, string, boolean | null, RegExp?][] = [
+// [kontekst spotkania (null — rozmowa poza spotkaniem), pytanie, czy odpowiedź jest w danych (null — obojętne),
+//  fragment, który musi paść (opcjonalnie)]
+const CASES: [string | null, string, boolean | null, RegExp?][] = [
+  [null, "Jak wystawić spotkanie?", true, /przycisk|Dodaj|\+/i],
+  [null, "Nie pamiętam hasła, co robić?", true, /Nie pamiętasz hasła/i],
+  [null, "Czy Metando jest płatne?", true, /darmow|bezpłat|nie pobiera/i],
+  [null, "Jak zaprosić znajomego, który nie ma konta?", true, /link/i],
+  [null, "Jak ustawić swój poziom?", true, /Moje/i],
+  [null, "Jak znaleźć mecze blisko mnie?", true, /Gdzie|pobliżu|promie/i],
+  [null, "Ile kosztuje wynajem orlika w Krakowie?", false],
+  [null, "Jaka będzie jutro pogoda w Warszawie?", null],
   [signedIn, "Ile kosztuje gra?", true, /20/],
   [signedIn, "Czy jest parking?", true, /szko/i],
   [signedIn, "Ile jest jeszcze wolnych miejsc?", true, /2|dwa/],
@@ -68,7 +77,7 @@ describe.skipIf(!apiKey)("assistant on the real model", () => {
   it.each(CASES.map(([context, question, known, mustMention]) => ({ context, question, known, mustMention })))(
     "$question",
     async ({ context, question, known, mustMention }) => {
-      const reply = await askAssistant(apiKey, context, question);
+      const reply = await askAssistant(apiKey, { question, eventContext: context });
       // eslint-disable-next-line no-console -- wynik kontroli jakości do przejrzenia
       console.log(`\n? ${question}\n→ [${reply.known ? "wie" : "nie wie"}] ${reply.answer}`);
       if (known !== null) expect(reply.known).toBe(known);
@@ -76,4 +85,22 @@ describe.skipIf(!apiKey)("assistant on the real model", () => {
     },
     30_000,
   );
+
+  it("keeps the conversation going with the previous exchange", async () => {
+    const reply = await askAssistant(apiKey, {
+      question: "A jeśli zrobię to 2 godziny przed?",
+      eventContext: signedIn,
+      history: [
+        {
+          question: "Czy mogę zrezygnować?",
+          answer: "Tak, zrezygnować można w każdej chwili przed startem przyciskiem „Zrezygnuj”.",
+        },
+      ],
+    });
+    // eslint-disable-next-line no-console -- wynik kontroli jakości do przejrzenia
+    console.log(`
+? (dalej) A jeśli zrobię to 2 godziny przed?
+→ ${reply.answer}`);
+    expect(reply.answer).toMatch(/potwierd|12/i);
+  }, 30_000);
 });
