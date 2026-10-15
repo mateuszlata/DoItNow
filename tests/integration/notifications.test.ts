@@ -5,8 +5,10 @@ import { cancelEvent, createEvent } from "@/lib/services/events";
 import { decideParticipation, requestToJoin, withdrawParticipation } from "@/lib/services/participations";
 import { postMessage } from "@/lib/services/chat";
 import { DEFAULT_NOTIFICATION_SETTINGS, saveNotificationSettings } from "@/lib/services/notifications";
+import { sendNotificationEmails, unsubscribeEmails } from "@/lib/email/send-notifications";
 import { toLocalDateTime } from "@/lib/time";
-import { HOUR, cleanupTestUsers, newUser, type TestUser } from "./helpers";
+import { createHash } from "node:crypto";
+import { HOUR, anonClient, cleanupTestUsers, newUser, type TestUser } from "./helpers";
 
 afterAll(cleanupTestUsers);
 
@@ -126,5 +128,54 @@ describe("notifications", () => {
     await service.rpc("queue_reminders");
     expect((await inbox(kuba, eventId)).map((n) => n.type)).toEqual(["reminder"]);
     expect((await inbox(organizer, eventId)).filter((n) => n.type === "reminder")).toHaveLength(1);
+  });
+});
+
+// Wysyłka e-mail: kolejka wydawana tylko z sekretem workera, wynik wraca do bazy, „wypisz się” wyłącza maile.
+// Ostatni test w pliku, bo wydanie kolejki zmienia stan e-mail także innych powiadomień.
+describe("notification emails", () => {
+  const LOCAL_SECRET = "local-notify-secret-for-tests";
+  const config = {
+    supabaseUrl: process.env.SUPABASE_URL ?? "",
+    supabaseKey: process.env.SUPABASE_KEY ?? "",
+    notifySecret: LOCAL_SECRET,
+    resendApiKey: "re_test",
+  };
+
+  it("sends queued notifications through Resend only with the worker secret and honours unsubscribing", async () => {
+    const service = createClient("http://127.0.0.1:54321", inject("serviceRoleKey"), {
+      auth: { persistSession: false },
+    });
+    const digest = createHash("sha256").update(LOCAL_SECRET, "utf8").digest("hex");
+    await service.from("internal_secrets").upsert({ name: "notify", digest });
+
+    const [organizer, ala] = await Promise.all([newUser("Org5 PW"), newUser("Ala5 PW")]);
+    const eventId = await event(organizer, 4);
+    expect((await requestToJoin(ala.client, eventId)).ok).toBe(true);
+    const { data: owner } = await service.auth.admin.getUserById(organizer.id);
+
+    expect(await sendNotificationEmails({ ...config, notifySecret: "wrong" })).toMatchObject({
+      sent: 0,
+      error: "NOT_ALLOWED",
+    });
+
+    const sentBatches: { to: string[]; subject: string; headers: Record<string, string> }[][] = [];
+    const fakeFetch = ((_url: string, init: { body: string }) => {
+      sentBatches.push(JSON.parse(init.body) as (typeof sentBatches)[number]);
+      return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
+    }) as unknown as typeof fetch;
+    const result = await sendNotificationEmails({ ...config, fetchImpl: fakeFetch });
+    expect(result.error).toBeUndefined();
+    const mine = sentBatches.flat().find((m) => m.to[0] === owner.user?.email);
+    expect(mine?.subject).toMatch(/^Ala5 PW jest w składzie · Siatkówka, /);
+    expect((await inbox(organizer, eventId))[0].email_status).toBe("sent");
+
+    const token = /t=([0-9a-f-]{36})/.exec(mine?.headers["List-Unsubscribe"] ?? "")?.[1] ?? "";
+    expect(await unsubscribeEmails(anonClient(), token)).toBe(true);
+    const { data: settings } = await organizer.client
+      .from("notification_settings")
+      .select("activity_email, status_email, chat_push")
+      .single();
+    expect(settings).toEqual({ activity_email: false, status_email: false, chat_push: true });
   });
 });

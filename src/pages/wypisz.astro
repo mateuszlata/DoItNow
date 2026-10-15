@@ -1,0 +1,47 @@
+---
+import Layout from "@/layouts/Layout.astro";
+
+// Link „Wypisz się z e-maili” ze stopki powiadomień. Samo wypisanie robi POST obsługiwany w src/worker.ts,
+// żeby otwarcie linku (np. przez skaner poczty) niczego nie zmieniało.
+const token = Astro.url.searchParams.get("t") ?? "";
+const done = Astro.url.searchParams.has("done");
+const failed = Astro.url.searchParams.has("error");
+---
+
+<Layout title="Wypisz się z e-maili · Metando">
+  <div class="bg-app flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-line bg-card p-8 text-center text-ink shadow-card">
+      {done ? (
+        <>
+          <h1 class="display mb-3 text-2xl">Wypisano z e-maili</h1>
+          <p class="mb-6 text-ink-2">
+            Nie wyślemy Ci już powiadomień e-mailem. Możesz je włączyć z powrotem w ustawieniach.
+          </p>
+        </>
+      ) : (
+        <>
+          <h1 class="display mb-3 text-2xl">Wypisać się z e-maili?</h1>
+          <p class="mb-6 text-ink-2">
+            Wyłączymy wszystkie powiadomienia e-mail z Metando. Powiadomienia na telefonie zostaną bez zmian.
+          </p>
+          {failed && (
+            <p class="mb-4 text-sm font-semibold text-bad">
+              Ten link jest nieaktualny. Zmień ustawienia po zalogowaniu.
+            </p>
+          )}
+          <form method="POST" action={`/wypisz?t=${encodeURIComponent(token)}`}>
+            <button
+              type="submit"
+              class="h-12 w-full rounded-full bg-brand text-sm font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
+            >
+              Wypisz mnie
+            </button>
+          </form>
+        </>
+      )}
+      <a href="/my#powiadomienia" class="mt-4 inline-block text-sm text-link hover:underline">
+        Ustawienia powiadomień
+      </a>
+    </div>
+  </div>
+</Layout>

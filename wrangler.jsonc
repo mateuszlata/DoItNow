@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "doitnow",
-  "main": "@astrojs/cloudflare/entrypoints/server",
+  // Własne wejście: strony Astro i zadanie cykliczne (wysyłka powiadomień e-mail).
+  "main": "./src/worker.ts",
   "compatibility_date": "2026-05-08",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -16,6 +17,10 @@
     { "pattern": "metando.pl", "custom_domain": true },
     { "pattern": "www.metando.pl", "custom_domain": true },
   ],
+  // Co 5 minut: przypomnienia i wysyłka kolejki powiadomień e-mail (src/worker.ts).
+  "triggers": {
+    "crons": ["*/5 * * * *"],
+  },
   "observability": {
     "enabled": true,
   },
