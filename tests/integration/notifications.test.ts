@@ -153,6 +153,12 @@ describe("notification emails", () => {
     const eventId = await event(organizer, 4);
     expect((await requestToJoin(ala.client, eventId)).ok).toBe(true);
     const { data: owner } = await service.auth.admin.getUserById(organizer.id);
+    // Lokalna baza zbiera oczekujące maile z wielu przebiegów testów — zostawiamy w kolejce tylko ten test.
+    await service
+      .from("notifications")
+      .update({ email_status: "skipped" })
+      .eq("email_status", "pending")
+      .neq("user_id", organizer.id);
 
     expect(await sendNotificationEmails({ ...config, notifySecret: "wrong" })).toMatchObject({
       sent: 0,

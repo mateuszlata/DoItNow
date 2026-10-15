@@ -25,6 +25,8 @@ import { getChatPreview, isChatOpen, listMessages } from "@/lib/services/chat";
 import { fitsLevel, levelMixLabel, levelRangeLabel, LEVEL_LABELS, type Level } from "@/lib/levels";
 import { getLevels } from "@/lib/services/profiles";
 import { isRouteSport, routeSummary } from "@/lib/route";
+import EventQuestions from "@/components/events/EventQuestions.astro";
+import { listQuestions } from "@/lib/services/questions";
 import ChatPreview from "@/components/chat/ChatPreview";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -159,6 +161,8 @@ const isPast = summary ? new Date(summary.starts_at).getTime() <= Date.now() : f
 const isCancelled = details?.status === "cancelled";
 const organizerLeft = details?.status === "organizer_left";
 const isOpen = details !== null && !isPast && details.status === "active";
+// Pytania do organizatora: odpowiedziane widzi każdy, swoje bez odpowiedzi — autor i organizator.
+const questions = supabase && summary ? await listQuestions(supabase, id) : [];
 
 const isOrganizer = details !== null && user !== null && details.organizer_id === user.id;
 // Zaproszenia znajomych spoza Metando: własna pula i link oglądającego.
@@ -572,6 +576,14 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
                   <p class="text-[15px] leading-relaxed whitespace-pre-line">{details.description}</p>
                 </section>
               )}
+
+              <EventQuestions
+                eventId={id}
+                questions={questions}
+                isOrganizer={isOrganizer}
+                canAsk={user !== null && !isOrganizer && isOpen}
+                signinHref={!user && !isPast ? authHref("signin", backHere) : null}
+              />
 
               {isOrganizer && details && isOpen && (details.requires_approval || details.pending.length > 0) && (
                 <section class="rounded-[20px] bg-card p-4 text-ink">

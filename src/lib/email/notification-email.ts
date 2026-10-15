@@ -31,8 +31,15 @@ function escapeHtml(value: string): string {
 }
 
 /** Nagłówek i zdanie wprowadzające dla rodzaju powiadomienia; `who` — nick osoby z danych. */
-function headline(type: string, who: string): { title: string; lead: string } {
+function headline(type: string, who: string, question: string): { title: string; lead: string } {
   switch (type) {
+    case "question":
+      return {
+        title: "Nowe pytanie o spotkanie",
+        lead: `Ktoś pyta: „${question}”. Odpowiedź zobaczą wszyscy oglądający.`,
+      };
+    case "answered":
+      return { title: "Organizator odpowiedział", lead: `Jest odpowiedź na Twoje pytanie: „${question}”.` };
     case "request":
       return {
         title: `${who} chce dołączyć`,
@@ -79,14 +86,17 @@ function headline(type: string, who: string): { title: string; lead: string } {
 /** Treść maila (temat, tekst i HTML) dla powiadomienia z kolejki. */
 export function renderNotificationEmail(n: QueuedEmail, origin = "https://metando.pl"): RenderedEmail {
   const who = typeof n.data?.name === "string" && n.data.name.trim() ? n.data.name.trim() : "Ktoś";
-  const { title, lead } = headline(n.type, who);
+  const question = typeof n.data?.question === "string" ? n.data.question : "";
+  const { title, lead } = headline(n.type, who, question);
   const sport = n.sport ? sportLabel(n.sport) : null;
   const when =
     n.starts_at && n.duration_minutes
       ? `${formatEventDay(n.starts_at)}, ${formatTimeRange(n.starts_at, n.duration_minutes)}`
       : null;
   const where = [n.area, n.place].filter(Boolean).join(" · ") || null;
-  const eventUrl = n.event_id ? `${origin}/events/${n.event_id}` : `${origin}/my`;
+  // Pytania i odpowiedzi prowadzą prosto do sekcji pytań na stronie spotkania.
+  const anchor = n.type === "question" || n.type === "answered" ? "#pytania" : "";
+  const eventUrl = n.event_id ? `${origin}/events/${n.event_id}${anchor}` : `${origin}/my`;
   const settingsUrl = `${origin}/my#powiadomienia`;
   const unsubscribeUrl = `${origin}/wypisz?t=${n.unsubscribe_token}`;
   const subject = sport ? `${title} · ${sport}${when ? `, ${when}` : ""}` : title;
