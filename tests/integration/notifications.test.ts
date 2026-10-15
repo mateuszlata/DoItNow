@@ -164,9 +164,14 @@ describe("notification emails", () => {
       sentBatches.push(JSON.parse(init.body) as (typeof sentBatches)[number]);
       return Promise.resolve(new Response(JSON.stringify({ data: [] }), { status: 200 }));
     }) as unknown as typeof fetch;
-    const result = await sendNotificationEmails({ ...config, fetchImpl: fakeFetch });
-    expect(result.error).toBeUndefined();
-    const mine = sentBatches.flat().find((m) => m.to[0] === owner.user?.email);
+    // Paczka to 50 najstarszych maili; inne pliki testów mogą zostawić ich więcej, więc wysyłamy do skutku.
+    const findMine = () => sentBatches.flat().find((m) => m.to[0] === owner.user?.email);
+    for (let round = 0; round < 20 && !findMine(); round++) {
+      const result = await sendNotificationEmails({ ...config, fetchImpl: fakeFetch });
+      expect(result.error).toBeUndefined();
+      if (result.sent === 0) break;
+    }
+    const mine = findMine();
     expect(mine?.subject).toMatch(/^Ala5 PW jest w składzie · Siatkówka, /);
     expect((await inbox(organizer, eventId))[0].email_status).toBe("sent");
 

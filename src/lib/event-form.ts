@@ -22,6 +22,11 @@ export const EMPTY_EVENT_FORM: EventFormValues = {
   lng: "",
   description: "",
   levelRange: "",
+  routeDestination: "",
+  routeLoop: "",
+  routeDistance: "",
+  routePace: "",
+  routeUrl: "",
 };
 
 /** Wartości formularza edycji z zapisanego ogłoszenia. */
@@ -47,6 +52,11 @@ export function eventToForm(event: EventRecord): EventFormValues {
       event.level_min !== null && event.level_max !== null
         ? `${String(event.level_min)}-${String(event.level_max)}`
         : "",
+    routeDestination: event.route_destination ?? "",
+    routeLoop: event.route_loop ? "on" : "",
+    routeDistance: event.route_distance_km === null ? "" : String(event.route_distance_km).replace(".", ","),
+    routePace: event.route_pace ?? "",
+    routeUrl: event.route_url ?? "",
   };
 }
 
@@ -75,5 +85,10 @@ export async function readEventForm(request: Request): Promise<EventFormValues> 
     lng: field("lng"),
     description: field("description"),
     levelRange: field("levelRange"),
+    routeDestination: field("routeDestination"),
+    routeLoop: field("routeLoop"),
+    routeDistance: field("routeDistance"),
+    routePace: field("routePace"),
+    routeUrl: field("routeUrl"),
   };
 }

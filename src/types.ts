@@ -49,6 +49,12 @@ export interface EventRecord {
   /** Zakres poziomu spotkania (1 rekreacyjnie … 4 wyczynowo); null = dla każdego. */
   level_min: number | null;
   level_max: number | null;
+  /** Trasa (rower, bieganie): cel albo pętla, dystans, tempo i link do trasy; miejsce spotkania to zbiórka. */
+  route_destination: string | null;
+  route_loop: boolean;
+  route_distance_km: number | null;
+  route_pace: string | null;
+  route_url: string | null;
 }
 
 export type VenueBookingStatus = "pending" | "approved" | "rejected";
@@ -72,6 +78,10 @@ export type PublicEvent = Pick<
   | "guest_confirmed"
   | "level_min"
   | "level_max"
+  | "route_destination"
+  | "route_loop"
+  | "route_distance_km"
+  | "route_pace"
 > & {
   accepted_count: number;
   reserve_count: number;

@@ -29,6 +29,7 @@ import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, taken
 import { meetingChance, type Chance } from "@/lib/chance";
 import { myStatusesFor } from "@/lib/services/participations";
 import { levelRangeLabel } from "@/lib/levels";
+import { routeSummary } from "@/lib/route";
 import { getLevels } from "@/lib/services/profiles";
 import type { ParticipationStatus } from "@/types";
 
@@ -581,6 +582,11 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
                           </strong>
                         )}
                       </span>
+                      {routeSummary(event) && (
+                        <span class="font-bold text-ink" data-testid="card-route">
+                          {routeSummary(event)}
+                        </span>
+                      )}
                     </div>
 
                     {event.lat != null && event.lng != null && (

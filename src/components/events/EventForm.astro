@@ -6,6 +6,7 @@ import { formatHours } from "@/lib/services/venues";
 import { formatPLN } from "@/lib/money";
 import { SPORTS } from "@/lib/sports";
 import { LEVEL_RANGES } from "@/lib/levels";
+import { ROUTE_SPORTS, isRouteSport, pacePlaceholder } from "@/lib/route";
 import { nowLocalDateTime } from "@/lib/time";
 import type { VenueWithHours } from "@/types";
 import MapPicker from "@/components/map/MapPicker";
@@ -26,6 +27,7 @@ const minStartsAt = nowLocalDateTime();
 const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240, 300, 360];
 const durationLabel = (m: number) => (m < 60 ? `${String(m)} min` : `${String(m / 60).replace(".", ",")} h`);
 const ownPlace = values.venueId === "";
+const routeSport = isRouteSport(values.sport);
 const moreOpen =
   values.requiresApproval === "on" ||
   values.minPeople !== "" ||
@@ -136,7 +138,7 @@ const borderClass = (name: keyof FieldErrors) =>
         initialLng={values.lng}
         inputName="place"
         initialQuery={values.place}
-        label="Dokładne miejsce"
+        label={routeSport ? "Miejsce zbiórki" : "Dokładne miejsce"}
         error={errors.place}
         home={home}
         client:load
@@ -147,6 +149,76 @@ const borderClass = (name: keyof FieldErrors) =>
       {errors.lat && <span class="mt-1 block text-xs text-bad">{errors.lat}</span>}
     </div>
   </div>
+
+  <!-- Trasa: tylko rower i bieganie (pokazuje ją skrypt na dole po wyborze sportu). -->
+  <fieldset class="grid gap-3 rounded-2xl bg-card-2 px-4 py-3" data-route-fields hidden={!routeSport}>
+    <legend class="sr-only">Trasa</legend>
+    <p class="text-sm font-bold text-ink">
+      Trasa <span class="font-normal text-ink-3">— miejsce powyżej to punkt zbiórki</span>
+    </p>
+    <label class="flex items-center gap-2 text-sm text-ink-2">
+      <input
+        type="checkbox"
+        name="routeLoop"
+        checked={values.routeLoop === "on"}
+        class="size-4 accent-brand"
+        data-route-loop
+      />
+      Pętla — wracamy na miejsce zbiórki
+    </label>
+    <label class="text-sm text-ink-2" data-route-destination hidden={values.routeLoop === "on"}>
+      Cel
+      <input
+        type="text"
+        name="routeDestination"
+        maxlength="120"
+        placeholder="np. Olsztyn, ruiny zamku"
+        value={values.routeDestination}
+        class:list={[inputClass, borderClass("routeDestination")]}
+      />
+      {errors.routeDestination && <span class="mt-1 block text-xs text-bad">{errors.routeDestination}</span>}
+    </label>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="text-sm text-ink-2">
+        Dystans (km)
+        <input
+          type="text"
+          inputmode="decimal"
+          name="routeDistance"
+          placeholder="np. 35"
+          value={values.routeDistance}
+          class:list={[inputClass, borderClass("routeDistance")]}
+        />
+        {errors.routeDistance && <span class="mt-1 block text-xs text-bad">{errors.routeDistance}</span>}
+      </label>
+      <label class="text-sm text-ink-2">
+        Tempo
+        <input
+          type="text"
+          name="routePace"
+          maxlength="40"
+          placeholder={pacePlaceholder(values.sport)}
+          value={values.routePace}
+          class:list={[inputClass, borderClass("routePace")]}
+          data-route-pace
+        />
+        {errors.routePace && <span class="mt-1 block text-xs text-bad">{errors.routePace}</span>}
+      </label>
+    </div>
+    <label class="text-sm text-ink-2">
+      Link do trasy (opcjonalnie)
+      <input
+        type="url"
+        name="routeUrl"
+        maxlength="500"
+        placeholder="https://… (Strava, Komoot, Mapy Google)"
+        value={values.routeUrl}
+        class:list={[inputClass, borderClass("routeUrl")]}
+      />
+      <span class="mt-1 block text-xs text-ink-3">Link widzą tylko zalogowani.</span>
+      {errors.routeUrl && <span class="mt-1 block text-xs text-bad">{errors.routeUrl}</span>}
+    </label>
+  </fieldset>
 
   <label class="text-sm text-ink-2">
     Ile osób łącznie w składzie?
@@ -279,6 +351,33 @@ const borderClass = (name: keyof FieldErrors) =>
     {submitLabel}
   </button>
 </form>
+
+<script is:inline define:vars={{ routeSports: ROUTE_SPORTS }}>
+  // Trasa dla roweru i biegania: pola trasy, „Miejsce zbiórki” zamiast „Dokładne miejsce”, cel ukryty przy pętli.
+  (() => {
+    const form = document.querySelector("[data-event-form]");
+    const fields = form?.querySelector("[data-route-fields]");
+    if (!form || !fields) return;
+    const loop = fields.querySelector("[data-route-loop]");
+    const destination = fields.querySelector("[data-route-destination]");
+    const pace = fields.querySelector("[data-route-pace]");
+    const update = () => {
+      const sport = form.elements.sport.value;
+      const route = routeSports.includes(sport);
+      fields.hidden = !route;
+      destination.hidden = loop.checked;
+      pace.placeholder = sport === "bieganie" ? "np. 5:30–6:00/km" : "np. 25–28 km/h";
+      const label = form.querySelector('label[for="place-search"]');
+      const text = route ? "Miejsce zbiórki" : "Dokładne miejsce";
+      // Tylko przy zmianie — inaczej obserwator zmian wywoływałby się w kółko.
+      if (label && label.textContent !== text) label.textContent = text;
+    };
+    form.addEventListener("change", update);
+    // Etykietę mapy dopisuje komponent React po załadowaniu — poprawiamy ją, gdy się pojawi.
+    new MutationObserver(update).observe(form, { childList: true, subtree: true });
+    update();
+  })();
+</script>
 
 <script is:inline>
   // Wybór obiektu: chowa własne miejsce, pokazuje godziny otwarcia i podgląd kosztu na osobę.

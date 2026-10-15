@@ -24,6 +24,7 @@ import { getMyInvite, inviteErrorMessage, releaseStaleInvites } from "@/lib/serv
 import { getChatPreview, isChatOpen, listMessages } from "@/lib/services/chat";
 import { fitsLevel, levelMixLabel, levelRangeLabel, LEVEL_LABELS, type Level } from "@/lib/levels";
 import { getLevels } from "@/lib/services/profiles";
+import { isRouteSport, routeSummary } from "@/lib/route";
 import ChatPreview from "@/components/chat/ChatPreview";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -95,6 +96,10 @@ const summary = details
       guest_confirmed: details.guest_confirmed,
       level_min: details.level_min,
       level_max: details.level_max,
+      route_destination: details.route_destination,
+      route_loop: details.route_loop,
+      route_distance_km: details.route_distance_km,
+      route_pace: details.route_pace,
     }
   : publicEvent;
 
@@ -434,6 +439,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
                   {details && (
                     <>
                       {" · "}
+                      {isRouteSport(details.sport) && "zbiórka: "}
                       <span class="font-bold text-page-ink">{details.place}</span>
                       {" · "}
                       {organizerLeft ? "organizator zrezygnował" : <>organizuje {details.organizer_name}</>}
@@ -524,6 +530,27 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
                     </span>
                   )}
                 </div>
+              )}
+              {routeSummary(summary) && (
+                <p
+                  class="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-page-ink"
+                  data-testid="event-route"
+                >
+                  <span>
+                    <span class="text-page-ink-2">Trasa: </span>
+                    <strong>{routeSummary(summary)}</strong>
+                  </span>
+                  {details?.route_url && (
+                    <a
+                      href={details.route_url}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      class="font-bold text-page-link hover:underline"
+                    >
+                      Zobacz trasę ↗
+                    </a>
+                  )}
+                </p>
               )}
               <p class="-mt-2 text-[13px] text-page-ink-2" data-testid="join-mode">
                 Dołączanie: {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}

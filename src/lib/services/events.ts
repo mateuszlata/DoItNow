@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
 import { levelFitFilter, parseLevelRange, type Level } from "@/lib/levels";
+import { isRouteSport } from "@/lib/route";
 import { MAX_RADIUS_KM, NEAR_RADII, boundingBox, distanceKm, type Near } from "@/lib/near";
 import { isLastMinute } from "@/lib/services/participations";
 import { getVenue } from "@/lib/services/venues";
@@ -99,15 +100,39 @@ export const createEventSchema = z.object({
     .string()
     .optional()
     .refine((v) => v === undefined || v === "" || parseLevelRange(v) !== null, "Wybierz poziom z listy."),
+  // Trasa (tylko rower i bieganie): cel albo pętla, dystans, tempo i link do trasy.
+  routeDestination: z.string().trim().max(120, "Cel może mieć maks. 120 znaków.").optional(),
+  routeLoop: checkbox.optional(),
+  routeDistance: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : typeof v === "string" ? v.replace(",", ".") : v),
+    z.coerce
+      .number({ error: "Podaj dystans w km." })
+      .gt(0, "Dystans musi być większy od zera.")
+      .max(500, "Maksymalnie 500 km.")
+      .nullable(),
+  ),
+  routePace: z.string().trim().max(40, "Tempo może mieć maks. 40 znaków.").optional(),
+  routeUrl: z
+    .string()
+    .trim()
+    .max(500, "Link może mieć maks. 500 znaków.")
+    .refine((v) => v === "" || /^https:\/\/[^\s]+$/.test(v), "Wklej link zaczynający się od https://.")
+    .optional(),
 });
 
 export type EventFormField = keyof z.input<typeof createEventSchema>;
 /** Surowe wartości pól formularza, tak jak przychodzą z przeglądarki (`guests` może nie wystąpić). */
-export type EventFormValues = Record<Exclude<EventFormField, "guests" | "membersCanInvite" | "levelRange">, string> & {
-  guests?: string;
-  membersCanInvite?: string;
-  levelRange?: string;
-};
+type OptionalFormField =
+  | "guests"
+  | "membersCanInvite"
+  | "levelRange"
+  | "routeDestination"
+  | "routeLoop"
+  | "routeDistance"
+  | "routePace"
+  | "routeUrl";
+export type EventFormValues = Record<Exclude<EventFormField, OptionalFormField>, string> &
+  Partial<Record<OptionalFormField, string>>;
 export type FieldErrors = Partial<Record<EventFormField | "form", string>>;
 
 export type CreateEventResult = { ok: true; event: EventRecord } | { ok: false; errors: FieldErrors };
@@ -134,6 +159,12 @@ export interface ParsedEvent {
   description: string | null;
   levelMin: number | null;
   levelMax: number | null;
+  /** Trasa — tylko dla roweru i biegania (dla innych sportów puste). */
+  routeDestination: string | null;
+  routeLoop: boolean;
+  routeDistanceKm: number | null;
+  routePace: string | null;
+  routeUrl: string | null;
 }
 
 /**
@@ -197,7 +228,22 @@ export function parseEventForm(
       description: data.description === "" ? null : (data.description ?? null),
       levelMin: parseLevelRange(data.levelRange)?.min ?? null,
       levelMax: parseLevelRange(data.levelRange)?.max ?? null,
+      ...parseRoute(data),
     },
+  };
+}
+
+/** Pola trasy po walidacji; poza rowerem i bieganiem trasy nie zapisujemy. */
+function parseRoute(data: z.output<typeof createEventSchema>) {
+  const route = isRouteSport(data.sport);
+  const loop = route && data.routeLoop === true;
+  const text = (value: string | undefined) => (value === undefined || value === "" ? null : value);
+  return {
+    routeDestination: route && !loop ? text(data.routeDestination) : null,
+    routeLoop: loop,
+    routeDistanceKm: route ? data.routeDistance : null,
+    routePace: route ? text(data.routePace) : null,
+    routeUrl: route ? text(data.routeUrl) : null,
   };
 }
 
@@ -266,6 +312,11 @@ export async function createEvent(
       venue_id: data.venueId,
       level_min: data.levelMin,
       level_max: data.levelMax,
+      route_destination: data.routeDestination,
+      route_loop: data.routeLoop,
+      route_distance_km: data.routeDistanceKm,
+      route_pace: data.routePace,
+      route_url: data.routeUrl,
     })
     .select()
     .single<EventRecord>();
@@ -337,8 +388,29 @@ export async function updateEvent(
     p_max: data.levelMax,
   });
   if (level.error) return { ok: false, errors: { levelRange: "Nie udało się zapisać poziomu." } };
+  const route = await supabase.rpc("set_event_route", {
+    p_event_id: eventId,
+    p_destination: data.routeDestination,
+    p_loop: data.routeLoop,
+    p_distance_km: data.routeDistanceKm,
+    p_pace: data.routePace,
+    p_url: data.routeUrl,
+  });
+  if (route.error) return { ok: false, errors: { routeDistance: "Nie udało się zapisać trasy." } };
   const event = response.data as unknown as EventRecord;
-  return { ok: true, event: { ...event, level_min: data.levelMin, level_max: data.levelMax } };
+  return {
+    ok: true,
+    event: {
+      ...event,
+      level_min: data.levelMin,
+      level_max: data.levelMax,
+      route_destination: data.routeDestination,
+      route_loop: data.routeLoop,
+      route_distance_km: data.routeDistanceKm,
+      route_pace: data.routePace,
+      route_url: data.routeUrl,
+    },
+  };
 }
 
 /** Odwołanie ogłoszenia przez organizatora w dowolnej chwili przed startem (FR-004). */
@@ -405,8 +477,8 @@ export async function listUpcomingEvents(
   const limit = Math.min(Math.max(options.limit ?? EVENTS_PAGE_SIZE, 1), MAX_EVENTS_SHOWN);
   // Zwykły `string`: dosłowna lista kolumn przeciąża typowanie zapytań Supabase.
   const columns: string = options.authenticated
-    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, level_min, level_max"
-    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng, level_min, level_max";
+    ? "id, sport, area, place, starts_at, spots, description, organizer_id, accepted_count, organizer_plays, lat, lng, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, level_min, level_max, route_destination, route_loop, route_distance_km, route_pace"
+    : "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng, level_min, level_max, route_destination, route_loop, route_distance_km, route_pace";
   const near = filters.near ?? null;
 
   let query = options.authenticated
@@ -529,7 +601,7 @@ export async function getPublicEvent(supabase: SupabaseClient, id: string): Prom
   const { data, error } = await supabase
     .from("events_public")
     .select(
-      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng, level_min, level_max",
+      "id, sport, area, starts_at, spots, accepted_count, organizer_plays, reserve_spots, reserve_count, min_people, requires_approval, duration_minutes, cost_cents, venue_status, guest_count, guest_confirmed, approx_lat, approx_lng, level_min, level_max, route_destination, route_loop, route_distance_km, route_pace",
     )
     .eq("id", id)
     .maybeSingle<PublicEvent>();

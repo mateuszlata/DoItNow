@@ -177,6 +177,11 @@ describe("widoczność (FR-001, FR-006)", () => {
       "requires_approval",
       "reserve_count",
       "reserve_spots",
+      // Opis trasy (bez linku — ten widzą zalogowani).
+      "route_destination",
+      "route_distance_km",
+      "route_loop",
+      "route_pace",
       "sport",
       "spots",
       "starts_at",
