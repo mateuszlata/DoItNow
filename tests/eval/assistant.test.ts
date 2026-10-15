@@ -1,6 +1,6 @@
 // Kontrola jakości asystenta AI na prawdziwym modelu (płatne — ułamek grosza za całość na Haiku).
 // Nie uruchamia się w `npm test`. Uruchomienie z kluczem ze schowka (klucz nie trafia do plików):
-//   $env:ANTHROPIC_API_KEY = (Get-Clipboard).Trim(); npx vitest run -c vitest.eval.config.ts; Remove-Item Env:ANTHROPIC_API_KEY
+//   $env:NODE_OPTIONS="--use-system-ca"; $env:ANTHROPIC_API_KEY = (Get-Clipboard).Trim(); npx vitest run -c vitest.eval.config.ts; Remove-Item Env:ANTHROPIC_API_KEY
 import { describe, expect, it } from "vitest";
 import { askAssistant, eventContext, type AssistantEvent } from "@/lib/assistant";
 
@@ -65,9 +65,9 @@ const CASES: [string, string, boolean | null, RegExp?][] = [
 ];
 
 describe.skipIf(!apiKey)("assistant on the real model", () => {
-  it.each(CASES)(
-    "%#: %s",
-    async (context, question, known, mustMention) => {
+  it.each(CASES.map(([context, question, known, mustMention]) => ({ context, question, known, mustMention })))(
+    "$question",
+    async ({ context, question, known, mustMention }) => {
       const reply = await askAssistant(apiKey, context, question);
       // eslint-disable-next-line no-console -- wynik kontroli jakości do przejrzenia
       console.log(`\n? ${question}\n→ [${reply.known ? "wie" : "nie wie"}] ${reply.answer}`);
