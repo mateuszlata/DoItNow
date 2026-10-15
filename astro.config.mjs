@@ -26,6 +26,8 @@ export default defineConfig({
       // Cloudflare Turnstile na rejestracji; bez kluczy (lokalnie, w CI) formularz działa bez widgetu.
       TURNSTILE_SITE_KEY: envField.string({ context: "server", access: "secret", optional: true }),
       TURNSTILE_SECRET_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      // Asystent AI przy spotkaniu (Claude Haiku przez API Anthropic); bez klucza pole asystenta się nie pokazuje.
+      ANTHROPIC_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 });

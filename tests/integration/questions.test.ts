@@ -1,5 +1,7 @@
 // Pytania do organizatora: kto pyta i odpowiada, kto co widzi, filtr, limity i powiadomienia (lokalny Supabase).
-import { afterAll, describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
+import { afterAll, describe, expect, inject, it } from "vitest";
 import { createEvent } from "@/lib/services/events";
 import { answerQuestion, askQuestion, hideQuestion, listQuestions } from "@/lib/services/questions";
 import { toLocalDateTime } from "@/lib/time";
@@ -73,5 +75,31 @@ describe("questions to the organizer", () => {
       expect(await askQuestion(tom.client, eventId, body)).toEqual({ ok: true });
     }
     expect(await askQuestion(tom.client, eventId, "Pytanie czwarte?")).toEqual({ ok: false, code: "RATE_LIMITED" });
+  });
+});
+
+describe("assistant quota", () => {
+  it("allows 5 questions a day per address without an account and 20 per signed-in user", async () => {
+    const ipHash = createHash("sha256")
+      .update(`test-ip-${String(Date.now())}`)
+      .digest("hex");
+    // Lokalna baza: dzienny limit serwisu (300) zbiera pytania ze wszystkich przebiegów testów — zerujemy go.
+    const service = createClient("http://127.0.0.1:54321", inject("serviceRoleKey"), {
+      auth: { persistSession: false },
+    });
+    await service.from("assistant_usage").delete().eq("subject", "*");
+    const anon = anonClient();
+    const anonResults: unknown[] = [];
+    for (let i = 0; i < 6; i++)
+      anonResults.push((await anon.rpc("consume_assistant_quota", { p_ip_hash: ipHash })).data);
+    expect(anonResults).toEqual(["ok", "ok", "ok", "ok", "ok", "user"]);
+    expect((await anon.rpc("consume_assistant_quota", { p_ip_hash: "not-a-hash" })).data).toBe("user");
+
+    const user = await newUser("Asystent PY");
+    const userResults: unknown[] = [];
+    for (let i = 0; i < 21; i++)
+      userResults.push((await user.client.rpc("consume_assistant_quota", { p_ip_hash: ipHash })).data);
+    expect(userResults.filter((r) => r === "ok")).toHaveLength(20);
+    expect(userResults.at(-1)).toBe("user");
   });
 });

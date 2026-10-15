@@ -5,6 +5,7 @@ import {
   questionErrorMessage,
   type EventQuestion,
 } from "@/lib/services/questions";
+import EventAssistant from "@/components/events/EventAssistant";
 
 interface Props {
   eventId: string;
@@ -14,9 +15,11 @@ interface Props {
   canAsk: boolean;
   /** Link do logowania z powrotem na to spotkanie (dla osób bez konta). */
   signinHref: string | null;
+  /** Pokazać asystenta AI (klucz API ustawiony, spotkanie nadchodzące). */
+  assistant?: boolean;
 }
 
-const { eventId, questions, isOrganizer, canAsk, signinHref } = Astro.props;
+const { eventId, questions, isOrganizer, canAsk, signinHref, assistant = false } = Astro.props;
 const ok = Astro.url.searchParams.get("question-ok");
 const errorCode = Astro.url.searchParams.get("question-error");
 const draft = Astro.url.searchParams.get("question-draft") ?? "";
@@ -50,6 +53,10 @@ const button =
           ? "Odpowiedzi organizatora widzą wszyscy. Twoje pytanie bez odpowiedzi widzisz tylko Ty i organizator."
           : "Odpowiedzi organizatora na pytania chętnych."}
     </p>
+
+    {assistant && !isOrganizer && (
+      <EventAssistant eventId={eventId} canAskOrganizer={canAsk} signinHref={signinHref} client:visible />
+    )}
 
     {ok && okText[ok] && <p class="mt-3 rounded-2xl bg-ok-soft px-3 py-2 text-sm text-ok">{okText[ok]}</p>}
     {errorCode && (

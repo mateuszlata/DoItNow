@@ -27,6 +27,7 @@ import { getLevels } from "@/lib/services/profiles";
 import { isRouteSport, routeSummary } from "@/lib/route";
 import EventQuestions from "@/components/events/EventQuestions.astro";
 import { listQuestions } from "@/lib/services/questions";
+import { ANTHROPIC_API_KEY } from "astro:env/server";
 import ChatPreview from "@/components/chat/ChatPreview";
 import { authHref, safeNext } from "@/lib/next-path";
 import { jerseyNumber } from "@/lib/jerseys";
@@ -583,6 +584,7 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
                 isOrganizer={isOrganizer}
                 canAsk={user !== null && !isOrganizer && isOpen}
                 signinHref={!user && !isPast ? authHref("signin", backHere) : null}
+                assistant={Boolean(ANTHROPIC_API_KEY) && !isPast}
               />
 
               {isOrganizer && details && isOpen && (details.requires_approval || details.pending.length > 0) && (
