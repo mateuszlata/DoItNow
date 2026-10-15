@@ -2,8 +2,12 @@
 // Trzymamy je tylko w ciasteczku przeglądarki, z dokładnością do ok. 1 km — nie zapisujemy ich na serwerze.
 
 export const NEAR_COOKIE = "metando_near";
-export const NEAR_RADII = [1, 2, 3, 5, 7, 10, 15, 20, 30, 50] as const;
+export const NEAR_RADII = [1, 2, 3, 5, 10, 15, 20, 30, 50, 100, 200] as const;
 export const MAX_RADIUS_KM = NEAR_RADII[NEAR_RADII.length - 1];
+/** „Bez limitu”: wszystkie spotkania, ale z odległością na kartach i sortowaniem „Najbliżej”. */
+export const NO_LIMIT_KM = 0;
+/** Promienie do wyboru na liście, z „Bez limitu” na końcu. */
+export const NEAR_OPTIONS: readonly number[] = [...NEAR_RADII, NO_LIMIT_KM];
 export const DEFAULT_RADIUS_KM = 5;
 const LABEL_MAX = 60;
 
@@ -42,8 +46,23 @@ export function parseNear(value: string | null | undefined): Near | null {
   };
   if (!Number.isFinite(near.lat) || Math.abs(near.lat) > 90) return null;
   if (!Number.isFinite(near.lng) || Math.abs(near.lng) > 180) return null;
-  if (!(NEAR_RADII as readonly number[]).includes(near.radiusKm)) return null;
+  if (!NEAR_OPTIONS.includes(near.radiusKm)) {
+    // Promień, którego już nie oferujemy (np. dawne 7 km) — najbliższy większy z listy.
+    const wider = NEAR_RADII.find((km) => km >= near.radiusKm);
+    if (!Number.isFinite(near.radiusKm) || near.radiusKm < 0 || wider === undefined) return null;
+    near.radiusKm = wider;
+  }
   return { ...near, lat: roundCoord(near.lat), lng: roundCoord(near.lng), label: near.label || "Twoja okolica" };
+}
+
+/** Nazwa promienia do wyświetlenia: „5 km” albo „Bez limitu”. */
+export function radiusLabel(km: number): string {
+  return km === NO_LIMIT_KM ? "Bez limitu" : `${String(km)} km`;
+}
+
+/** Czy odległość mieści się w promieniu („Bez limitu” mieści wszystko, także spotkania bez położenia). */
+export function withinRadius(distance: number | undefined, km: number): boolean {
+  return km === NO_LIMIT_KM || (distance ?? Infinity) <= km;
 }
 
 const EARTH_KM = 6371;

@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, LocateFixed, MapPin, X } from "lucide-react";
-import { DEFAULT_RADIUS_KM, NEAR_COOKIE, NEAR_RADII, serializeNear, type Near } from "@/lib/near";
+import {
+  DEFAULT_RADIUS_KM,
+  NEAR_COOKIE,
+  NEAR_OPTIONS,
+  NO_LIMIT_KM,
+  radiusLabel,
+  serializeNear,
+  type Near,
+} from "@/lib/near";
 import type { PlaceSuggestion } from "@/lib/geocode";
 import { cn } from "@/lib/utils";
 import { sportIcon, sportLabel } from "@/lib/sports";
@@ -119,9 +127,9 @@ function RadiusMenu({
         className="bg-page-deep text-page-ink hover:bg-page-2 inline-flex h-10 items-center gap-1.5 rounded-full pr-3 pl-4 text-sm font-bold transition-colors"
         data-testid="near-radius"
       >
-        <span className="text-page-ink-2 font-semibold">w promieniu</span>
-        {value} km
-        {counts && (
+        {value !== NO_LIMIT_KM && <span className="text-page-ink-2 font-semibold">w promieniu</span>}
+        {radiusLabel(value)}
+        {counts?.[value] !== undefined && (
           <span className="bg-brand text-on-brand rounded-full px-2 py-0.5 text-xs font-extrabold">{count(value)}</span>
         )}
         <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} aria-hidden="true" />
@@ -131,9 +139,14 @@ function RadiusMenu({
         <ul
           role="listbox"
           aria-label="Promień — liczba spotkań w zasięgu"
-          className="bg-card text-ink border-line absolute left-0 z-[1200] mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border p-1.5 shadow-xl"
+          className="bg-card text-ink border-line absolute left-0 z-[1200] mt-2 max-h-[min(26rem,55vh)] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-2xl border p-1.5 shadow-xl"
+          // Lista jest dłuższa niż ekran telefonu — przewijamy samą listę do wybranego promienia (nie stronę).
+          ref={(list) => {
+            const selected = list?.querySelector<HTMLElement>("[aria-selected=true]");
+            if (list && selected) list.scrollTop = selected.offsetTop - list.clientHeight / 2;
+          }}
         >
-          {NEAR_RADII.map((km) => {
+          {NEAR_OPTIONS.map((km) => {
             const selected = km === value;
             const n = count(km);
             return (
@@ -151,11 +164,14 @@ function RadiusMenu({
                 >
                   <span className="flex items-center gap-2 font-bold">
                     <Check className={cn("size-4", !selected && "invisible")} aria-hidden="true" />
-                    {km} km
+                    {radiusLabel(km)}
                   </span>
                   <span className="flex items-center gap-2.5">
                     <SportHints ids={sports?.[km] ?? []} />
-                    {counts && (
+                    {counts && km === NO_LIMIT_KM && counts[km] === undefined && (
+                      <span className={cn("text-xs", selected ? "text-card" : "text-ink-2")}>cała Polska</span>
+                    )}
+                    {counts?.[km] !== undefined && (
                       <span
                         className={cn(
                           "text-xs",

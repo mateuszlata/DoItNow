@@ -62,4 +62,24 @@ describe("events near the viewer", () => {
     const suggestions = await nearestEvents(anonClient(), { near: { ...tiny, lat: 49.45 } }, { authenticated: false });
     expect(suggestions.map((e) => e.id)).toContain(far);
   });
+
+  it("shows far events with their distance when the radius has no limit", async () => {
+    const organizer = await newUser("Org Far");
+    const at = new Date(Date.now() + 50 * HOUR);
+    // ok. 330 km na północ od środka — poza każdym promieniem z listy
+    const veryFar = await eventAt(organizer, at, 52.27);
+    const unlimited = { ...CENTER, radiusKm: 0, label: "Test" };
+    const all = await listUpcomingEvents(organizer.client, { near: unlimited }, { authenticated: true, limit: 50 });
+    const found = all.events.find((e) => e.id === veryFar);
+    expect(found?.distance_km).toBeGreaterThan(300);
+    expect(all.radiusCounts?.[0]).toBeGreaterThanOrEqual(1);
+
+    const limited = await listUpcomingEvents(
+      organizer.client,
+      { near: { ...unlimited, radiusKm: 200 } },
+      { authenticated: true, limit: 50 },
+    );
+    expect(limited.events.map((e) => e.id)).not.toContain(veryFar);
+    expect(limited.radiusCounts?.[0]).toBeUndefined();
+  });
 });

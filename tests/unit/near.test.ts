@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { boundingBox, distanceKm, formatDistance, parseNear, serializeNear } from "@/lib/near";
+import {
+  boundingBox,
+  distanceKm,
+  formatDistance,
+  parseNear,
+  radiusLabel,
+  serializeNear,
+  withinRadius,
+} from "@/lib/near";
 
 describe("near", () => {
   it("round-trips the cookie with coordinates rounded to about 1 km", () => {
@@ -7,11 +15,22 @@ describe("near", () => {
     expect(parseNear(value)).toEqual({ lat: 52.23, lng: 21.01, radiusKm: 5, label: "Śródmieście | Warszawa" });
   });
 
-  it("rejects broken values and radii outside the offered list", () => {
+  it("rejects broken values and moves radii we no longer offer to the next wider one", () => {
     expect(parseNear("abc")).toBeNull();
-    expect(parseNear("52.2|21.0|4|x")).toBeNull();
+    expect(parseNear("52.2|21.0|7|x")).toMatchObject({ radiusKm: 10 });
+    expect(parseNear("52.2|21.0|999|x")).toBeNull();
+    expect(parseNear("52.2|21.0|-1|x")).toBeNull();
     expect(parseNear("95|21|5|x")).toBeNull();
     expect(parseNear("52.2|21.0|10|")).toMatchObject({ label: "Twoja okolica" });
+  });
+
+  it("offers a no-limit radius that keeps every event", () => {
+    expect(parseNear("52.2|21.0|0|x")).toMatchObject({ radiusKm: 0 });
+    expect(radiusLabel(0)).toBe("Bez limitu");
+    expect(radiusLabel(200)).toBe("200 km");
+    expect(withinRadius(330, 0)).toBe(true);
+    expect(withinRadius(undefined, 0)).toBe(true);
+    expect(withinRadius(330, 200)).toBe(false);
   });
 
   it("measures distances between Warsaw districts", () => {

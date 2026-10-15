@@ -6,7 +6,7 @@ import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
 import { levelFitFilter, parseLevelRange, type Level } from "@/lib/levels";
 import { isRouteSport } from "@/lib/route";
-import { MAX_RADIUS_KM, NEAR_RADII, boundingBox, distanceKm, type Near } from "@/lib/near";
+import { MAX_RADIUS_KM, NEAR_OPTIONS, NO_LIMIT_KM, boundingBox, distanceKm, withinRadius, type Near } from "@/lib/near";
 import { isLastMinute } from "@/lib/services/participations";
 import { getVenue } from "@/lib/services/venues";
 import type {
@@ -449,11 +449,15 @@ function eventPoint(event: EventListItem): { lat: number; lng: number } | null {
   return lat != null && lng != null ? { lat, lng } : null;
 }
 
-/** Dopisuje odległość od okolicy oglądającego (spotkania bez położenia odpadają). */
-function withDistance(rows: EventListItem[], near: Near): EventListItem[] {
+/**
+ * Dopisuje odległość od okolicy oglądającego. Spotkania bez położenia odpadają — chyba że `keepUnplaced`
+ * („Bez limitu” pokazuje wszystko; takie spotkania nie mają odległości i trafiają na koniec „Najbliżej”).
+ */
+function withDistance(rows: EventListItem[], near: Near, keepUnplaced = false): EventListItem[] {
   return rows.flatMap((event) => {
     const point = eventPoint(event);
-    return point ? [{ ...event, distance_km: distanceKm(near, point) }] : [];
+    if (point) return [{ ...event, distance_km: distanceKm(near, point) }];
+    return keepUnplaced ? [event] : [];
   });
 }
 
@@ -493,7 +497,8 @@ export async function listUpcomingEvents(
     .order("starts_at", { ascending: true })
     .order("id", { ascending: true })
     .limit(near ? MAX_EVENTS_SHOWN + 1 : limit + 1);
-  if (near) {
+  // „Bez limitu” nie zawęża do prostokąta — odległość liczymy dla wszystkich spotkań.
+  if (near && near.radiusKm !== NO_LIMIT_KM) {
     const box = boundingBox({ ...near, radiusKm: MAX_RADIUS_KM });
     const [latColumn, lngColumn] = options.authenticated ? ["lat", "lng"] : ["approx_lat", "approx_lng"];
     query = query
@@ -531,21 +536,25 @@ export async function listUpcomingEvents(
   let radiusCounts: Record<number, number> | null = null;
   let radiusSports: Record<number, string[]> | null = null;
   if (near) {
-    const measured = withDistance(rows, near);
+    const unlimited = near.radiusKm === NO_LIMIT_KM;
+    const measured = withDistance(rows, near, unlimited);
     // Ile spotkań (przy tych samych filtrach sportu i terminu) jest w każdym z oferowanych promieni.
-    radiusCounts = Object.fromEntries(
-      NEAR_RADII.map((km) => [km, measured.filter((event) => (event.distance_km ?? Infinity) <= km).length]),
-    );
+    // Liczbę dla „Bez limitu” znamy tylko wtedy, gdy jest wybrany (inaczej baza zwraca okolicę do 200 km).
+    const options = NEAR_OPTIONS.filter((km) => km !== NO_LIMIT_KM || unlimited);
+    const inside = (km: number) => measured.filter((event) => withinRadius(event.distance_km, km));
+    radiusCounts = Object.fromEntries(options.map((km) => [km, inside(km).length]));
     radiusSports = Object.fromEntries(
-      NEAR_RADII.map((km) => [
+      options.map((km) => [
         km,
-        Object.entries(tally(measured.filter((event) => (event.distance_km ?? Infinity) <= km)))
+        Object.entries(tally(inside(km)))
           .sort((a, b) => b[1] - a[1])
           .map(([sport]) => sport),
       ]),
     );
-    rows = measured.filter((event) => (event.distance_km ?? Infinity) <= near.radiusKm);
-    if (filters.sort === "distance") rows.sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0));
+    rows = inside(near.radiusKm);
+    if (filters.sort === "distance") {
+      rows.sort((a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity));
+    }
   }
   return { events: rows.slice(0, limit), hasMore: rows.length > limit, radiusCounts, radiusSports };
 }
