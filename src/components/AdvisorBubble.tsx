@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type SubmitEvent } from "react";
-import { Sparkles, X } from "lucide-react";
+import { MapPin, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { FoundEvent } from "@/lib/assistant";
 
 // Doradca Metando: pomarańczowe kółko „AI” na każdej stronie. Można je przeciągnąć (przykleja się do krawędzi,
 // położenie pamięta przeglądarka); kliknięcie otwiera rozmowę. Na stronie spotkania doradca zna też to spotkanie.
@@ -10,6 +11,9 @@ interface Turn {
   answer: string;
   known: boolean;
   onEvent: boolean;
+  /** Spotkania znalezione przez doradcę (karty) i link do listy z tymi samymi filtrami. */
+  events?: FoundEvent[];
+  listHref?: string | null;
 }
 
 const SIZE = 56;
@@ -111,13 +115,21 @@ export default function AdvisorBubble() {
         }),
       });
       const data = (await response.json()) as Partial<Turn> & { message?: string };
+      const events = Array.isArray(data.events) ? data.events.slice(0, 3) : [];
       if (!response.ok || typeof data.answer !== "string") {
         setError(data.message ?? "Doradca jest chwilowo niedostępny.");
         return;
       }
       setTurns((prev) => [
         ...prev,
-        { question: q, answer: data.answer ?? "", known: data.known === true, onEvent: data.onEvent === true },
+        {
+          question: q,
+          answer: data.answer ?? "",
+          known: data.known === true,
+          onEvent: data.onEvent === true,
+          events,
+          listHref: typeof data.listHref === "string" && data.listHref.startsWith("/events?") ? data.listHref : null,
+        },
       ]);
       setQuestion("");
     } catch {
@@ -147,7 +159,7 @@ export default function AdvisorBubble() {
 
   const suggestions = eventId
     ? ["Ile to kosztuje?", "Czy są jeszcze wolne miejsca?", "Do kiedy mogę zrezygnować?"]
-    : ["Jak dołączyć do spotkania?", "Jak wystawić spotkanie?", "Jak zaprosić znajomego bez konta?"];
+    : ["Znajdź mi grę w ten weekend", "Jak dołączyć do spotkania?", "Jak wystawić spotkanie?"];
 
   const style = drag
     ? { left: drag.x - SIZE / 2, top: drag.y - SIZE / 2 }
@@ -247,6 +259,35 @@ export default function AdvisorBubble() {
                   <p className="text-sm whitespace-pre-line" data-testid="advisor-answer">
                     {turn.answer}
                   </p>
+                  {turn.events && turn.events.length > 0 && (
+                    <ul className="mt-2 grid gap-1.5">
+                      {turn.events.map((e) => (
+                        <li key={e.id}>
+                          <a
+                            href={`/events/${e.id}`}
+                            className="border-line hover:border-brand block rounded-xl border px-3 py-2"
+                            data-testid="advisor-event"
+                          >
+                            <span className="block text-sm font-bold">
+                              {e.sport} · {e.when}
+                            </span>
+                            <span className="text-ink-3 flex items-center gap-1 text-xs">
+                              <MapPin className="size-3 shrink-0" aria-hidden="true" />
+                              {e.area}
+                              {e.distance_km !== null && ` · ${e.distance_km.toLocaleString("pl-PL")} km`}
+                              {" · "}
+                              {e.free > 0 ? `wolne ${String(e.free)} z ${String(e.team)}` : "brak wolnych miejsc"}
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {turn.listHref && (
+                    <a href={turn.listHref} className="text-link mt-2 inline-block text-sm font-bold underline">
+                      Pokaż wszystkie na liście
+                    </a>
+                  )}
                   {!turn.known && turn.onEvent && organizerForm && (
                     <button
                       type="button"
@@ -285,7 +326,7 @@ export default function AdvisorBubble() {
               onChange={(e) => {
                 setQuestion(e.target.value);
               }}
-              placeholder="Zapytaj o Metando…"
+              placeholder="Zapytaj albo napisz, czego szukasz…"
               className="bg-card text-ink placeholder:text-ink-3 focus:ring-brand h-11 min-w-0 flex-1 rounded-full px-4 text-sm focus:ring-2 focus:outline-none"
             />
             <button

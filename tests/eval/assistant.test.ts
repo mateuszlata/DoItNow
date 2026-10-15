@@ -2,7 +2,7 @@
 // Nie uruchamia się w `npm test`. Uruchomienie z kluczem ze schowka (klucz nie trafia do plików):
 //   $env:NODE_OPTIONS="--use-system-ca"; $env:ANTHROPIC_API_KEY = (Get-Clipboard).Trim(); npx vitest run -c vitest.eval.config.ts; Remove-Item Env:ANTHROPIC_API_KEY
 import { describe, expect, it } from "vitest";
-import { askAssistant, eventContext, type AssistantEvent } from "@/lib/assistant";
+import { askAssistant, eventContext, type AssistantEvent, type EventSearch } from "@/lib/assistant";
 
 const apiKey = process.env.ANTHROPIC_API_KEY ?? "";
 
@@ -84,6 +84,77 @@ describe.skipIf(!apiKey)("assistant on the real model", () => {
       if (mustMention) expect(reply.answer).toMatch(mustMention);
     },
     30_000,
+  );
+
+  // Wyszukiwanie: sprawdzamy, jakie filtry model ustawia, i czy pokazuje tylko znalezione spotkania.
+  const SEARCHES: { question: string; expect: (f: EventSearch | null) => void; empty?: boolean }[] = [
+    {
+      question: "Szukam kosza w ten weekend blisko mnie",
+      expect: (f) => {
+        expect(f?.sports).toContain("koszykowka");
+        expect(f?.when).toBe("weekend");
+      },
+    },
+    {
+      question: "Jest coś jutro do pogrania w siatkę?",
+      expect: (f) => {
+        expect(f?.sports?.some((sp) => sp.startsWith("siatkowka"))).toBe(true);
+        expect(f?.when).toBe("tomorrow");
+      },
+    },
+    {
+      question: "Chcę pobiegać w Krakowie",
+      expect: (f) => {
+        expect(f?.sports).toContain("bieganie");
+        expect(f?.place).toMatch(/Krak/i);
+      },
+    },
+    {
+      question: "Znajdź mi tenisa dziś",
+      empty: true,
+      expect: (f) => {
+        expect(f?.sports).toContain("tenis");
+      },
+    },
+  ];
+
+  it.each(SEARCHES)(
+    "search: $question",
+    async ({ question, expect: check, empty }) => {
+      let filters: EventSearch | null = null;
+      const reply = await askAssistant(apiKey, {
+        question,
+        now: new Date("2026-10-15T10:00:00Z"),
+        search: (f) => {
+          filters = f;
+          return Promise.resolve({
+            scope: "Raków, promień 10 km",
+            events: empty
+              ? []
+              : [
+                  {
+                    id: "11111111-1111-4111-8111-111111111111",
+                    sport: "Pasujący sport",
+                    when: "sobota 17.10, 18:00–19:30",
+                    area: "Raków",
+                    free: 3,
+                    team: 10,
+                    distance_km: 2.4,
+                  },
+                ],
+          });
+        },
+      });
+      // eslint-disable-next-line no-console -- wynik kontroli jakości do przejrzenia
+      console.log(`
+? ${question}
+  filtry: ${JSON.stringify(filters)}
+→ ${reply.answer} [kart: ${String(reply.events.length)}]`);
+      check(filters);
+      expect(reply.events.length).toBe(empty ? 0 : 1);
+      if (empty) expect(reply.answer).toMatch(/promie|termin|inn|wystaw|własn/i);
+    },
+    45_000,
   );
 
   it("keeps the conversation going with the previous exchange", async () => {

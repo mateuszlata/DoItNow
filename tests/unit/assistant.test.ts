@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
-import { askAssistant, eventContext, type AssistantEvent } from "@/lib/assistant";
+import { askAssistant, eventContext, type AssistantEvent, type EventSearch, type FoundEvent } from "@/lib/assistant";
 
 const event: AssistantEvent = {
   sport: "pilka-nozna",
@@ -24,10 +24,35 @@ const event: AssistantEvent = {
   route_pace: null,
 };
 
-/** Klient z jedną przygotowaną odpowiedzią modelu (bez sieci). */
-function fakeClient(reply: { stop_reason: string; parsed_output: unknown }) {
-  return { messages: { parse: () => Promise.resolve(reply) } } as unknown as Pick<Anthropic, "messages">;
+interface FakeReply {
+  stop_reason: string;
+  parsed_output: unknown;
+  content?: unknown[];
 }
+
+/** Klient z przygotowanymi kolejno odpowiedziami modelu (bez sieci). */
+function fakeClient(...replies: FakeReply[]) {
+  const calls: { tools?: unknown }[] = [];
+  const client = {
+    messages: {
+      parse: (params: { tools?: unknown }) => {
+        calls.push(params);
+        return Promise.resolve({ content: [], ...replies[Math.min(calls.length - 1, replies.length - 1)] });
+      },
+    },
+  } as unknown as Pick<Anthropic, "messages">;
+  return { client, calls };
+}
+
+const found: FoundEvent = {
+  id: "e1",
+  sport: "Koszykówka",
+  when: "sobota 17.10, 18:00–19:30",
+  area: "Raków",
+  free: 3,
+  team: 10,
+  distance_km: 2.4,
+};
 
 describe("assistant context", () => {
   it("gives visitors without an account no exact place or description", () => {
@@ -50,15 +75,86 @@ describe("assistant context", () => {
 
 describe("askAssistant", () => {
   it("returns the model's structured answer", async () => {
-    const client = fakeClient({ stop_reason: "end_turn", parsed_output: { known: true, answer: "20 zł na osobę." } });
+    const { client } = fakeClient({
+      stop_reason: "end_turn",
+      parsed_output: { known: true, answer: "20 zł na osobę.", event_ids: [] },
+    });
     expect(await askAssistant("key", { question: "Ile kosztuje?", eventContext: "kontekst" }, client)).toEqual({
       known: true,
       answer: "20 zł na osobę.",
+      events: [],
+      search: null,
     });
   });
 
   it("falls back to a human when the model declines", async () => {
-    const client = fakeClient({ stop_reason: "refusal", parsed_output: null });
+    const { client } = fakeClient({ stop_reason: "refusal", parsed_output: null });
     expect((await askAssistant("key", { question: "?" }, client)).known).toBe(false);
+  });
+
+  it("searches with the model's filters and returns only events the search found", async () => {
+    const searched: EventSearch[] = [];
+    const { client, calls } = fakeClient(
+      {
+        stop_reason: "tool_use",
+        parsed_output: null,
+        content: [
+          { type: "tool_use", id: "t1", name: "search_events", input: { sports: ["koszykowka"], when: "weekend" } },
+        ],
+      },
+      {
+        stop_reason: "end_turn",
+        parsed_output: { known: true, answer: "Jest kosz w sobotę.", event_ids: ["e1", "zmyslone"] },
+      },
+    );
+    const reply = await askAssistant(
+      "key",
+      {
+        question: "Kosz w weekend?",
+        search: (filters) => {
+          searched.push(filters);
+          return Promise.resolve({ events: [found], scope: "Raków, promień 10 km" });
+        },
+      },
+      client,
+    );
+    expect(searched).toEqual([{ sports: ["koszykowka"], when: "weekend" }]);
+    expect(reply.events).toEqual([found]);
+    expect(reply.search).toEqual({ sports: ["koszykowka"], when: "weekend" });
+    expect(calls[0].tools).toBeDefined();
+  });
+
+  it("rejects invalid search filters without calling the search", async () => {
+    let searched = false;
+    const { client } = fakeClient(
+      {
+        stop_reason: "tool_use",
+        parsed_output: null,
+        content: [{ type: "tool_use", id: "t1", name: "search_events", input: { sports: ["szachy"] } }],
+      },
+      { stop_reason: "end_turn", parsed_output: { known: false, answer: "Nie wiem.", event_ids: [] } },
+    );
+    const reply = await askAssistant(
+      "key",
+      {
+        question: "Szachy?",
+        search: () => {
+          searched = true;
+          return Promise.resolve({ events: [], scope: "" });
+        },
+      },
+      client,
+    );
+    expect(searched).toBe(false);
+    expect(reply.search).toBeNull();
+  });
+
+  it("offers no search tool when there is no search", async () => {
+    const { client, calls } = fakeClient({
+      stop_reason: "end_turn",
+      parsed_output: { known: true, answer: "Tak.", event_ids: [] },
+    });
+    await askAssistant("key", { question: "Czy to darmowe?" }, client);
+    expect(calls[0].tools).toBeUndefined();
   });
 });
