@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "astro/zod";
-import { freeReserve, freeSpots, missingToMinimum, teamSize } from "@/lib/capacity";
+import { freeReserve, freeSpots, missingToMinimum, takenSpots, teamSize } from "@/lib/capacity";
 import { levelRangeLabel } from "@/lib/levels";
 import { formatPLN, shareCents } from "@/lib/money";
 import { routeSummary } from "@/lib/route";
@@ -96,7 +96,9 @@ const SYSTEM_PROMPT = `Jesteś Doradcą Metando — asystentem AI serwisu do uma
 Zasady:
 - Odpowiadaj po polsku, krótko (1–3 zdania), rzeczowo i życzliwie. Możesz wskazać, gdzie w serwisie coś znaleźć.
 - Korzystaj wyłącznie z instrukcji Metando poniżej i z danych spotkania (jeśli zostały podane). Nie dopowiadaj niczego spoza nich (np. czy jest parking, prysznic, piłka — chyba że wynika to z danych).
-- Jeśli odpowiedzi nie ma w tych źródłach, ustaw known na false i napisz krótko, że tego nie wiesz. Na stronie spotkania dodaj, że pytanie można przekazać organizatorowi przyciskiem pod odpowiedzią; w pozostałych sprawach — że pomoże obsługa: kontakt@metando.pl. Nie odsyłaj na czat spotkania.
+- Jeśli odpowiedzi nie ma w tych źródłach, ustaw known na false i napisz krótko, że tego nie wiesz. Gdy podano dane spotkania, dodaj tylko, że pytanie można przekazać organizatorowi przyciskiem „Zapytaj organizatora” pod tą odpowiedzią (bez adresu obsługi). Gdy danych spotkania nie ma — że pomoże obsługa: kontakt@metando.pl. Nie odsyłaj na czat spotkania.
+- Zwracaj się do pytającego neutralnie, bez form męskich ani żeńskich (np. „możesz”, „otwórz”, „kliknij” zamiast „prosiłeś”, „zrobiłaś”).
+- Podawaj liczby dokładnie tak, jak są w danych; nie wyliczaj ich na nowo.
 - Nie obiecuj niczego w imieniu organizatora ani obsługi i nie podawaj danych, których nie masz (np. dokładnego adresu, jeśli go nie dostałeś — wtedy napisz, że dokładne miejsce widzą zalogowani).
 - Nie wykonujesz żadnych działań (nie zapisujesz, nie odwołujesz, nie piszesz do nikogo) — tylko podpowiadasz, jak zrobić to samemu.
 - Na pytania niezwiązane z Metando ani ze spotkaniem odpowiedz jednym zdaniem, że pomagasz tylko w sprawach Metando (known: true).
@@ -123,7 +125,7 @@ export function eventContext(event: AssistantEvent, answered: { body: string; an
     event.place
       ? `Dokładne miejsce: ${event.place}`
       : "Dokładne miejsce: widoczne tylko dla zalogowanych (pytający nie jest zalogowany).",
-    `Skład: ${String(team)} osób, wolnych miejsc: ${String(free)}${event.organizer_plays ? ", organizator gra w składzie" : ""}`,
+    `Skład: ${String(team)} miejsc łącznie, zajęte ${String(takenSpots(event))}${event.organizer_plays ? " (w tym organizator, który gra)" : ""}, wolne ${String(free)}`,
     event.reserve_spots > 0
       ? `Rezerwa: ${String(event.reserve_count)} z ${String(event.reserve_spots)} miejsc zajętych, wolnych ${String(freeReserve(event))}`
       : "Rezerwa: brak",

@@ -34,7 +34,7 @@ describe("assistant context", () => {
     const text = eventContext(event, []);
     expect(text).toContain("Dokładne miejsce: widoczne tylko dla zalogowanych");
     expect(text).toContain("Koszt: 20 zł na osobę");
-    expect(text).toContain("wolnych miejsc: 6");
+    expect(text).toContain("Skład: 10 miejsc łącznie, zajęte 4 (w tym organizator, który gra), wolne 6");
     expect(text).not.toContain("Opis organizatora");
   });
 
