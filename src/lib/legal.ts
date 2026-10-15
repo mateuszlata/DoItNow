@@ -1,7 +1,7 @@
 // Dane operatora i wersja dokumentów prawnych (regulamin, polityka prywatności).
 // Zmiana treści dokumentów = nowa data w LEGAL_VERSION; przy rejestracji zapisujemy, którą wersję zaakceptowano.
 
-export const LEGAL_VERSION = "2026-10-10";
+export const LEGAL_VERSION = "2026-10-15";
 
 export const OPERATOR = {
   name: "Mateusz Łata",

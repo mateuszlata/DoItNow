@@ -32,6 +32,7 @@ const when = new Intl.DateTimeFormat("pl-PL", { dateStyle: "short", timeStyle: "
           <li class="rounded-[20px] bg-card p-4 text-ink" data-testid="message-report">
             <p class="text-xs text-ink-3">
               {r.author_name} · {when.format(new Date(r.created_at))} · zgłoszeń: {r.report_count} ·{" "}
+              {r.auto_hidden && <strong class="text-bad">ukryta automatycznie · </strong>}
               <a href={`/events/${r.event_id}`} class="underline">
                 spotkanie
               </a>
@@ -49,7 +50,7 @@ const when = new Intl.DateTimeFormat("pl-PL", { dateStyle: "short", timeStyle: "
                 Ukryj wiadomość
               </button>
               <button name="action" value="dismiss" class="h-10 rounded-full bg-card-2 px-4 text-sm font-bold">
-                Zostaw
+                {r.auto_hidden ? "Przywróć" : "Zostaw"}
               </button>
             </form>
           </li>

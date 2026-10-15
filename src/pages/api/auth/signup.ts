@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@/lib/supabase";
-import { displayNameSchema } from "@/lib/services/profiles";
+import { NICK_BLOCKED, displayNameSchema, isTextClean } from "@/lib/services/profiles";
 import { TURNSTILE_SECRET_KEY } from "astro:env/server";
 import { AUTH_NOT_CONFIGURED, authErrorMessage } from "@/lib/auth-errors";
 import { LEGAL_VERSION } from "@/lib/legal";
@@ -39,6 +39,9 @@ export const POST: APIRoute = async (context) => {
   const supabase = createClient(context.request.headers, context.cookies);
   if (!supabase) {
     return fail(AUTH_NOT_CONFIGURED);
+  }
+  if (!(await isTextClean(supabase, displayName.data))) {
+    return fail(NICK_BLOCKED);
   }
   // Nick trafia do metadanych konta; trigger w bazie tworzy z niego profil.
   const { data, error } = await supabase.auth.signUp({

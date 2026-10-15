@@ -16,6 +16,7 @@ export const CHAT_ERRORS = {
   MESSAGE_EMPTY: "Wiadomość jest pusta.",
   MESSAGE_TOO_LONG: `Wiadomość może mieć maks. ${String(MESSAGE_MAX_LENGTH)} znaków.`,
   RATE_LIMITED: "Za dużo wiadomości naraz. Odczekaj chwilę.",
+  MESSAGE_BLOCKED: "Ta wiadomość zawiera słowa, których nie przepuszczamy na czacie. Popraw ją i wyślij jeszcze raz.",
   MESSAGE_NOT_FOUND: "Nie znaleziono wiadomości.",
   NOT_ALLOWED: "Nie możesz tego zrobić z tą wiadomością.",
   OWN_MESSAGE: "Nie możesz zgłosić własnej wiadomości.",

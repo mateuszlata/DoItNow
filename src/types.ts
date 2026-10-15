@@ -215,6 +215,8 @@ export interface MessageReport {
   report_count: number;
   reasons: string[];
   last_reported_at: string;
+  /** Ukryta sama po zgłoszeniach 3 osób — „Zostaw” przywraca ją do czatu. */
+  auto_hidden: boolean;
 }
 
 /** Pula zaproszeń jednego gracza w spotkaniu (funkcja event_guest_groups). */

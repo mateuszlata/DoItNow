@@ -10,6 +10,14 @@ export const displayNameSchema = z
   .min(2, "Nick musi mieć co najmniej 2 znaki.")
   .max(30, "Nick może mieć maks. 30 znaków.");
 
+export const NICK_BLOCKED = "Ten nick zawiera słowa, których nie przepuszczamy. Wybierz inny.";
+
+/** Filtr wulgaryzmów z bazy (is_text_clean) — ten sam dla czatu i nicków. Przy błędzie bazy przepuszcza. */
+export async function isTextClean(supabase: SupabaseClient, text: string): Promise<boolean> {
+  const response = await supabase.rpc("is_text_clean", { p_text: text });
+  return response.error ? true : (response.data as unknown) !== false;
+}
+
 export async function getDisplayName(supabase: SupabaseClient, userId: string): Promise<string | null> {
   const { data } = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle<{
     display_name: string;
