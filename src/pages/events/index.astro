@@ -216,7 +216,7 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
 
 <Layout title="Ogłoszenia · Metando">
   <div class="bg-app min-h-screen p-4 pb-32">
-    <div class="mx-auto max-w-3xl">
+    <div class="mx-auto max-w-3xl lg:max-w-6xl">
       <Topbar title="W co dziś|gramy?" />
       <InstallApp client:only="react" />
 
@@ -247,416 +247,441 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         </section>
       )}
 
-      <div class="mb-1.5 flex items-baseline justify-between gap-3">
-        <span class="text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Sport</span>
-        {usingFavorites && (
-          <span class="text-xs text-page-ink-2">
-            Twoje sporty ·{" "}
-            <a href="/my#moje-sporty" class="font-semibold text-page-link hover:underline">
-              zmień
-            </a>
-          </span>
-        )}
-        {hasFavorites && !usingFavorites && (
-          <a href={filterHref({ sports: favorites })} class="text-xs font-semibold text-page-link hover:underline">
-            Wróć do moich sportów
-          </a>
-        )}
-      </div>
-      <!-- `relative`: ukryte napisy „(wybrany)” (sr-only, position: absolute) muszą zostać w przewijanym pasku,
+      <!-- Na komputerze: filtry w pasku bocznym (przyklejonym przy przewijaniu), spotkania w dwóch kolumnach obok. -->
+      <div class="lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-6">
+        <aside class="lg:sticky lg:top-4">
+          <div class="mb-1.5 flex items-baseline justify-between gap-3">
+            <span class="text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Sport</span>
+            {usingFavorites && (
+              <span class="text-xs text-page-ink-2">
+                Twoje sporty ·{" "}
+                <a href="/my#moje-sporty" class="font-semibold text-page-link hover:underline">
+                  zmień
+                </a>
+              </span>
+            )}
+            {hasFavorites && !usingFavorites && (
+              <a href={filterHref({ sports: favorites })} class="text-xs font-semibold text-page-link hover:underline">
+                Wróć do moich sportów
+              </a>
+            )}
+          </div>
+          <!-- `relative`: ukryte napisy „(wybrany)” (sr-only, position: absolute) muszą zostać w przewijanym pasku,
            inaczej wychodzą poza niego i rozpychają stronę na telefonach. -->
-      <nav
-        class="relative -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:[mask-image:none]"
-        aria-label="Sport"
-        data-testid="sport-chips"
-      >
-        <a
-          href={filterHref({ sports: [] })}
-          aria-current={selected.length === 0 ? "page" : undefined}
-          class:list={[
-            "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
-            selected.length === 0 ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
-          ]}
-        >
-          <SportIcon />
-          Wszystkie sporty
-          {totalCount !== null && <span class="text-xs opacity-70">{totalCount}</span>}
-        </a>
-        {orderedSports.map((s) => {
-          const on = selected.includes(s.id);
-          const n = sportCount(s.id);
-          return (
+          <nav
+            class="relative -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:[mask-image:none]"
+            aria-label="Sport"
+            data-testid="sport-chips"
+          >
             <a
-              href={filterHref({ sports: toggleSport(s.id) })}
-              data-selected={on ? "" : undefined}
+              href={filterHref({ sports: [] })}
+              aria-current={selected.length === 0 ? "page" : undefined}
               class:list={[
                 "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
-                on ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
-                sportCounts && n === 0 && !on && "opacity-60",
+                selected.length === 0 ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
               ]}
-              title={sportCounts ? `Spotkań: ${String(n)}` : undefined}
             >
-              <SportIcon sport={s.id} />
-              {s.label}
-              {sportCounts && (
-                <span
-                  class:list={[
-                    "rounded-full px-1.5 text-xs leading-5",
-                    n > 0 ? (on ? "bg-brand text-on-brand" : "bg-page-deep text-page-ink") : "opacity-70",
-                  ]}
-                  data-testid="sport-count"
-                >
-                  {n}
-                </span>
-              )}
-              {on && <span class="sr-only">(wybrany)</span>}
-              {on && (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M5 12l5 5L20 7"></path>
-                </svg>
-              )}
+              <SportIcon />
+              Wszystkie sporty
+              {totalCount !== null && <span class="text-xs opacity-70">{totalCount}</span>}
             </a>
-          );
-        })}
-      </nav>
-
-      <span class="mb-1.5 block text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Kiedy</span>
-      <form method="GET" class="mb-5 flex gap-1.5 rounded-full bg-page-deep p-1" aria-label="Termin">
-        {Object.entries(sportsQuery(selected)).map(([name, value]) => (
-          <input type="hidden" name={name} value={value} />
-        ))}
-        {["", ...WHEN_OPTIONS].map((option) => (
-          <a
-            href={filterHref({ when: option || null, day: null })}
-            aria-current={option === when && !(option === "" && day) ? "page" : undefined}
-            class:list={[
-              "grid h-10 flex-1 place-items-center rounded-full text-[12px] font-extrabold tracking-wide whitespace-nowrap uppercase transition-colors sm:text-[13px]",
-              option === when && !(option === "" && day) ? "bg-card text-ink" : "text-page-ink-2 hover:text-page-ink",
-            ]}
-          >
-            {WHEN_LABELS[option]}
-          </a>
-        ))}
-        <label
-          class:list={[
-            "relative grid h-10 w-11 shrink-0 cursor-pointer place-items-center rounded-full",
-            day ? "bg-card text-ink" : "bg-page-2 text-page-ink",
-          ]}
-          title="Wybierz dzień"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.9"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path>
-          </svg>
-          <span class="sr-only">Dzień</span>
-          <input
-            type="date"
-            name="day"
-            value={day}
-            class="absolute inset-0 cursor-pointer opacity-0"
-            onchange="this.form.submit()"
-          />
-        </label>
-      </form>
-
-      <div class="mb-1.5 flex items-baseline justify-between gap-3">
-        <span class="text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Gdzie</span>
-        {near && (
-          <span class="flex gap-3 text-xs" data-testid="near-sort">
-            <a
-              href={filterHref({ sort: "time" })}
-              aria-current={sort === "time" ? "page" : undefined}
-              class:list={["font-semibold", sort === "time" ? "text-page-ink" : "text-page-link hover:underline"]}
-            >
-              Najwcześniej
-            </a>
-            <a
-              href={filterHref({ sort: "distance" })}
-              aria-current={sort === "distance" ? "page" : undefined}
-              class:list={["font-semibold", sort === "distance" ? "text-page-ink" : "text-page-link hover:underline"]}
-            >
-              Najbliżej
-            </a>
-          </span>
-        )}
-      </div>
-      <NearbyPicker
-        near={near ? { label: near.label, radiusKm: near.radiusKm } : null}
-        counts={radiusCounts}
-        sports={radiusSports}
-        client:load
-      />
-
-      {day && (
-        <p class="mb-4 text-sm text-page-ink-2">
-          Spotkania w dniu <strong class="text-page-ink">{day.split("-").reverse().join(".")}</strong> ·{" "}
-          <a href={filterHref({ day: null })} class="font-semibold text-page-link hover:underline">
-            pokaż wszystkie
-          </a>
-        </p>
-      )}
-
-      {!user && (
-        <p class="mb-4 text-sm text-page-ink-2">
-          Aby zobaczyć dokładne miejsce i szczegóły spotkań,{" "}
-          <a href="/auth/signin" class="font-semibold text-page-link hover:underline">
-            zaloguj się
-          </a>
-        </p>
-      )}
-
-      {loadError && (
-        <p class="rounded-2xl bg-bad-soft p-4 text-bad">Nie udało się wczytać ogłoszeń. Spróbuj odświeżyć stronę.</p>
-      )}
-
-      {!loadError && events.length === 0 && near && nearest.length > 0 && (
-        <section class="mb-4 rounded-[20px] bg-page-2 p-5" data-testid="near-empty">
-          <p class="display text-2xl leading-none text-page-ink">W promieniu {near.radiusKm} km nic nie ma</p>
-          <p class="mt-2 text-sm text-page-ink-2">Najbliższe spotkania dalej:</p>
-          <ul class="mt-2 flex flex-col gap-1.5">
-            {nearest.map((event) => (
-              <li>
+            {orderedSports.map((s) => {
+              const on = selected.includes(s.id);
+              const n = sportCount(s.id);
+              return (
                 <a
-                  href={`/events/${event.id}`}
-                  class="flex items-center justify-between gap-3 rounded-2xl bg-card px-3.5 py-2.5 text-sm text-ink hover:bg-card-2"
+                  href={filterHref({ sports: toggleSport(s.id) })}
+                  data-selected={on ? "" : undefined}
+                  class:list={[
+                    "inline-flex h-10 shrink-0 items-center gap-2 rounded-full pr-4 pl-3 text-sm font-bold whitespace-nowrap transition-colors",
+                    on ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
+                    sportCounts && n === 0 && !on && "opacity-60",
+                  ]}
+                  title={sportCounts ? `Spotkań: ${String(n)}` : undefined}
                 >
-                  <span class="flex min-w-0 items-center gap-2">
-                    <SportIcon sport={event.sport} size={18} />
-                    <span class="truncate">
-                      <strong>{sportLabel(event.sport)}</strong> ·{" "}
-                      <span class="first-letter:uppercase">{formatEventDay(event.starts_at)}</span> · {event.area}
-                    </span>
-                  </span>
-                  <span class="shrink-0 font-bold">{formatDistance(event.distance_km ?? 0)}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-          {widerRadius && (
-            <p class="mt-3 text-sm text-page-ink-2">
-              Zwiększ promień do <strong class="text-page-ink">{widerRadius} km</strong> powyżej — albo wystaw własne
-              spotkanie w swojej okolicy.
-            </p>
-          )}
-        </section>
-      )}
-
-      {!loadError && events.length === 0 && !(near && nearest.length > 0) && (
-        <div class="rounded-[20px] bg-page-2 p-6 text-center">
-          <p class="display text-3xl text-page-ink">Pusto na boisku</p>
-          <p class="mt-2 text-sm text-page-ink-2">
-            Brak nadchodzących spotkań{selected.length > 0 || day || when || near ? " dla wybranych filtrów" : ""}.
-            Wystaw własne — ktoś na pewno dołączy.
-          </p>
-        </div>
-      )}
-
-      <ul class="grid gap-4">
-        {events.map((event) => {
-          const full = freeSpots(event) === 0;
-          const action = cta(event);
-          const shirts = seats(event);
-          const missing = missingToMinimum(event);
-          return (
-            <li class="overflow-hidden rounded-[20px] bg-card text-ink" data-sport={event.sport}>
-              <div
-                class:list={["flex items-center justify-between gap-3 px-3.5 py-2.5", full ? "bg-card-2" : "bg-brand"]}
-              >
-                <h2 class="display text-[28px] leading-none">
-                  <a href={`/events/${event.id}`} class="inline-flex items-center gap-2 hover:underline">
-                    <SportIcon sport={event.sport} size={22} strokeWidth={2.2} />
-                    {sportLabel(event.sport)}
-                  </a>
-                </h2>
-                <span class="display text-2xl">{formatTimeRange(event.starts_at, event.duration_minutes)}</span>
-              </div>
-
-              <div class="flex flex-col gap-3 p-3.5">
-                <div class="flex flex-col gap-1 text-[15px]">
-                  <span class="flex flex-wrap items-center justify-between gap-2">
-                    <span class="font-bold first-letter:uppercase">{formatEventDay(event.starts_at)}</span>
-                    <span class="flex items-center gap-1.5">
-                      {(() => {
-                        const spot = weatherSpot(event);
-                        return (
-                          spot && (
-                            <WeatherBadge
-                              eventId={event.id}
-                              startsAt={event.starts_at}
-                              durationMinutes={event.duration_minutes}
-                              client:idle
-                            />
-                          )
-                        );
-                      })()}
-                      <Countdown startsAt={event.starts_at} durationMinutes={event.duration_minutes} />
-                    </span>
-                  </span>
-                  <span class="text-ink-2">
-                    {event.area}
-                    {event.place && <> · {event.place}</>}
-                    {event.distance_km !== undefined && (
-                      <strong class="text-ink" data-testid="card-distance">
-                        {" "}
-                        · {event.lat == null ? "ok. " : ""}
-                        {formatDistance(event.distance_km)} od Ciebie
-                      </strong>
-                    )}
-                  </span>
-                </div>
-
-                {event.lat != null && event.lng != null && (
-                  <div class="relative isolate overflow-hidden rounded-2xl">
-                    <EventMap
-                      lat={event.lat}
-                      lng={event.lng}
-                      label={event.place ?? event.area}
-                      preview
-                      client:visible
-                    />
-                    <a href={`/events/${event.id}`} class="absolute inset-0 z-[450]" aria-hidden="true" tabindex="-1">
-                      <span class="sr-only">Szczegóły ogłoszenia</span>
-                    </a>
-                  </div>
-                )}
-
-                <div class="flex items-end justify-between gap-3" data-testid="card-free-spots">
-                  <div class="flex items-baseline gap-1.5">
+                  <SportIcon sport={s.id} />
+                  {s.label}
+                  {sportCounts && (
                     <span
                       class:list={[
-                        "display number-shadow text-[64px] leading-[0.8]",
-                        full ? "text-ink-3" : "text-page",
+                        "rounded-full px-1.5 text-xs leading-5",
+                        n > 0 ? (on ? "bg-brand text-on-brand" : "bg-page-deep text-page-ink") : "opacity-70",
                       ]}
+                      data-testid="sport-count"
                     >
-                      {freeSpots(event)}
+                      {n}
                     </span>
-                    <span class="display text-xl text-ink-2">
-                      {freeWord(freeSpots(event))} z {teamSize(event)}
-                      {full && " · komplet"}
-                    </span>
-                  </div>
-                  {shirts ? (
-                    <div class="grid grid-cols-6 gap-[3px]" aria-hidden="true">
-                      {shirts.map((taken) => (
-                        <Jersey sport={event.sport} fill={taken ? "var(--ok)" : "#BFD9C8"} width={18} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div class="mb-2 h-2 w-28 overflow-hidden rounded-full bg-track" aria-hidden="true">
-                      <div
-                        class="bg-fill h-full rounded-full"
-                        style={`width: ${String(Math.round((takenSpots(event) / Math.max(teamSize(event), 1)) * 100))}%`}
-                      />
-                    </div>
                   )}
-                </div>
+                  {on && <span class="sr-only">(wybrany)</span>}
+                  {on && (
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M5 12l5 5L20 7"></path>
+                    </svg>
+                  )}
+                </a>
+              );
+            })}
+          </nav>
 
-                <div class="flex items-center justify-between gap-3">
-                  <div class="flex min-w-0 flex-col gap-0.5 text-sm">
-                    {minimumLabel(event) && (
-                      <span class:list={["font-bold", missing === 0 ? "text-ok" : "text-warn"]}>
-                        {missing === 0 ? "Minimum osiągnięte" : minimumLabel(event)}
-                      </span>
-                    )}
-                    {(() => {
-                      const chance = cardChance(event);
-                      return (
-                        <span
-                          class:list={["w-fit rounded-full px-2 py-0.5 text-xs font-bold", CHANCE_TONE[chance.level]]}
-                          title="Szansa, że mecz się odbędzie"
-                          data-testid="card-chance"
-                        >
-                          Szansa na mecz: {chance.percent}%
+          <span class="mb-1.5 block text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Kiedy</span>
+          <form method="GET" class="mb-5 flex gap-1.5 rounded-full bg-page-deep p-1" aria-label="Termin">
+            {Object.entries(sportsQuery(selected)).map(([name, value]) => (
+              <input type="hidden" name={name} value={value} />
+            ))}
+            {["", ...WHEN_OPTIONS].map((option) => (
+              <a
+                href={filterHref({ when: option || null, day: null })}
+                aria-current={option === when && !(option === "" && day) ? "page" : undefined}
+                class:list={[
+                  "grid h-10 flex-1 place-items-center rounded-full text-[12px] font-extrabold tracking-wide whitespace-nowrap uppercase transition-colors sm:text-[13px]",
+                  option === when && !(option === "" && day)
+                    ? "bg-card text-ink"
+                    : "text-page-ink-2 hover:text-page-ink",
+                ]}
+              >
+                {WHEN_LABELS[option]}
+              </a>
+            ))}
+            <label
+              class:list={[
+                "relative grid h-10 w-11 shrink-0 cursor-pointer place-items-center rounded-full",
+                day ? "bg-card text-ink" : "bg-page-2 text-page-ink",
+              ]}
+              title="Wybierz dzień"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path>
+              </svg>
+              <span class="sr-only">Dzień</span>
+              <input
+                type="date"
+                name="day"
+                value={day}
+                class="absolute inset-0 cursor-pointer opacity-0"
+                onchange="this.form.submit()"
+              />
+            </label>
+          </form>
+
+          <div class="mb-1.5 flex items-baseline justify-between gap-3">
+            <span class="text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">Gdzie</span>
+            {near && (
+              <span class="flex gap-3 text-xs" data-testid="near-sort">
+                <a
+                  href={filterHref({ sort: "time" })}
+                  aria-current={sort === "time" ? "page" : undefined}
+                  class:list={["font-semibold", sort === "time" ? "text-page-ink" : "text-page-link hover:underline"]}
+                >
+                  Najwcześniej
+                </a>
+                <a
+                  href={filterHref({ sort: "distance" })}
+                  aria-current={sort === "distance" ? "page" : undefined}
+                  class:list={[
+                    "font-semibold",
+                    sort === "distance" ? "text-page-ink" : "text-page-link hover:underline",
+                  ]}
+                >
+                  Najbliżej
+                </a>
+              </span>
+            )}
+          </div>
+          <NearbyPicker
+            near={near ? { label: near.label, radiusKm: near.radiusKm } : null}
+            counts={radiusCounts}
+            sports={radiusSports}
+            client:load
+          />
+        </aside>
+
+        <div class="min-w-0">
+          {day && (
+            <p class="mb-4 text-sm text-page-ink-2">
+              Spotkania w dniu <strong class="text-page-ink">{day.split("-").reverse().join(".")}</strong> ·{" "}
+              <a href={filterHref({ day: null })} class="font-semibold text-page-link hover:underline">
+                pokaż wszystkie
+              </a>
+            </p>
+          )}
+
+          {!user && (
+            <p class="mb-4 text-sm text-page-ink-2">
+              Aby zobaczyć dokładne miejsce i szczegóły spotkań,{" "}
+              <a href="/auth/signin" class="font-semibold text-page-link hover:underline">
+                zaloguj się
+              </a>
+            </p>
+          )}
+
+          {loadError && (
+            <p class="rounded-2xl bg-bad-soft p-4 text-bad">
+              Nie udało się wczytać ogłoszeń. Spróbuj odświeżyć stronę.
+            </p>
+          )}
+
+          {!loadError && events.length === 0 && near && nearest.length > 0 && (
+            <section class="mb-4 rounded-[20px] bg-page-2 p-5" data-testid="near-empty">
+              <p class="display text-2xl leading-none text-page-ink">W promieniu {near.radiusKm} km nic nie ma</p>
+              <p class="mt-2 text-sm text-page-ink-2">Najbliższe spotkania dalej:</p>
+              <ul class="mt-2 flex flex-col gap-1.5">
+                {nearest.map((event) => (
+                  <li>
+                    <a
+                      href={`/events/${event.id}`}
+                      class="flex items-center justify-between gap-3 rounded-2xl bg-card px-3.5 py-2.5 text-sm text-ink hover:bg-card-2"
+                    >
+                      <span class="flex min-w-0 items-center gap-2">
+                        <SportIcon sport={event.sport} size={18} />
+                        <span class="truncate">
+                          <strong>{sportLabel(event.sport)}</strong> ·{" "}
+                          <span class="first-letter:uppercase">{formatEventDay(event.starts_at)}</span> · {event.area}
                         </span>
-                      );
-                    })()}
-                    <VenueStatus status={event.venue_status} compact />
-                    {event.cost_cents != null && (
-                      <span class="font-bold text-ink" data-testid="card-cost">
-                        {formatPLN(shareCents(event.cost_cents, teamSize(event)))} / os.
-                        <span class="font-normal text-ink-3"> · obiekt {formatPLN(event.cost_cents)}</span>
                       </span>
-                    )}
-                    <span class="text-ink-3">
-                      {event.reserve_spots > 0
-                        ? `Rezerwa ${String(event.reserve_count)} z ${String(event.reserve_spots)}`
-                        : "Bez rezerwy"}
-                      {event.organizer_plays && " · organizator gra"}
-                      {event.level_min !== null && ` · ${levelRangeLabel(event.level_min, event.level_max)}`}
-                    </span>
-                  </div>
-                  <a
-                    href={`/events/${event.id}`}
+                      <span class="shrink-0 font-bold">{formatDistance(event.distance_km ?? 0)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              {widerRadius && (
+                <p class="mt-3 text-sm text-page-ink-2">
+                  Zwiększ promień do <strong class="text-page-ink">{widerRadius} km</strong> powyżej — albo wystaw
+                  własne spotkanie w swojej okolicy.
+                </p>
+              )}
+            </section>
+          )}
+
+          {!loadError && events.length === 0 && !(near && nearest.length > 0) && (
+            <div class="rounded-[20px] bg-page-2 p-6 text-center">
+              <p class="display text-3xl text-page-ink">Pusto na boisku</p>
+              <p class="mt-2 text-sm text-page-ink-2">
+                Brak nadchodzących spotkań{selected.length > 0 || day || when || near ? " dla wybranych filtrów" : ""}.
+                Wystaw własne — ktoś na pewno dołączy.
+              </p>
+            </div>
+          )}
+
+          <ul class="grid gap-4 lg:grid-cols-2">
+            {events.map((event) => {
+              const full = freeSpots(event) === 0;
+              const action = cta(event);
+              const shirts = seats(event);
+              const missing = missingToMinimum(event);
+              return (
+                <li class="flex flex-col overflow-hidden rounded-[20px] bg-card text-ink" data-sport={event.sport}>
+                  <div
                     class:list={[
-                      "grid h-[46px] shrink-0 place-items-center rounded-full px-5 text-sm font-extrabold tracking-wide uppercase transition-colors",
-                      action.tone === "brand" && "bg-brand text-on-brand hover:bg-brand-hover",
-                      action.tone === "dark" && "bg-ink text-card",
-                      action.tone === "muted" && "bg-card-2 text-ink-3",
-                      action.tone === "mine" && "bg-ok-soft text-ok",
+                      "flex items-center justify-between gap-3 px-3.5 py-2.5",
+                      full ? "bg-card-2" : "bg-brand",
                     ]}
                   >
-                    {action.label}
-                  </a>
-                </div>
+                    <h2 class="display text-[28px] leading-none">
+                      <a href={`/events/${event.id}`} class="inline-flex items-center gap-2 hover:underline">
+                        <SportIcon sport={event.sport} size={22} strokeWidth={2.2} />
+                        {sportLabel(event.sport)}
+                      </a>
+                    </h2>
+                    <span class="display text-2xl">{formatTimeRange(event.starts_at, event.duration_minutes)}</span>
+                  </div>
 
-                {event.description && <p class="line-clamp-2 text-sm text-ink-2">{event.description}</p>}
-              </div>
+                  <div class="flex flex-1 flex-col gap-3 p-3.5">
+                    <div class="flex flex-col gap-1 text-[15px]">
+                      <span class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="font-bold first-letter:uppercase">{formatEventDay(event.starts_at)}</span>
+                        <span class="flex items-center gap-1.5">
+                          {(() => {
+                            const spot = weatherSpot(event);
+                            return (
+                              spot && (
+                                <WeatherBadge
+                                  eventId={event.id}
+                                  startsAt={event.starts_at}
+                                  durationMinutes={event.duration_minutes}
+                                  client:idle
+                                />
+                              )
+                            );
+                          })()}
+                          <Countdown startsAt={event.starts_at} durationMinutes={event.duration_minutes} />
+                        </span>
+                      </span>
+                      <span class="text-ink-2">
+                        {event.area}
+                        {event.place && <> · {event.place}</>}
+                        {event.distance_km !== undefined && (
+                          <strong class="text-ink" data-testid="card-distance">
+                            {" "}
+                            · {event.lat == null ? "ok. " : ""}
+                            {formatDistance(event.distance_km)} od Ciebie
+                          </strong>
+                        )}
+                      </span>
+                    </div>
 
-              <div class="sleeve sleeve-dark pb-[3px]" aria-hidden="true">
-                <span />
-                <span />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                    {event.lat != null && event.lng != null && (
+                      <div class="relative isolate overflow-hidden rounded-2xl">
+                        <EventMap
+                          lat={event.lat}
+                          lng={event.lng}
+                          label={event.place ?? event.area}
+                          preview
+                          client:visible
+                        />
+                        <a
+                          href={`/events/${event.id}`}
+                          class="absolute inset-0 z-[450]"
+                          aria-hidden="true"
+                          tabindex="-1"
+                        >
+                          <span class="sr-only">Szczegóły ogłoszenia</span>
+                        </a>
+                      </div>
+                    )}
 
-      {hasMore && show < MAX_EVENTS_SHOWN && (
-        <div class="mt-5 text-center">
+                    <div class="flex items-end justify-between gap-3" data-testid="card-free-spots">
+                      <div class="flex items-baseline gap-1.5">
+                        <span
+                          class:list={[
+                            "display number-shadow text-[64px] leading-[0.8]",
+                            full ? "text-ink-3" : "text-page",
+                          ]}
+                        >
+                          {freeSpots(event)}
+                        </span>
+                        <span class="display text-xl text-ink-2">
+                          {freeWord(freeSpots(event))} z {teamSize(event)}
+                          {full && " · komplet"}
+                        </span>
+                      </div>
+                      {shirts ? (
+                        <div class="grid grid-cols-6 gap-[3px]" aria-hidden="true">
+                          {shirts.map((taken) => (
+                            <Jersey sport={event.sport} fill={taken ? "var(--ok)" : "#BFD9C8"} width={18} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div class="mb-2 h-2 w-28 overflow-hidden rounded-full bg-track" aria-hidden="true">
+                          <div
+                            class="bg-fill h-full rounded-full"
+                            style={`width: ${String(Math.round((takenSpots(event) / Math.max(teamSize(event), 1)) * 100))}%`}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="flex min-w-0 flex-col gap-0.5 text-sm">
+                        {minimumLabel(event) && (
+                          <span class:list={["font-bold", missing === 0 ? "text-ok" : "text-warn"]}>
+                            {missing === 0 ? "Minimum osiągnięte" : minimumLabel(event)}
+                          </span>
+                        )}
+                        {(() => {
+                          const chance = cardChance(event);
+                          return (
+                            <span
+                              class:list={[
+                                "w-fit rounded-full px-2 py-0.5 text-xs font-bold",
+                                CHANCE_TONE[chance.level],
+                              ]}
+                              title="Szansa, że mecz się odbędzie"
+                              data-testid="card-chance"
+                            >
+                              Szansa na mecz: {chance.percent}%
+                            </span>
+                          );
+                        })()}
+                        <VenueStatus status={event.venue_status} compact />
+                        {event.cost_cents != null && (
+                          <span class="font-bold text-ink" data-testid="card-cost">
+                            {formatPLN(shareCents(event.cost_cents, teamSize(event)))} / os.
+                            <span class="font-normal text-ink-3"> · obiekt {formatPLN(event.cost_cents)}</span>
+                          </span>
+                        )}
+                        <span class="text-ink-3">
+                          {event.reserve_spots > 0
+                            ? `Rezerwa ${String(event.reserve_count)} z ${String(event.reserve_spots)}`
+                            : "Bez rezerwy"}
+                          {event.organizer_plays && " · organizator gra"}
+                          {event.level_min !== null && ` · ${levelRangeLabel(event.level_min, event.level_max)}`}
+                        </span>
+                      </div>
+                      <a
+                        href={`/events/${event.id}`}
+                        class:list={[
+                          "grid h-[46px] shrink-0 place-items-center rounded-full px-5 text-sm font-extrabold tracking-wide uppercase transition-colors",
+                          action.tone === "brand" && "bg-brand text-on-brand hover:bg-brand-hover",
+                          action.tone === "dark" && "bg-ink text-card",
+                          action.tone === "muted" && "bg-card-2 text-ink-3",
+                          action.tone === "mine" && "bg-ok-soft text-ok",
+                        ]}
+                      >
+                        {action.label}
+                      </a>
+                    </div>
+
+                    {event.description && <p class="line-clamp-2 text-sm text-ink-2">{event.description}</p>}
+                  </div>
+
+                  <div class="sleeve sleeve-dark pb-[3px]" aria-hidden="true">
+                    <span />
+                    <span />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {hasMore && show < MAX_EVENTS_SHOWN && (
+            <div class="mt-5 text-center">
+              <a
+                href={moreHref}
+                data-testid="show-more"
+                class="inline-grid h-12 place-items-center rounded-full bg-page-2 px-6 text-sm font-bold text-page-ink transition-colors hover:bg-page-deep"
+              >
+                Pokaż więcej
+              </a>
+            </div>
+          )}
+
           <a
-            href={moreHref}
-            data-testid="show-more"
-            class="inline-grid h-12 place-items-center rounded-full bg-page-2 px-6 text-sm font-bold text-page-ink transition-colors hover:bg-page-deep"
+            href="/venues/new"
+            data-testid="add-venue-entry"
+            class="mt-6 flex items-center justify-between gap-4 rounded-[20px] bg-page-2 p-5 text-page-ink transition-colors hover:bg-page-deep"
           >
-            Pokaż więcej
+            <span class="flex flex-col gap-1">
+              <span class="display text-2xl leading-none">Masz boisko, halę albo korty?</span>
+              <span class="text-sm text-page-ink-2">
+                Dodaj obiekt z cennikiem i godzinami otwarcia — gracze zarezerwują u Ciebie termin.
+              </span>
+            </span>
+            <span class="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-extrabold tracking-wide text-on-brand uppercase">
+              Dodaj obiekt
+            </span>
           </a>
         </div>
-      )}
-
-      <a
-        href="/venues/new"
-        data-testid="add-venue-entry"
-        class="mt-6 flex items-center justify-between gap-4 rounded-[20px] bg-page-2 p-5 text-page-ink transition-colors hover:bg-page-deep"
-      >
-        <span class="flex flex-col gap-1">
-          <span class="display text-2xl leading-none">Masz boisko, halę albo korty?</span>
-          <span class="text-sm text-page-ink-2">
-            Dodaj obiekt z cennikiem i godzinami otwarcia — gracze zarezerwują u Ciebie termin.
-          </span>
-        </span>
-        <span class="shrink-0 rounded-full bg-brand px-4 py-2 text-sm font-extrabold tracking-wide text-on-brand uppercase">
-          Dodaj obiekt
-        </span>
-      </a>
+      </div>
       <p class="mt-6 text-center text-xs text-page-ink-2">
         {WEATHER_ATTRIBUTION} ·{" "}
         <a href="/regulamin" class="hover:underline">
