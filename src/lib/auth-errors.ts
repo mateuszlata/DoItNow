@@ -12,6 +12,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   over_request_rate_limit: "Zbyt wiele prób. Spróbuj ponownie za chwilę.",
   over_email_send_rate_limit: "Zbyt wiele prób. Spróbuj ponownie za chwilę.",
   signup_disabled: "Rejestracja jest obecnie wyłączona.",
+  same_password: "Nowe hasło musi być inne niż dotychczasowe.",
 };
 
 export const AUTH_NOT_CONFIGURED = "Brak konfiguracji logowania. Spróbuj ponownie później.";

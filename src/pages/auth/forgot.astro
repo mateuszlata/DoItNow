@@ -1,0 +1,38 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Logo from "@/components/Logo.astro";
+import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
+import { TURNSTILE_SITE_KEY } from "astro:env/server";
+
+const error = Astro.url.searchParams.get("error");
+const sent = Astro.url.searchParams.has("sent");
+---
+
+<Layout title="Nie pamiętasz hasła? · Metando">
+  <div class="bg-app flex min-h-screen items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-line bg-card p-8 text-ink shadow-card backdrop-blur-xl">
+      <a href="/events" class="mb-6 flex justify-center" aria-label="Metando — ogłoszenia">
+        <Logo size="hero" />
+      </a>
+      <h1 class="display mb-2 text-center text-2xl font-bold text-ink">Nie pamiętasz hasła?</h1>
+      {sent ? (
+        <p class="rounded-2xl border border-ok-line bg-ok-soft px-3 py-3 text-sm text-ok" data-testid="forgot-sent">
+          Jeśli to konto istnieje, wysłaliśmy na nie link do ustawienia nowego hasła. Otwórz go w tej przeglądarce —
+          link działa przez godzinę. Nie widzisz maila? Sprawdź spam.
+        </p>
+      ) : (
+        <>
+          <p class="mb-5 text-center text-sm text-ink-2">
+            Podaj e-mail konta — wyślemy link do ustawienia nowego hasła.
+          </p>
+          <ForgotPasswordForm serverError={error} turnstileSiteKey={TURNSTILE_SITE_KEY} client:load />
+        </>
+      )}
+      <p class="mt-4 text-center text-sm text-ink-3">
+        <a href="/auth/signin" class="text-link hover:underline">
+          Wróć do logowania
+        </a>
+      </p>
+    </div>
+  </div>
+</Layout>

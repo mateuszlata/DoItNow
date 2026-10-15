@@ -241,6 +241,11 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
         </p>
       )}
 
+      {okKey === "password-changed" && (
+        <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-4 py-2 text-sm font-semibold text-ok">
+          Hasło zmienione. Następnym razem zaloguj się nowym hasłem.
+        </p>
+      )}
       {okKey === "sports-saved" && (
         <p class="mb-4 rounded-2xl border border-ok-line bg-ok-soft px-4 py-2 text-sm font-semibold text-ok">
           Zapisaliśmy Twoje sporty. Zmienisz je w zakładce „Moje”.

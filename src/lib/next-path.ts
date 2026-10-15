@@ -7,6 +7,8 @@ export const NEXT_PARAM = "next";
 /** Ciasteczko z celem powrotu na czas potwierdzania e-maila (link z maila otwiera /auth/callback). */
 export const NEXT_COOKIE = "metando_next";
 const NEXT_COOKIE_MAX_AGE = 60 * 60 * 24;
+/** Ciasteczko „prośba o nowe hasło” — link z maila wraca do /auth/callback, a stamtąd na /auth/new-password. */
+export const RECOVERY_COOKIE = "metando_recovery";
 
 export function safeNext(value: unknown): string | null {
   if (typeof value !== "string" || value.length === 0 || value.length > 300) return null;
