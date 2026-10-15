@@ -226,6 +226,11 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Mail potwierdzający rejestrację po polsku (na produkcji ten sam szablon wkleja się w panelu Supabase).
+[auth.email.template.confirmation]
+subject = "Potwierdź konto w Metando"
+content_path = "./supabase/templates/confirm-signup.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
