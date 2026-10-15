@@ -6,8 +6,8 @@ export const LEGAL_VERSION = "2026-10-15";
 export const OPERATOR = {
   name: "Mateusz Łata",
   address: "ul. Leśmiana 2 m. 44, 42-207 Częstochowa",
-  // Tymczasowo Gmail; po przeniesieniu domeny i włączeniu Cloudflare Email Routing: kontakt@metando.pl.
-  email: "mateuszlata@gmail.com",
+  // Cloudflare Email Routing przekazuje pocztę z tego adresu do skrzynki operatora.
+  email: "kontakt@metando.pl",
 };
 
 export const SERVICE_NAME = "Metando";
