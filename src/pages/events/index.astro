@@ -29,6 +29,7 @@ import { freeReserve, freeSpots, freeWord, minimumLabel, missingToMinimum, taken
 import { meetingChance, type Chance } from "@/lib/chance";
 import { myStatusesFor } from "@/lib/services/participations";
 import { levelRangeLabel } from "@/lib/levels";
+import { getLevels } from "@/lib/services/profiles";
 import type { ParticipationStatus } from "@/types";
 
 /** Szansa, że mecz się odbędzie — plakietka na karcie (src/lib/chance.ts). */
@@ -76,6 +77,11 @@ const okKey = Astro.url.searchParams.get("ok");
 // „W pobliżu”: okolica i promień z ciasteczka tej przeglądarki; kolejność „najbliżej” z adresu.
 const near = parseNear(Astro.cookies.get(NEAR_COOKIE)?.value);
 const sort = near && Astro.url.searchParams.get("sort") === "distance" ? "distance" : "time";
+// „Pasujące do mojego poziomu”: tylko dla zalogowanych, którzy podali poziom choć w jednym sporcie.
+const myLevels = user && supabase ? await getLevels(supabase, user.id) : {};
+const hasLevels = Object.keys(myLevels).length > 0;
+const fit = hasLevels && Astro.url.searchParams.get("fit") === "1";
+const levels = fit ? myLevels : null;
 
 let events: EventListItem[] = [];
 let hasMore = false;
@@ -88,7 +94,7 @@ if (supabase) {
   try {
     ({ events, hasMore, radiusCounts, radiusSports } = await listUpcomingEvents(
       supabase,
-      { sports: selected, day, when, near, sort },
+      { sports: selected, day, when, near, sort, levels },
       { authenticated: Boolean(user), limit: show },
     ));
   } catch (error) {
@@ -103,7 +109,7 @@ let nearest: Awaited<ReturnType<typeof nearestEvents>> = [];
 if (supabase && near && !loadError && events.length === 0) {
   nearest = await nearestEvents(
     supabase,
-    { sports: selected, day, when, near },
+    { sports: selected, day, when, near, levels },
     { authenticated: Boolean(user) },
   ).catch(() => []);
 }
@@ -122,7 +128,7 @@ const myStatuses: Map<string, ParticipationStatus> =
     : new Map<string, ParticipationStatus>();
 
 if (supabase && !loadError) {
-  sportCounts = await countEventsBySport(supabase, { day, when, near }, { authenticated: Boolean(user) }).catch(
+  sportCounts = await countEventsBySport(supabase, { day, when, near, levels }, { authenticated: Boolean(user) }).catch(
     () => null,
   );
 }
@@ -155,6 +161,7 @@ function filterHref(changes: {
   when?: string | null;
   day?: string | null;
   sort?: "time" | "distance";
+  fit?: boolean;
 }): string {
   const params = new URLSearchParams(sportsQuery(changes.sports ?? selected));
   const nextWhen = changes.when === undefined ? when : changes.when;
@@ -163,6 +170,7 @@ function filterHref(changes: {
   if (nextWhen) params.set("when", nextWhen);
   if (nextDay) params.set("day", nextDay);
   if (near && nextSort === "distance") params.set("sort", "distance");
+  if (changes.fit ?? fit) params.set("fit", "1");
   const query = params.toString();
   return query ? `/events?${query}` : "/events";
 }
@@ -413,6 +421,42 @@ function cta(event: EventListItem): { label: string; tone: "brand" | "dark" | "m
             sports={radiusSports}
             client:load
           />
+          {user && (
+            <>
+              <span class="mt-5 mb-1.5 block text-[11px] font-extrabold tracking-widest text-page-ink-2 uppercase">
+                Poziom
+              </span>
+              {hasLevels ? (
+                <a
+                  href={filterHref({ fit: !fit })}
+                  aria-current={fit ? "true" : undefined}
+                  data-testid="level-fit"
+                  class:list={[
+                    "mb-5 inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-bold transition-colors",
+                    fit ? "bg-card text-ink" : "bg-page-2 text-page-ink hover:bg-page-deep",
+                  ]}
+                >
+                  <span
+                    class:list={[
+                      "grid size-4 place-items-center rounded border-2 text-[10px] leading-none",
+                      fit ? "border-ink bg-ink text-card" : "border-page-ink-2",
+                    ]}
+                    aria-hidden="true"
+                  >
+                    {fit && "✓"}
+                  </span>
+                  Pasujące do mojego poziomu
+                </a>
+              ) : (
+                <p class="mb-5 text-sm text-page-ink-2">
+                  <a href="/my#moj-poziom" class="font-semibold text-page-link hover:underline">
+                    Podaj swój poziom
+                  </a>{" "}
+                  — pokażemy spotkania, które do niego pasują.
+                </p>
+              )}
+            </>
+          )}
         </aside>
 
         <div class="min-w-0">

@@ -4,7 +4,7 @@ import { isPosition, supportsLineup } from "@/lib/lineup";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SPORT_IDS } from "@/lib/sports";
 import { dayRange, localDateTimeToDate, whenRange } from "@/lib/time";
-import { parseLevelRange } from "@/lib/levels";
+import { levelFitFilter, parseLevelRange, type Level } from "@/lib/levels";
 import { MAX_RADIUS_KM, NEAR_RADII, boundingBox, distanceKm, type Near } from "@/lib/near";
 import { isLastMinute } from "@/lib/services/participations";
 import { getVenue } from "@/lib/services/venues";
@@ -366,6 +366,8 @@ export interface EventFilters {
   near?: Near | null;
   /** Kolejność przy „W pobliżu”: najbliższe albo (domyślnie) najwcześniejsze. */
   sort?: "time" | "distance";
+  /** „Pasujące do mojego poziomu”: moje deklaracje poziomu w sportach (src/lib/levels.ts, levelFitFilter). */
+  levels?: Partial<Record<string, Level>> | null;
 }
 
 /** Położenie spotkania na liście: dokładne dla zalogowanych, zaokrąglone z publicznego widoku dla gości. */
@@ -434,6 +436,10 @@ export async function listUpcomingEvents(
   );
   if (sports.length > 0) {
     query = query.in("sport", sports);
+  }
+  const levelFilter = filters.levels ? levelFitFilter(filters.levels) : null;
+  if (levelFilter) {
+    query = query.or(levelFilter);
   }
   const quickRange = filters.when ? whenRange(filters.when, now) : null;
   if (quickRange) {

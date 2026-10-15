@@ -133,3 +133,18 @@ export function levelMixLabel(mix: { level: number; players: number }[]): string
     .map((row) => `${String(row.players)}× ${LEVEL_LABELS[row.level as Level].toLowerCase()}`)
     .join(", ");
 }
+
+/**
+ * Warunek PostgREST („or”) dla filtra „pasujące do mojego poziomu”: spotkania dla każdego, w sportach bez mojej
+ * deklaracji (jak w fitsLevel — brak danych pasuje) i te, których zakres obejmuje mój poziom w danym sporcie.
+ * `null`, gdy nie podano żadnego poziomu — wtedy pasuje wszystko.
+ */
+export function levelFitFilter(levels: Partial<Record<string, Level>>): string | null {
+  const declared = Object.entries(levels).filter((entry): entry is [string, Level] => isLevel(entry[1]));
+  if (declared.length === 0) return null;
+  const sports = declared.map(([sport]) => `"${sport}"`).join(",");
+  const fits = declared.map(
+    ([sport, level]) => `and(sport.eq."${sport}",level_min.lte.${String(level)},level_max.gte.${String(level)})`,
+  );
+  return ["level_min.is.null", `sport.not.in.(${sports})`, ...fits].join(",");
+}

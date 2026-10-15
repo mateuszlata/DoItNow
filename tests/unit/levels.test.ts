@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fitsLevel, levelHint, levelMixLabel, levelRangeLabel, parseLevelRange } from "@/lib/levels";
+import { fitsLevel, levelFitFilter, levelHint, levelMixLabel, levelRangeLabel, parseLevelRange } from "@/lib/levels";
 
 describe("levels", () => {
   it("parses the event range from the form", () => {
@@ -31,5 +31,14 @@ describe("levels", () => {
   it("describes levels per sport", () => {
     expect(levelHint("pilka-nozna", 2)).toBe("gram co tydzień ze znajomymi");
     expect(levelHint("inne", 1)).toBe("dla zabawy, gram okazjonalnie");
+  });
+});
+
+describe("levelFitFilter", () => {
+  it("builds no filter without declared levels and a PostgREST condition otherwise", () => {
+    expect(levelFitFilter({})).toBeNull();
+    expect(levelFitFilter({ tenis: 3 })).toBe(
+      'level_min.is.null,sport.not.in.("tenis"),and(sport.eq."tenis",level_min.lte.3,level_max.gte.3)',
+    );
   });
 });

@@ -1,6 +1,6 @@
 // Poziom sportowy: deklaracje graczy, zakres spotkania i rozkład poziomów w składzie (lokalny Supabase).
 import { afterAll, describe, expect, it } from "vitest";
-import { createEvent, getLevelMix, updateEvent, type EventFormValues } from "@/lib/services/events";
+import { createEvent, getLevelMix, listUpcomingEvents, updateEvent, type EventFormValues } from "@/lib/services/events";
 import { requestToJoin } from "@/lib/services/participations";
 import { getLevels, saveLevel } from "@/lib/services/profiles";
 import { toLocalDateTime } from "@/lib/time";
@@ -67,5 +67,31 @@ describe("skill levels", () => {
       { level: 2, players: 2 },
       { level: 3, players: 1 },
     ]);
+  });
+
+  it("lists only events that fit my level, treating open events and undeclared sports as a fit", async () => {
+    const [organizer, player] = await Promise.all([newUser("Org3 PZ"), newUser("Gracz3 PZ")]);
+    await saveLevel(player.client, player.id, "pilka-nozna", 2);
+    const ids: Record<string, string> = {};
+    for (const [name, values] of [
+      ["easy", { levelRange: "1-2" }],
+      ["hard", { levelRange: "3-4" }],
+      ["open", { levelRange: "" }],
+      ["tennis", { sport: "tenis", levelRange: "4-4" }],
+    ] as const) {
+      const created = await createEvent(organizer.client, organizer.id, form(values));
+      if (!created.ok) throw new Error(JSON.stringify(created.errors));
+      ids[name] = created.event.id;
+    }
+
+    const { events } = await listUpcomingEvents(
+      player.client,
+      { levels: await getLevels(player.client, player.id) },
+      { authenticated: true, limit: 50 },
+    );
+    const shown = Object.entries(ids)
+      .filter(([, id]) => events.some((e) => e.id === id))
+      .map(([name]) => name);
+    expect(shown.sort()).toEqual(["easy", "open", "tennis"]);
   });
 });
