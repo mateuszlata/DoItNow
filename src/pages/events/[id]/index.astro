@@ -282,8 +282,8 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
   description={share?.description}
   image={share?.image}
 >
-  <div class="bg-app min-h-screen p-4 pb-40">
-    <div class="mx-auto flex max-w-xl flex-col gap-5">
+  <div class="bg-app min-h-screen p-4 pb-40 lg:pb-10">
+    <div class="mx-auto flex max-w-xl flex-col gap-5 lg:max-w-6xl">
       <Topbar hideNav />
       {liveVersion && <div hidden data-live-event={id} data-live-version={liveVersion} />}
       <div
@@ -408,492 +408,528 @@ const showBar = !mustAnswer && (!user || (details !== null && (isOrganizer ? isO
             </section>
           )}
 
-          <div class="flex flex-col gap-2">
-            <h1 class="display display-hero pl-1.5 text-[48px] leading-[0.86] text-page-ink">
-              {day.weekday}
-              <br />
-              {day.date} · {formatEventTime(summary.starts_at)}
-            </h1>
-            <Countdown startsAt={summary.starts_at} durationMinutes={summary.duration_minutes} large />
-            {weatherPoint && !isPast && (
-              <div class="flex items-center gap-2">
-                <WeatherBadge
-                  eventId={id}
-                  startsAt={summary.starts_at}
-                  durationMinutes={summary.duration_minutes}
-                  size="large"
-                  client:idle
-                />
-                <span class="text-[11px] text-page-ink-2">{WEATHER_ATTRIBUTION}</span>
-              </div>
-            )}
-            <p class="text-[15px] text-page-ink-2">
-              {summary.area}
-              {details && (
-                <>
-                  {" · "}
-                  <span class="font-bold text-page-ink">{details.place}</span>
-                  {" · "}
-                  {organizerLeft ? "organizator zrezygnował" : <>organizuje {details.organizer_name}</>}
-                </>
-              )}
-            </p>
-          </div>
-
-          {details?.lat != null && details.lng != null && (
-            <div class="relative isolate overflow-hidden rounded-[20px]">
-              <EventMap lat={details.lat} lng={details.lng} label={details.place} client:visible />
-              {navigateHref && (
-                <a
-                  href={navigateHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="absolute right-3 bottom-3 z-[1000] grid h-10 place-items-center rounded-full bg-ink px-4 text-[13px] font-bold text-card"
-                >
-                  Nawiguj
-                </a>
-              )}
-            </div>
-          )}
-
-          <div class="grid grid-cols-3 gap-2">
-            <div class="rounded-2xl bg-card p-3 text-ink" data-testid="free-spots">
-              <div class="display number-shadow text-[44px] leading-[0.85] text-page">{free}</div>
-              <div class="mt-1.5 text-xs font-bold text-ink-2 uppercase">
-                {" "}
-                {freeWord(free)} z {team}
-              </div>
-            </div>
-            <div class="rounded-2xl bg-page-2 p-3" data-testid="minimum" title={minimum ?? "Bez minimum"}>
-              <div class="display text-[44px] leading-[0.85]">{summary.min_people ?? "—"}</div>
-              <div
-                class:list={[
-                  "mt-1.5 text-xs font-bold uppercase",
-                  missing === 0 ? "text-page-ink-2" : missing === null ? "text-page-ink-2" : "text-bench",
-                ]}
-              >
-                {missing === null ? "bez minimum" : missing === 0 ? "min. jest" : `min. · brak ${String(missing)}`}
-              </div>
-            </div>
-            <div class="rounded-2xl bg-page-2 p-3" data-testid="reserve-summary">
-              <div class="display text-[44px] leading-[0.85]">
-                {summary.reserve_spots > 0 ? `${String(summary.reserve_count)}/${String(summary.reserve_spots)}` : "—"}
-              </div>
-              <div class="mt-1.5 text-xs font-bold text-page-ink-2 uppercase">
-                {summary.reserve_spots > 0 ? `rezerwa · ${String(reserveFree)} wolne` : "bez rezerwy"}
-              </div>
-            </div>
-          </div>
-          <p class="-mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-page-ink" data-testid="time-and-cost">
-            <span>
-              <strong>{formatTimeRange(summary.starts_at, summary.duration_minutes)}</strong>
-              <span class="text-page-ink-2"> · {summary.duration_minutes} min</span>
-            </span>
-            {summary.cost_cents != null && (
-              <span>
-                <strong class="text-brand">{formatPLN(shareCents(summary.cost_cents, team))} na osobę</strong>
-                <span class="text-page-ink-2"> · obiekt {formatPLN(summary.cost_cents)}</span>
-              </span>
-            )}
-          </p>
-          {summary.venue_status && (
-            <div class="-mt-2 flex flex-col gap-1">
-              <VenueStatus status={summary.venue_status} />
-              {details?.venue_status === "rejected" && details.venue_note && (
-                <span class="text-sm text-page-ink-2">Powód: {details.venue_note}</span>
-              )}
-              {details?.venue_status === "rejected" && isOrganizer && (
-                <span class="text-sm text-page-ink-2">
-                  Zmień termin albo obiekt w „Edytuj” — nowy termin trafi do zarządcy do potwierdzenia.
-                </span>
-              )}
-            </div>
-          )}
-          <p class="-mt-2 text-[13px] text-page-ink-2" data-testid="join-mode">
-            Dołączanie: {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
-            {summary.organizer_plays && " · organizator gra w składzie"}
-          </p>
-          <p class="-mt-2 text-[13px] text-page-ink" data-testid="event-level">
-            <strong>{levelRangeLabel(summary.level_min, summary.level_max)}</strong>
-            {levelMix.length > 0 && <span class="text-page-ink-2"> · w składzie: {levelMixLabel(levelMix)}</span>}
-          </p>
-
-          {details?.description && (
-            <section class="flex flex-col gap-1.5">
-              <h2 class="text-[13px] font-bold tracking-widest text-page-ink-2 uppercase">Od organizatora</h2>
-              <p class="text-[15px] leading-relaxed whitespace-pre-line">{details.description}</p>
-            </section>
-          )}
-
-          {isOrganizer && details && isOpen && (details.requires_approval || details.pending.length > 0) && (
-            <section class="rounded-[20px] bg-card p-4 text-ink">
-              <h2 class="display mb-3 text-2xl">Zgłoszenia do rozpatrzenia</h2>
-              {details.pending.length === 0 ? (
-                <p class="text-sm text-ink-3">Brak oczekujących zgłoszeń.</p>
-              ) : (
-                <>
-                  {details.free_spots === 0 && reserveFree > 0 && (
-                    <p class="mb-2 text-sm text-warn">
-                      Skład jest pełny — zaakceptowane osoby trafią na ławkę rezerwowych.
-                    </p>
+          <div class="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6">
+            <div class="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-5">
+              <div class="flex flex-col gap-2">
+                <h1 class="display display-hero pl-1.5 text-[48px] leading-[0.86] text-page-ink">
+                  {day.weekday}
+                  <br />
+                  {day.date} · {formatEventTime(summary.starts_at)}
+                </h1>
+                <Countdown startsAt={summary.starts_at} durationMinutes={summary.duration_minutes} large />
+                {weatherPoint && !isPast && (
+                  <div class="flex items-center gap-2">
+                    <WeatherBadge
+                      eventId={id}
+                      startsAt={summary.starts_at}
+                      durationMinutes={summary.duration_minutes}
+                      size="large"
+                      client:idle
+                    />
+                    <span class="text-[11px] text-page-ink-2">{WEATHER_ATTRIBUTION}</span>
+                  </div>
+                )}
+                <p class="text-[15px] text-page-ink-2">
+                  {summary.area}
+                  {details && (
+                    <>
+                      {" · "}
+                      <span class="font-bold text-page-ink">{details.place}</span>
+                      {" · "}
+                      {organizerLeft ? "organizator zrezygnował" : <>organizuje {details.organizer_name}</>}
+                    </>
                   )}
-                  {details.free_spots === 0 && reserveFree === 0 && (
-                    <p class="mb-2 text-sm text-warn">Skład i ławka są pełne — możesz tylko odrzucać zgłoszenia.</p>
+                </p>
+              </div>
+
+              {details?.lat != null && details.lng != null && (
+                <div class="relative isolate overflow-hidden rounded-[20px]">
+                  <EventMap lat={details.lat} lng={details.lng} label={details.place} client:visible />
+                  {navigateHref && (
+                    <a
+                      href={navigateHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="absolute right-3 bottom-3 z-[1000] grid h-10 place-items-center rounded-full bg-ink px-4 text-[13px] font-bold text-card"
+                    >
+                      Nawiguj
+                    </a>
                   )}
-                  <ul class="grid gap-2">
-                    {details.pending.map((p) => (
-                      <li
-                        class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-card-2 px-3 py-2 text-sm"
-                        data-testid="pending-request"
-                      >
-                        <span class="font-bold">{p.display_name}</span>
-                        <form
-                          method="POST"
-                          action={`/api/participations/${p.participation_id}/decide`}
-                          class="flex gap-2"
-                        >
-                          <input type="hidden" name="eventId" value={details.id} />
-                          <button
-                            type="submit"
-                            name="decision"
-                            value="accept"
-                            disabled={details.free_spots === 0 && reserveFree === 0}
-                            class="h-9 rounded-full bg-brand px-4 font-bold text-on-brand transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            Akceptuj
-                          </button>
-                          <button
-                            type="submit"
-                            name="decision"
-                            value="reject"
-                            class="h-9 rounded-full bg-card px-4 font-semibold text-ink transition-colors hover:bg-line"
-                          >
-                            Odrzuć
-                          </button>
-                        </form>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </section>
-          )}
-
-          {chance && chanceInput && (
-            <ChanceMeter
-              chance={chance}
-              explanation={chanceExplanation(chanceInput, chance)}
-              tips={
-                details && isChatMember
-                  ? chanceTips(chanceInput, {
-                      isOrganizer,
-                      canInvite: isOpen && (isOrganizer || (inSquad && details.members_can_invite)),
-                      reserveSpots: details.reserve_spots,
-                    })
-                  : []
-              }
-              editHref={isOrganizer && details ? `/events/${details.id}/edit` : undefined}
-            />
-          )}
-          {details && user && isOpen && (
-            <InviteSection
-              eventId={details.id}
-              userId={user.id}
-              isOrganizer={isOrganizer}
-              inSquad={inSquad}
-              membersCanInvite={details.members_can_invite}
-              my={myInvite}
-              canAdd={canAddInvites}
-              invites={details.invites}
-              groups={details.guest_groups}
-              origin={Astro.url.origin}
-              messagePrefix={inviteMessagePrefix}
-              subject={`Zaproszenie: ${shareSubject.replace("Metando: ", "")}`}
-            />
-          )}
-          {details && (
-            <SlotGrid
-              sport={details.sport}
-              teamSize={teamSize(details)}
-              organizerName={details.organizer_plays && !organizerLeft ? details.organizer_name : null}
-              organizerKit={details.organizer_kit}
-              participants={details.participants}
-              guestGroups={details.guest_groups}
-              organizerId={details.organizer_id}
-              reserveSpots={details.reserve_spots}
-              reserves={details.reserves}
-              handover={details.handover_at !== null}
-              removeFor={isOrganizer && isOpen ? details.id : undefined}
-              viewerId={user?.id}
-            />
-          )}
-          {details && lineupPlayers.length >= 2 && (
-            <MatchLineup
-              eventId={details.id}
-              sport={details.sport}
-              players={lineupPlayers}
-              canEdit={isOrganizer && isOpen}
-              initial={savedLineup}
-              client:load
-            />
-          )}
-          {chat && details && user !== null && (
-            <EventChat
-              eventId={details.id}
-              currentUserId={user.id}
-              isOrganizer={isOrganizer}
-              open={isChatOpen(details)}
-              initialMessages={chat.messages}
-              initialSyncedAt={chat.syncedAt}
-              shareText={shareText}
-              shareSubject={shareSubject}
-              shareUrl={eventUrl}
-              client:visible
-            />
-          )}
-          {!user && chatPreview.length > 0 && (
-            <ChatPreview
-              eventId={id}
-              messages={chatPreview}
-              guest={isGuest}
-              signupHref={authHref("signup", backHere)}
-              signinHref={authHref("signin", backHere)}
-              client:load
-            />
-          )}
-          {details && !isChatMember && myStatus === "pending" && (
-            <p class="text-sm text-page-ink-2">Czat spotkania zobaczysz po akceptacji zgłoszenia.</p>
-          )}
-          {!details && publicEvent && (
-            <SlotGrid
-              sport={publicEvent.sport}
-              teamSize={teamSize(publicEvent)}
-              organizerName={null}
-              participants={[]}
-              reserveSpots={publicEvent.reserve_spots}
-              reserves={[]}
-              handover={false}
-              anonymous={{
-                taken: publicEvent.accepted_count + (publicEvent.organizer_plays ? 1 : 0) + publicEvent.guest_count,
-                reserved: publicEvent.reserve_count,
-              }}
-            />
-          )}
-
-          {myGuestName && (
-            <section class="rounded-[20px] bg-card p-4 text-sm text-ink" data-testid="claim-guest">
-              <p class="font-bold">Jesteś już w składzie jako gość „{myGuestName}”</p>
-              <p class="mt-1 text-ink-2">
-                Kliknij „Dołącz” na dole — Twoje miejsce gościa przejdzie na konto i odblokuje się pisanie na czacie.
-              </p>
-            </section>
-          )}
-
-          {isGuest && details && (
-            <section id="dolacz" class="rounded-[20px] bg-card p-5 text-ink" data-testid="guest-member">
-              <h2 class="display text-2xl leading-none">Jesteś w składzie jako gość</h2>
-              <p class="mt-2 text-sm text-ink-2">
-                Grasz jako <strong class="text-ink">{guestName}</strong>. Zmieniły się plany? Daj znać, a miejsce trafi
-                do innych.
-              </p>
-              {isOpen && (
-                <div class="mt-3">
-                  <GuestAnswerForm action={`/api/events/${details.id}/guest`} name={guestName ?? ""} answered="yes" />
                 </div>
               )}
-              <div class="mt-4 rounded-2xl bg-card-2 p-4 text-sm">
-                <p class="font-bold">Z kontem masz więcej</p>
-                <ul class="mt-1 list-disc pl-5 text-ink-2">
-                  <li>piszesz na czacie spotkania,</li>
-                  <li>masz własne barwy i numer w składzie,</li>
-                  <li>zapisujesz się na kolejne mecze jednym kliknięciem.</li>
-                </ul>
-                <a
-                  href={authHref("signup", backHere)}
-                  class="mt-3 inline-grid h-10 place-items-center rounded-full bg-brand px-4 text-xs font-extrabold tracking-wide text-on-brand uppercase"
-                >
-                  Załóż darmowe konto
-                </a>
+
+              <div class="grid grid-cols-3 gap-2 lg:grid-cols-4">
+                <div class="rounded-2xl bg-card p-3 text-ink" data-testid="free-spots">
+                  <div class="display number-shadow text-[44px] leading-[0.85] text-page">{free}</div>
+                  <div class="mt-1.5 text-xs font-bold text-ink-2 uppercase">
+                    {" "}
+                    {freeWord(free)} z {team}
+                  </div>
+                </div>
+                <div class="rounded-2xl bg-page-2 p-3" data-testid="minimum" title={minimum ?? "Bez minimum"}>
+                  <div class="display text-[44px] leading-[0.85]">{summary.min_people ?? "—"}</div>
+                  <div
+                    class:list={[
+                      "mt-1.5 text-xs font-bold uppercase",
+                      missing === 0 ? "text-page-ink-2" : missing === null ? "text-page-ink-2" : "text-bench",
+                    ]}
+                  >
+                    {missing === null ? "bez minimum" : missing === 0 ? "min. jest" : `min. · brak ${String(missing)}`}
+                  </div>
+                </div>
+                <div class="rounded-2xl bg-page-2 p-3" data-testid="reserve-summary">
+                  <div class="display text-[44px] leading-[0.85]">
+                    {summary.reserve_spots > 0
+                      ? `${String(summary.reserve_count)}/${String(summary.reserve_spots)}`
+                      : "—"}
+                  </div>
+                  <div class="mt-1.5 text-xs font-bold text-page-ink-2 uppercase">
+                    {summary.reserve_spots > 0 ? `rezerwa · ${String(reserveFree)} wolne` : "bez rezerwy"}
+                  </div>
+                </div>
+                <div class="hidden rounded-2xl bg-page-2 p-3 lg:block" data-testid="level-tile">
+                  <div class="display text-[44px] leading-[0.85]">
+                    {summary.level_min === null
+                      ? "—"
+                      : summary.level_min === summary.level_max
+                        ? summary.level_min
+                        : `${String(summary.level_min)}–${String(summary.level_max)}`}
+                  </div>
+                  <div class="mt-1.5 text-xs font-bold text-page-ink-2 uppercase">
+                    {summary.level_min === null ? "poziom · dla każdego" : "poziom gry"}
+                  </div>
+                </div>
               </div>
-            </section>
-          )}
-
-          {!user && !isGuest && guestCanJoin && (
-            <section id="dolacz" class="rounded-[20px] bg-card p-5 text-ink" data-testid="guest-join">
-              <h2 class="display text-2xl leading-none">Dołącz bez zakładania konta</h2>
-              <p class="mt-2 mb-3 text-sm text-ink-2">
-                Podaj imię i kliknij „Będę” — organizator zobaczy Cię w składzie, a Ty dokładne miejsce i kto jeszcze
-                gra. Konto możesz założyć później, gdy zechcesz pisać na czacie.
+              <p class="-mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-page-ink" data-testid="time-and-cost">
+                <span>
+                  <strong>{formatTimeRange(summary.starts_at, summary.duration_minutes)}</strong>
+                  <span class="text-page-ink-2"> · {summary.duration_minutes} min</span>
+                </span>
+                {summary.cost_cents != null && (
+                  <span>
+                    <strong class="text-brand">{formatPLN(shareCents(summary.cost_cents, team))} na osobę</strong>
+                    <span class="text-page-ink-2"> · obiekt {formatPLN(summary.cost_cents)}</span>
+                  </span>
+                )}
               </p>
-              <GuestAnswerForm action={`/api/events/${id}/guest`} showNo={false} />
-              <p class="mt-3 text-center text-xs text-ink-3">
-                Masz konto?{" "}
-                <a href={authHref("signin", backHere)} class="font-bold text-link underline">
-                  Zaloguj się
-                </a>
+              {summary.venue_status && (
+                <div class="-mt-2 flex flex-col gap-1">
+                  <VenueStatus status={summary.venue_status} />
+                  {details?.venue_status === "rejected" && details.venue_note && (
+                    <span class="text-sm text-page-ink-2">Powód: {details.venue_note}</span>
+                  )}
+                  {details?.venue_status === "rejected" && isOrganizer && (
+                    <span class="text-sm text-page-ink-2">
+                      Zmień termin albo obiekt w „Edytuj” — nowy termin trafi do zarządcy do potwierdzenia.
+                    </span>
+                  )}
+                </div>
+              )}
+              <p class="-mt-2 text-[13px] text-page-ink-2" data-testid="join-mode">
+                Dołączanie: {summary.requires_approval ? "po akceptacji organizatora" : "od razu, bez akceptacji"}
+                {summary.organizer_plays && " · organizator gra w składzie"}
               </p>
-            </section>
-          )}
-
-          {!user && !isGuest && !guestCanJoin && (
-            <section id="dolacz" class="rounded-[20px] bg-page-2 p-5 text-page-ink" data-testid="guest-intro">
-              <h2 class="display text-2xl leading-none">Pierwszy raz w Metando?</h2>
-              <p class="mt-2 text-sm text-page-ink-2">
-                {publicEvent?.requires_approval
-                  ? "W tym spotkaniu organizator akceptuje zgłoszenia, więc potrzebne jest konto. Załóż je w 30 sekund — wrócisz prosto tutaj."
-                  : "W składzie nie ma już wolnego miejsca dla gości. Załóż darmowe konto w 30 sekund, a zapiszesz się na ostatnie miejsce albo na rezerwę."}
-              </p>
-              <a
-                href={authHref("signup", backHere)}
-                class="mt-3 inline-grid h-11 place-items-center rounded-full bg-brand px-5 text-sm font-extrabold tracking-wide text-on-brand uppercase"
+              <p
+                class:list={["-mt-2 text-[13px] text-page-ink", levelMix.length === 0 && "lg:hidden"]}
+                data-testid="event-level"
               >
-                Załóż konto i dołącz
-              </a>
-            </section>
-          )}
+                <strong class="lg:font-normal lg:text-page-ink-2">
+                  {levelRangeLabel(summary.level_min, summary.level_max)}
+                </strong>
+                {levelMix.length > 0 && <span class="text-page-ink-2"> · w składzie: {levelMixLabel(levelMix)}</span>}
+              </p>
+
+              {details?.description && (
+                <section class="flex flex-col gap-1.5">
+                  <h2 class="text-[13px] font-bold tracking-widest text-page-ink-2 uppercase">Od organizatora</h2>
+                  <p class="text-[15px] leading-relaxed whitespace-pre-line">{details.description}</p>
+                </section>
+              )}
+
+              {isOrganizer && details && isOpen && (details.requires_approval || details.pending.length > 0) && (
+                <section class="rounded-[20px] bg-card p-4 text-ink">
+                  <h2 class="display mb-3 text-2xl">Zgłoszenia do rozpatrzenia</h2>
+                  {details.pending.length === 0 ? (
+                    <p class="text-sm text-ink-3">Brak oczekujących zgłoszeń.</p>
+                  ) : (
+                    <>
+                      {details.free_spots === 0 && reserveFree > 0 && (
+                        <p class="mb-2 text-sm text-warn">
+                          Skład jest pełny — zaakceptowane osoby trafią na ławkę rezerwowych.
+                        </p>
+                      )}
+                      {details.free_spots === 0 && reserveFree === 0 && (
+                        <p class="mb-2 text-sm text-warn">Skład i ławka są pełne — możesz tylko odrzucać zgłoszenia.</p>
+                      )}
+                      <ul class="grid gap-2">
+                        {details.pending.map((p) => (
+                          <li
+                            class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-card-2 px-3 py-2 text-sm"
+                            data-testid="pending-request"
+                          >
+                            <span class="font-bold">{p.display_name}</span>
+                            <form
+                              method="POST"
+                              action={`/api/participations/${p.participation_id}/decide`}
+                              class="flex gap-2"
+                            >
+                              <input type="hidden" name="eventId" value={details.id} />
+                              <button
+                                type="submit"
+                                name="decision"
+                                value="accept"
+                                disabled={details.free_spots === 0 && reserveFree === 0}
+                                class="h-9 rounded-full bg-brand px-4 font-bold text-on-brand transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                Akceptuj
+                              </button>
+                              <button
+                                type="submit"
+                                name="decision"
+                                value="reject"
+                                class="h-9 rounded-full bg-card px-4 font-semibold text-ink transition-colors hover:bg-line"
+                              >
+                                Odrzuć
+                              </button>
+                            </form>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </section>
+              )}
+
+              {chance && chanceInput && (
+                <ChanceMeter
+                  chance={chance}
+                  explanation={chanceExplanation(chanceInput, chance)}
+                  tips={
+                    details && isChatMember
+                      ? chanceTips(chanceInput, {
+                          isOrganizer,
+                          canInvite: isOpen && (isOrganizer || (inSquad && details.members_can_invite)),
+                          reserveSpots: details.reserve_spots,
+                        })
+                      : []
+                  }
+                  editHref={isOrganizer && details ? `/events/${details.id}/edit` : undefined}
+                />
+              )}
+              {details && user && isOpen && (
+                <InviteSection
+                  eventId={details.id}
+                  userId={user.id}
+                  isOrganizer={isOrganizer}
+                  inSquad={inSquad}
+                  membersCanInvite={details.members_can_invite}
+                  my={myInvite}
+                  canAdd={canAddInvites}
+                  invites={details.invites}
+                  groups={details.guest_groups}
+                  origin={Astro.url.origin}
+                  messagePrefix={inviteMessagePrefix}
+                  subject={`Zaproszenie: ${shareSubject.replace("Metando: ", "")}`}
+                />
+              )}
+              {details && (
+                <SlotGrid
+                  sport={details.sport}
+                  teamSize={teamSize(details)}
+                  organizerName={details.organizer_plays && !organizerLeft ? details.organizer_name : null}
+                  organizerKit={details.organizer_kit}
+                  participants={details.participants}
+                  guestGroups={details.guest_groups}
+                  organizerId={details.organizer_id}
+                  reserveSpots={details.reserve_spots}
+                  reserves={details.reserves}
+                  handover={details.handover_at !== null}
+                  removeFor={isOrganizer && isOpen ? details.id : undefined}
+                  viewerId={user?.id}
+                />
+              )}
+              {details && lineupPlayers.length >= 2 && (
+                <MatchLineup
+                  eventId={details.id}
+                  sport={details.sport}
+                  players={lineupPlayers}
+                  canEdit={isOrganizer && isOpen}
+                  initial={savedLineup}
+                  client:load
+                />
+              )}
+              {details && !isChatMember && myStatus === "pending" && (
+                <p class="text-sm text-page-ink-2">Czat spotkania zobaczysz po akceptacji zgłoszenia.</p>
+              )}
+              {!details && publicEvent && (
+                <SlotGrid
+                  sport={publicEvent.sport}
+                  teamSize={teamSize(publicEvent)}
+                  organizerName={null}
+                  participants={[]}
+                  reserveSpots={publicEvent.reserve_spots}
+                  reserves={[]}
+                  handover={false}
+                  anonymous={{
+                    taken: publicEvent.accepted_count + (publicEvent.organizer_plays ? 1 : 0) + publicEvent.guest_count,
+                    reserved: publicEvent.reserve_count,
+                  }}
+                />
+              )}
+
+              {myGuestName && (
+                <section class="rounded-[20px] bg-card p-4 text-sm text-ink" data-testid="claim-guest">
+                  <p class="font-bold">Jesteś już w składzie jako gość „{myGuestName}”</p>
+                  <p class="mt-1 text-ink-2">
+                    Kliknij „Dołącz” na dole — Twoje miejsce gościa przejdzie na konto i odblokuje się pisanie na
+                    czacie.
+                  </p>
+                </section>
+              )}
+
+              {isGuest && details && (
+                <section id="dolacz" class="rounded-[20px] bg-card p-5 text-ink" data-testid="guest-member">
+                  <h2 class="display text-2xl leading-none">Jesteś w składzie jako gość</h2>
+                  <p class="mt-2 text-sm text-ink-2">
+                    Grasz jako <strong class="text-ink">{guestName}</strong>. Zmieniły się plany? Daj znać, a miejsce
+                    trafi do innych.
+                  </p>
+                  {isOpen && (
+                    <div class="mt-3">
+                      <GuestAnswerForm
+                        action={`/api/events/${details.id}/guest`}
+                        name={guestName ?? ""}
+                        answered="yes"
+                      />
+                    </div>
+                  )}
+                  <div class="mt-4 rounded-2xl bg-card-2 p-4 text-sm">
+                    <p class="font-bold">Z kontem masz więcej</p>
+                    <ul class="mt-1 list-disc pl-5 text-ink-2">
+                      <li>piszesz na czacie spotkania,</li>
+                      <li>masz własne barwy i numer w składzie,</li>
+                      <li>zapisujesz się na kolejne mecze jednym kliknięciem.</li>
+                    </ul>
+                    <a
+                      href={authHref("signup", backHere)}
+                      class="mt-3 inline-grid h-10 place-items-center rounded-full bg-brand px-4 text-xs font-extrabold tracking-wide text-on-brand uppercase"
+                    >
+                      Załóż darmowe konto
+                    </a>
+                  </div>
+                </section>
+              )}
+
+              {!user && !isGuest && guestCanJoin && (
+                <section id="dolacz" class="rounded-[20px] bg-card p-5 text-ink" data-testid="guest-join">
+                  <h2 class="display text-2xl leading-none">Dołącz bez zakładania konta</h2>
+                  <p class="mt-2 mb-3 text-sm text-ink-2">
+                    Podaj imię i kliknij „Będę” — organizator zobaczy Cię w składzie, a Ty dokładne miejsce i kto
+                    jeszcze gra. Konto możesz założyć później, gdy zechcesz pisać na czacie.
+                  </p>
+                  <GuestAnswerForm action={`/api/events/${id}/guest`} showNo={false} />
+                  <p class="mt-3 text-center text-xs text-ink-3">
+                    Masz konto?{" "}
+                    <a href={authHref("signin", backHere)} class="font-bold text-link underline">
+                      Zaloguj się
+                    </a>
+                  </p>
+                </section>
+              )}
+
+              {!user && !isGuest && !guestCanJoin && (
+                <section id="dolacz" class="rounded-[20px] bg-page-2 p-5 text-page-ink" data-testid="guest-intro">
+                  <h2 class="display text-2xl leading-none">Pierwszy raz w Metando?</h2>
+                  <p class="mt-2 text-sm text-page-ink-2">
+                    {publicEvent?.requires_approval
+                      ? "W tym spotkaniu organizator akceptuje zgłoszenia, więc potrzebne jest konto. Załóż je w 30 sekund — wrócisz prosto tutaj."
+                      : "W składzie nie ma już wolnego miejsca dla gości. Załóż darmowe konto w 30 sekund, a zapiszesz się na ostatnie miejsce albo na rezerwę."}
+                  </p>
+                  <a
+                    href={authHref("signup", backHere)}
+                    class="mt-3 inline-grid h-11 place-items-center rounded-full bg-brand px-5 text-sm font-extrabold tracking-wide text-on-brand uppercase"
+                  >
+                    Załóż konto i dołącz
+                  </a>
+                </section>
+              )}
+            </div>
+
+            {/* Na komputerze: akcja i czat obok, przyklejone przy przewijaniu. */}
+            <aside class="contents lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100vh-2rem)] lg:flex-col lg:gap-5 lg:overflow-y-auto">
+              {showBar && (
+                <div class="fixed inset-x-0 bottom-0 z-40 bg-page-deep lg:static lg:overflow-hidden lg:rounded-[20px]">
+                  <div class="sleeve" aria-hidden="true">
+                    <span />
+                    <span />
+                  </div>
+                  <div class="mx-auto flex max-w-xl flex-wrap items-center gap-2.5 px-4 pt-3.5 pb-5 lg:max-w-none">
+                    {!user && (
+                      <>
+                        {isGuest ? (
+                          <a
+                            href={authHref("signup", backHere)}
+                            class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+                          >
+                            Załóż konto
+                          </a>
+                        ) : guestCanJoin ? (
+                          <a
+                            href="#dolacz"
+                            class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+                          >
+                            Dołącz bez konta
+                          </a>
+                        ) : (
+                          <a
+                            href={authHref("signup", backHere)}
+                            class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
+                          >
+                            Dołącz — załóż konto
+                          </a>
+                        )}
+                        <a
+                          href={authHref("signin", backHere)}
+                          class="grid h-14 flex-1 place-items-center rounded-full bg-page-2 text-sm font-bold text-page-ink"
+                        >
+                          Mam konto
+                        </a>
+                      </>
+                    )}
+
+                    {isOrganizer && details && isOpen && (
+                      <div class="flex w-full gap-2.5" data-testid="organizer-actions">
+                        {canEditEvent(details.starts_at) ? (
+                          <a
+                            href={`/events/${details.id}/edit`}
+                            class="grid h-14 flex-1 place-items-center rounded-full bg-card text-[15px] font-bold text-ink"
+                          >
+                            Edytuj
+                          </a>
+                        ) : (
+                          <span class="flex-1 self-center text-xs text-page-ink-2">
+                            Edycja możliwa najpóźniej 12 h przed spotkaniem.
+                          </span>
+                        )}
+                        <form
+                          method="POST"
+                          action={`/api/events/${details.id}/cancel`}
+                          class="flex flex-[1.4]"
+                          onsubmit="return confirm('Odwołać spotkanie? Jeśli są zaakceptowani uczestnicy, zdecydują, czy spotkają się bez Ciebie.')"
+                        >
+                          <button
+                            type="submit"
+                            class="h-14 flex-1 rounded-full bg-[#3a2420] text-[15px] font-bold text-[#ffb4a6]"
+                          >
+                            Odwołaj spotkanie
+                          </button>
+                        </form>
+                      </div>
+                    )}
+
+                    {details && !isOrganizer && (
+                      <>
+                        {myStatus && myStatus !== "withdrawn" && (
+                          <span
+                            class="flex min-h-14 flex-1 items-center gap-2 rounded-full bg-page-2 px-4 py-2 text-sm leading-tight text-page-ink"
+                            data-testid="my-status"
+                          >
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="#FF7A1A"
+                              stroke-width="2.8"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M5 12l5 5 9-10"></path>
+                            </svg>
+                            <span>
+                              <span class="sr-only">Twoje zgłoszenie: </span>
+                              <strong class="first-letter:uppercase">{STATUS_LABELS[myStatus]}</strong>
+                              {myStatus === "accepted" && myNumber && <> · nr {myNumber}</>}
+                            </span>
+                          </span>
+                        )}
+                        {canJoin && (
+                          <form
+                            method="POST"
+                            action={`/api/events/${details.id}/join`}
+                            class="flex flex-1"
+                            onsubmit={
+                              levelMismatch && myLevel !== null
+                                ? `return confirm('${levelRangeLabel(summary.level_min, summary.level_max)}, a Twój poziom w tym sporcie to: ${LEVEL_LABELS[myLevel].toLowerCase()}. Na pewno dołączasz?')`
+                                : undefined
+                            }
+                          >
+                            <button
+                              type="submit"
+                              class="h-14 flex-1 rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
+                            >
+                              {joinLabel}
+                            </button>
+                          </form>
+                        )}
+                        {canWithdraw && (
+                          <form
+                            method="POST"
+                            action={`/api/events/${details.id}/withdraw`}
+                            onsubmit={
+                              lateWithdrawal
+                                ? "return confirm('Do spotkania zostało mniej niż 12 h. Na pewno rezygnujesz? Organizator dostanie powiadomienie, a Twoje miejsce zajmie ktoś z rezerwy.')"
+                                : undefined
+                            }
+                          >
+                            <button type="submit" class="h-14 rounded-full bg-card px-5 text-[15px] font-bold text-ink">
+                              {myStatus === "accepted"
+                                ? "Zrezygnuj"
+                                : myStatus === "reserve"
+                                  ? "Zejdź z ławki"
+                                  : "Wycofaj zgłoszenie"}
+                            </button>
+                          </form>
+                        )}
+                        {!isOpen && !myStatus && (
+                          <p class="w-full text-sm text-page-ink-2">Zapisy na to spotkanie są zamknięte.</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+              {chat && details && user !== null && (
+                <EventChat
+                  eventId={details.id}
+                  currentUserId={user.id}
+                  isOrganizer={isOrganizer}
+                  open={isChatOpen(details)}
+                  initialMessages={chat.messages}
+                  initialSyncedAt={chat.syncedAt}
+                  shareText={shareText}
+                  shareSubject={shareSubject}
+                  shareUrl={eventUrl}
+                  client:visible
+                />
+              )}
+              {!user && chatPreview.length > 0 && (
+                <ChatPreview
+                  eventId={id}
+                  messages={chatPreview}
+                  guest={isGuest}
+                  signupHref={authHref("signup", backHere)}
+                  signinHref={authHref("signin", backHere)}
+                  client:load
+                />
+              )}
+            </aside>
+          </div>
         </>
       )}
     </div>
   </div>
-
-  {summary && showBar && (
-    <div class="fixed inset-x-0 bottom-0 z-40 bg-page-deep">
-      <div class="sleeve" aria-hidden="true">
-        <span />
-        <span />
-      </div>
-      <div class="mx-auto flex max-w-xl flex-wrap items-center gap-2.5 px-4 pt-3.5 pb-5">
-        {!user && (
-          <>
-            {isGuest ? (
-              <a
-                href={authHref("signup", backHere)}
-                class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
-              >
-                Załóż konto
-              </a>
-            ) : guestCanJoin ? (
-              <a
-                href="#dolacz"
-                class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
-              >
-                Dołącz bez konta
-              </a>
-            ) : (
-              <a
-                href={authHref("signup", backHere)}
-                class="grid h-14 flex-[2] place-items-center rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase"
-              >
-                Dołącz — załóż konto
-              </a>
-            )}
-            <a
-              href={authHref("signin", backHere)}
-              class="grid h-14 flex-1 place-items-center rounded-full bg-page-2 text-sm font-bold text-page-ink"
-            >
-              Mam konto
-            </a>
-          </>
-        )}
-
-        {isOrganizer && details && isOpen && (
-          <div class="flex w-full gap-2.5" data-testid="organizer-actions">
-            {canEditEvent(details.starts_at) ? (
-              <a
-                href={`/events/${details.id}/edit`}
-                class="grid h-14 flex-1 place-items-center rounded-full bg-card text-[15px] font-bold text-ink"
-              >
-                Edytuj
-              </a>
-            ) : (
-              <span class="flex-1 self-center text-xs text-page-ink-2">
-                Edycja możliwa najpóźniej 12 h przed spotkaniem.
-              </span>
-            )}
-            <form
-              method="POST"
-              action={`/api/events/${details.id}/cancel`}
-              class="flex flex-[1.4]"
-              onsubmit="return confirm('Odwołać spotkanie? Jeśli są zaakceptowani uczestnicy, zdecydują, czy spotkają się bez Ciebie.')"
-            >
-              <button type="submit" class="h-14 flex-1 rounded-full bg-[#3a2420] text-[15px] font-bold text-[#ffb4a6]">
-                Odwołaj spotkanie
-              </button>
-            </form>
-          </div>
-        )}
-
-        {details && !isOrganizer && (
-          <>
-            {myStatus && myStatus !== "withdrawn" && (
-              <span
-                class="flex min-h-14 flex-1 items-center gap-2 rounded-full bg-page-2 px-4 py-2 text-sm leading-tight text-page-ink"
-                data-testid="my-status"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#FF7A1A"
-                  stroke-width="2.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M5 12l5 5 9-10"></path>
-                </svg>
-                <span>
-                  <span class="sr-only">Twoje zgłoszenie: </span>
-                  <strong class="first-letter:uppercase">{STATUS_LABELS[myStatus]}</strong>
-                  {myStatus === "accepted" && myNumber && <> · nr {myNumber}</>}
-                </span>
-              </span>
-            )}
-            {canJoin && (
-              <form
-                method="POST"
-                action={`/api/events/${details.id}/join`}
-                class="flex flex-1"
-                onsubmit={
-                  levelMismatch && myLevel !== null
-                    ? `return confirm('${levelRangeLabel(summary.level_min, summary.level_max)}, a Twój poziom w tym sporcie to: ${LEVEL_LABELS[myLevel].toLowerCase()}. Na pewno dołączasz?')`
-                    : undefined
-                }
-              >
-                <button
-                  type="submit"
-                  class="h-14 flex-1 rounded-full bg-brand text-base font-extrabold tracking-wide text-on-brand uppercase transition-colors hover:bg-brand-hover"
-                >
-                  {joinLabel}
-                </button>
-              </form>
-            )}
-            {canWithdraw && (
-              <form
-                method="POST"
-                action={`/api/events/${details.id}/withdraw`}
-                onsubmit={
-                  lateWithdrawal
-                    ? "return confirm('Do spotkania zostało mniej niż 12 h. Na pewno rezygnujesz? Organizator dostanie powiadomienie, a Twoje miejsce zajmie ktoś z rezerwy.')"
-                    : undefined
-                }
-              >
-                <button type="submit" class="h-14 rounded-full bg-card px-5 text-[15px] font-bold text-ink">
-                  {myStatus === "accepted"
-                    ? "Zrezygnuj"
-                    : myStatus === "reserve"
-                      ? "Zejdź z ławki"
-                      : "Wycofaj zgłoszenie"}
-                </button>
-              </form>
-            )}
-            {!isOpen && !myStatus && <p class="w-full text-sm text-page-ink-2">Zapisy na to spotkanie są zamknięte.</p>}
-          </>
-        )}
-      </div>
-    </div>
-  )}
 </Layout>
 
 <script>
