@@ -12,6 +12,9 @@ const querySchema = z.object({
   lat: z.coerce.number().min(-90).max(90).default(DEFAULT_CENTER[0]),
   lng: z.coerce.number().min(-180).max(180).default(DEFAULT_CENTER[1]),
   session: z.string().regex(/^[A-Za-z0-9-]{8,64}$/),
+  // Okolica szukającego — do odległości przy podpowiedziach (opcjonalnie).
+  olat: z.coerce.number().min(-90).max(90).optional(),
+  olng: z.coerce.number().min(-180).max(180).optional(),
 });
 
 // Podpowiedzi adresów i obiektów dla formularzy (tylko zalogowani — chroni darmową pulę Google).
@@ -24,7 +27,8 @@ export const GET: APIRoute = async (context) => {
   const supabase = createClient(context.request.headers, context.cookies);
   if (!supabase) return Response.json({ error: "NO_DATABASE" }, { status: 500 });
 
-  const { q, lat, lng, session } = parsed.data;
-  const result = await searchPlaces(supabase, GOOGLE_MAPS_API_KEY, q, { lat, lng }, session);
+  const { q, lat, lng, session, olat, olng } = parsed.data;
+  const origin = olat !== undefined && olng !== undefined ? { lat: olat, lng: olng } : null;
+  const result = await searchPlaces(supabase, GOOGLE_MAPS_API_KEY, q, { lat, lng }, session, origin);
   return Response.json(result, { headers: { "Cache-Control": "no-store" } });
 };

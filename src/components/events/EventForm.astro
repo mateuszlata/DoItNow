@@ -1,7 +1,7 @@
 ---
 // Formularz ogłoszenia wspólny dla dodawania (FR-003) i edycji (FR-004). Spotkanie może odbyć się
 // na obiekcie zarządcy — wtedy miejsce i pinezka pochodzą z obiektu, a koszt z jego cennika.
-import type { EventFormValues, FieldErrors } from "@/lib/services/events";
+import type { EventFormValues, FieldErrors, PlaceHome } from "@/lib/services/events";
 import { formatHours } from "@/lib/services/venues";
 import { formatPLN } from "@/lib/money";
 import { SPORTS } from "@/lib/sports";
@@ -16,9 +16,11 @@ interface Props {
   submitLabel: string;
   /** Obiekty do wyboru (puste — bez wyboru obiektu). */
   venues?: VenueWithHours[];
+  /** Okolica organizatora: start mapy, kolejność podpowiedzi i ostrzeżenie o dalekim miejscu. */
+  home?: PlaceHome | null;
 }
 
-const { values, errors, submitLabel, venues = [] } = Astro.props;
+const { values, errors, submitLabel, venues = [], home = null } = Astro.props;
 
 const minStartsAt = nowLocalDateTime();
 const DURATIONS = [30, 45, 60, 90, 120, 150, 180, 240, 300, 360];
@@ -136,6 +138,7 @@ const borderClass = (name: keyof FieldErrors) =>
         initialQuery={values.place}
         label="Dokładne miejsce"
         error={errors.place}
+        home={home}
         client:load
       />
       <span class="mt-1 block text-xs text-ink-3">

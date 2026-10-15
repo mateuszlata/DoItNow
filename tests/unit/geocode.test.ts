@@ -4,7 +4,7 @@ import { toSuggestion } from "@/lib/geocode";
 const at = { coordinates: [21.0122, 52.2297] as [number, number] };
 
 describe("toSuggestion", () => {
-  it("uses the place name as the title and the street, district and city as the subtitle", () => {
+  it("uses the place name as the title and the street, district, city and region as the subtitle", () => {
     const s = toSuggestion({
       geometry: at,
       properties: { name: "Orlik", street: "Raszyńska", housenumber: "8", district: "Ochota", city: "Warszawa" },
@@ -24,6 +24,19 @@ describe("toSuggestion", () => {
       properties: { name: "Częstochowa", city: "Częstochowa", state: "śląskie" },
     });
     expect(s.title).toBe("Częstochowa");
-    expect(s.subtitle).toBe("");
+    expect(s.subtitle).toBe("śląskie");
+  });
+
+  it("tells apart towns with the same name by county and voivodeship", () => {
+    const near = toSuggestion({
+      geometry: at,
+      properties: { name: "Olsztyn", county: "powiat częstochowski", state: "województwo śląskie" },
+    });
+    const far = toSuggestion({
+      geometry: at,
+      properties: { name: "Olsztyn", city: "Olsztyn", state: "województwo warmińsko-mazurskie" },
+    });
+    expect(near.subtitle).toBe("powiat częstochowski, województwo śląskie");
+    expect(far.subtitle).toBe("województwo warmińsko-mazurskie");
   });
 });

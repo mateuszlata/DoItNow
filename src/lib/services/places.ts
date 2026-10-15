@@ -3,6 +3,7 @@
 // albo przy błędzie Google — Photon (OpenStreetMap). Klucz Google nigdy nie trafia do przeglądarki.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { searchPlaces as searchPhoton } from "@/lib/geocode";
+import { distanceKm } from "@/lib/near";
 
 /** Darmowa pula Google na miesiąc z marginesem (10 000 zapytań, liczymy do 9 500). */
 export const PLACES_MONTHLY_LIMIT = 9500;
@@ -19,6 +20,8 @@ export interface PlaceHit {
   /** Współrzędne są od razu tylko w wynikach OpenStreetMap; dla Google pobiera je `placeDetails`. */
   lat?: number;
   lng?: number;
+  /** Odległość od okolicy szukającego (`origin`) w km — odróżnia miejscowości o tej samej nazwie. */
+  distanceKm?: number;
 }
 
 export interface PlaceSearchResult {
@@ -40,11 +43,22 @@ async function consume(supabase: SupabaseClient, api: "autocomplete" | "details"
   return result === "ok" || result === "user" ? result : "daily";
 }
 
-async function osm(query: string, near: { lat: number; lng: number }): Promise<PlaceSearchResult> {
-  const found = await searchPhoton(query, near).catch(() => []);
+async function osm(
+  query: string,
+  near: { lat: number; lng: number },
+  origin: { lat: number; lng: number } | null,
+): Promise<PlaceSearchResult> {
+  // OpenStreetMap zwraca czasem tę samą ulicę kilka razy (osobne odcinki) — zostawiamy jedną.
+  const found = (await searchPhoton(query, near).catch(() => [])).filter(
+    (s, i, all) => all.findIndex((o) => o.title === s.title && o.subtitle === s.subtitle) === i,
+  );
   return {
     source: "osm",
-    hits: found.map((s) => ({ id: `osm:${String(s.lat)},${String(s.lng)}`, ...s })),
+    hits: found.map((s) => ({
+      id: `osm:${String(s.lat)},${String(s.lng)}`,
+      ...s,
+      ...(origin ? { distanceKm: Math.round(distanceKm(origin, s)) } : {}),
+    })),
   };
 }
 
@@ -54,21 +68,23 @@ interface GoogleAutocomplete {
       placeId: string;
       structuredFormat?: { mainText?: { text: string }; secondaryText?: { text: string } };
       text?: { text: string };
+      distanceMeters?: number;
     };
   }[];
 }
 
-/** Podpowiedzi dla wpisanego tekstu, najpierw z okolic `near`. */
+/** Podpowiedzi dla wpisanego tekstu, najpierw z okolic `near`; z `origin` — z odległością od niego. */
 export async function searchPlaces(
   supabase: SupabaseClient,
   apiKey: string | undefined,
   query: string,
   near: { lat: number; lng: number },
   sessionToken: string,
+  origin: { lat: number; lng: number } | null = null,
 ): Promise<PlaceSearchResult> {
   const q = query.trim();
   if (q.length < 3) return { source: apiKey ? "google" : "osm", hits: [] };
-  if (!apiKey || (await consume(supabase, "autocomplete")) !== "ok") return osm(q, near);
+  if (!apiKey || (await consume(supabase, "autocomplete")) !== "ok") return osm(q, near, origin);
 
   const response = await fetch(`${GOOGLE_URL}/places:autocomplete`, {
     method: "POST",
@@ -80,9 +96,10 @@ export async function searchPlaces(
       regionCode: "pl",
       includedRegionCodes: ["pl"],
       locationBias: { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 50000 } },
+      ...(origin ? { origin: { latitude: origin.lat, longitude: origin.lng } } : {}),
     }),
   }).catch(() => null);
-  if (!response?.ok) return osm(q, near);
+  if (!response?.ok) return osm(q, near, origin);
 
   const data = (await response.json()) as GoogleAutocomplete;
   const hits = (data.suggestions ?? [])
@@ -93,6 +110,7 @@ export async function searchPlaces(
       id: p.placeId,
       title: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "Bez nazwy",
       subtitle: p.structuredFormat?.secondaryText?.text ?? "",
+      ...(p.distanceMeters !== undefined ? { distanceKm: Math.round(p.distanceMeters / 1000) } : {}),
     }));
   return { source: "google", hits };
 }

@@ -3,6 +3,10 @@ import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { DEFAULT_CENTER, TILE_ATTRIBUTION, TILE_URL, loadLeaflet, pinIcon } from "@/components/map/leaflet";
 import type { PlaceHit, PlaceSearchResult } from "@/lib/services/places";
+import { distanceKm } from "@/lib/near";
+
+/** Od tej odległości od okolicy organizatora pytamy, czy to na pewno właściwa miejscowość. */
+const FAR_KM = 100;
 
 interface DetailsResponse {
   ok: boolean;
@@ -33,6 +37,8 @@ interface Props {
   label?: string;
   /** Komunikat błędu walidacji pola. */
   error?: string;
+  /** Okolica organizatora: start mapy, odległości w podpowiedziach i ostrzeżenie o dalekim miejscu. */
+  home?: { lat: number; lng: number; label: string } | null;
 }
 
 function parse(value: string): number | null {
@@ -55,6 +61,7 @@ export default function MapPicker({
   initialQuery = "",
   label,
   error,
+  home = null,
 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const marker = useRef<Leaflet.Marker | null>(null);
@@ -82,8 +89,8 @@ export default function MapPicker({
     let destroy: (() => void) | undefined;
     void loadLeaflet().then((L) => {
       if (cancelled || !container.current) return;
-      const start = point ? ([point.lat, point.lng] as [number, number]) : DEFAULT_CENTER;
-      const map = L.map(container.current).setView(start, point ? 15 : 11);
+      const start: [number, number] = point ? [point.lat, point.lng] : home ? [home.lat, home.lng] : DEFAULT_CENTER;
+      const map = L.map(container.current).setView(start, point ? 15 : home ? 12 : 11);
       mapRef.current = map;
       L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
 
@@ -136,6 +143,10 @@ export default function MapPicker({
         lng: center.lng.toFixed(4),
         session: session.current,
       });
+      // Odległość przy podpowiedziach liczymy od okolicy organizatora (albo od środka mapy).
+      const origin = home ?? center;
+      params.set("olat", origin.lat.toFixed(4));
+      params.set("olng", origin.lng.toFixed(4));
       fetch(`/api/places/search?${params.toString()}`, { signal: controller.signal })
         .then((r) => (r.ok ? (r.json() as Promise<PlaceSearchResult>) : Promise.reject(new Error(String(r.status)))))
         .then((found) => {
@@ -155,7 +166,7 @@ export default function MapPicker({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, chosen]);
+  }, [query, chosen, home]);
 
   // Przy krótkim zapytaniu nie pokazujemy starych podpowiedzi.
   const shown = query.trim().length >= 3 && query !== chosen ? suggestions : [];
@@ -224,6 +235,8 @@ export default function MapPicker({
   }
 
   const showList = open && shown.length > 0;
+  // Miejsce daleko od okolicy organizatora — najczęściej pomyłka miejscowości o tej samej nazwie.
+  const farKm = home && point ? Math.round(distanceKm(home, point)) : 0;
 
   return (
     <div>
@@ -293,7 +306,16 @@ export default function MapPicker({
                 }}
                 className={`cursor-pointer px-4 py-2.5 text-sm ${i === active ? "bg-card-2" : "hover:bg-card-2"}`}
               >
-                <span className="text-ink block font-semibold">{s.title}</span>
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="text-ink font-semibold">{s.title}</span>
+                  {s.distanceKm !== undefined && (
+                    <span
+                      className={`shrink-0 text-xs ${s.distanceKm >= FAR_KM ? "text-bad font-bold" : "text-ink-3"}`}
+                    >
+                      {s.distanceKm} km
+                    </span>
+                  )}
+                </span>
                 {s.subtitle && <span className="text-ink-3 block text-xs">{s.subtitle}</span>}
               </li>
             ))}
@@ -316,6 +338,16 @@ export default function MapPicker({
         aria-label="Mapa: kliknij, aby zaznaczyć miejsce spotkania"
         data-testid="map-picker"
       />
+      {farKm >= FAR_KM && home && (
+        <p
+          className="bg-warn-soft text-warn mt-2 rounded-2xl px-3.5 py-2 text-xs"
+          role="status"
+          data-testid="place-far"
+        >
+          To miejsce jest ok. <strong>{farKm} km</strong> od Twojej okolicy ({home.label}). Sprawdź, czy to właściwa
+          miejscowość — wiele ma tę samą nazwę.
+        </p>
+      )}
       <input type="hidden" name="lat" value={point ? String(point.lat) : ""} />
       <input type="hidden" name="lng" value={point ? String(point.lng) : ""} />
       <input type="hidden" name="googlePlaceId" value={point ? googlePlaceId : ""} />

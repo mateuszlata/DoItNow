@@ -32,7 +32,7 @@ export function toSuggestion(feature: PhotonFeature): PlaceSuggestion {
   const p = feature.properties;
   const street = [p.street, p.housenumber].filter(Boolean).join(" ");
   const title = p.name ?? (street !== "" ? street : (p.city ?? p.county ?? "Bez nazwy"));
-  const subtitle = [p.name ? street : "", p.district ?? p.locality, p.city ?? p.county ?? p.state]
+  const subtitle = [p.name ? street : "", p.district ?? p.locality, p.city, p.county, p.state]
     .filter((part): part is string => Boolean(part) && part !== title)
     .filter((part, i, all) => all.indexOf(part) === i)
     .join(", ");

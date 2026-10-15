@@ -768,3 +768,33 @@ export function needsAnswer(
 export function canEditEvent(startsAt: string | Date, now: Date = new Date()): boolean {
   return !isLastMinute(startsAt, now);
 }
+
+/** Okolica organizatora do formularza ogłoszenia (start mapy, kolejność podpowiedzi, ostrzeżenie o dalekim miejscu). */
+export interface PlaceHome {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+/**
+ * Okolica z „W pobliżu” (ciasteczko), a bez niej — miejsce ostatniego innego ogłoszenia organizatora.
+ * `null`, gdy nie wiemy nic (wtedy mapa startuje z domyślnego środka).
+ */
+export async function organizerHome(
+  supabase: SupabaseClient,
+  userId: string,
+  near: { lat: number; lng: number; label: string } | null,
+  excludeEventId?: string,
+): Promise<PlaceHome | null> {
+  if (near) return { lat: near.lat, lng: near.lng, label: near.label };
+  let query = supabase
+    .from("events")
+    .select("lat, lng, area")
+    .eq("organizer_id", userId)
+    .not("lat", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (excludeEventId) query = query.neq("id", excludeEventId);
+  const { data } = await query.maybeSingle<{ lat: number; lng: number; area: string }>();
+  return data ? { lat: data.lat, lng: data.lng, label: data.area } : null;
+}

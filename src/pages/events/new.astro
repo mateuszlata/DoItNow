@@ -4,7 +4,8 @@ import Topbar from "@/components/Topbar.astro";
 import EventForm from "@/components/events/EventForm.astro";
 import { EMPTY_EVENT_FORM, readEventForm } from "@/lib/event-form";
 import { createClient } from "@/lib/supabase";
-import { createEvent, type EventFormValues, type FieldErrors } from "@/lib/services/events";
+import { createEvent, organizerHome, type EventFormValues, type FieldErrors } from "@/lib/services/events";
+import { NEAR_COOKIE, parseNear } from "@/lib/near";
 import { listVenues } from "@/lib/services/venues";
 import type { VenueWithHours } from "@/types";
 
@@ -16,6 +17,10 @@ let errors: FieldErrors = {};
 
 const venueClient = createClient(Astro.request.headers, Astro.cookies);
 const venues: VenueWithHours[] = venueClient ? await listVenues(venueClient) : [];
+const home =
+  venueClient && user
+    ? await organizerHome(venueClient, user.id, parseNear(Astro.cookies.get(NEAR_COOKIE)?.value))
+    : null;
 
 if (Astro.request.method === "POST" && user) {
   values = await readEventForm(Astro.request);
@@ -39,7 +44,7 @@ if (Astro.request.method === "POST" && user) {
       <Topbar />
       <div class="rounded-3xl border border-line bg-card shadow-card p-6 text-ink backdrop-blur-xl">
         <h1 class="display mb-4 text-3xl font-bold">Dodaj ogłoszenie</h1>
-        <EventForm values={values} errors={errors} venues={venues} submitLabel="Opublikuj ogłoszenie" />
+        <EventForm values={values} errors={errors} venues={venues} home={home} submitLabel="Opublikuj ogłoszenie" />
       </div>
     </div>
   </div>
